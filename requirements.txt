@@ -1,0 +1,11 @@
+# Overcooked Plus (SAGE) pinned requirements
+numpy==2.2.6
+gym==0.26.2
+pygame==2.6.1
+PyYAML==6.0
+networkx==3.4.2
+# LLM backends
+anthropic==1.11.0
+ollama==0.6.3
+# tests
+pytest==9.1.1

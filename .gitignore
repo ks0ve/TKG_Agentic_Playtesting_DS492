@@ -1,0 +1,10 @@
+# SAGE env is cloned locally, never committed (no license)
+external/
+.venv/
+runs/**
+!runs/**/
+!runs/**/summary.json
+__pycache__/
+*.pyc
+.pytest_cache/
+game_logs.jsonl

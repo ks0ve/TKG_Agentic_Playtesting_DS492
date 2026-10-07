@@ -1,0 +1,42 @@
+{
+  "agent": "react",
+  "task": "V2_task_01_tomato",
+  "seed": 0,
+  "backend": "ollama",
+  "model": "qwen2.5:7b",
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": 0.0,
+  "parse_errors": 0,
+  "total_env_steps": 50,
+  "episodes": 1,
+  "llm_calls": 50,
+  "input_tokens": 80694,
+  "output_tokens": 2261,
+  "total_tokens": 82955,
+  "wall_time_s": 586.24,
+  "unique_bug_ids": [
+    19
+  ],
+  "n_unique_bugs": 1,
+  "first_found_step": {
+    "19": 20
+  },
+  "discovery_curve": [
+    {
+      "global_step": 20,
+      "cumulative_tokens": 30615,
+      "unique_bugs": 1
+    },
+    {
+      "global_step": 50,
+      "cumulative_tokens": 82955,
+      "unique_bugs": 1
+    }
+  ],
+  "deliveries_success": 0,
+  "delivery_attempts": 0,
+  "agent_bug_reports": 48,
+  "ignore_bug_ids": [
+    5
+  ]
+}

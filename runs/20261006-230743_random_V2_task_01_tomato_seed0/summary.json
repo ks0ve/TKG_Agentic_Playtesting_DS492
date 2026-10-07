@@ -1,0 +1,149 @@
+{
+  "agent": "random",
+  "task": "V2_task_01_tomato",
+  "seed": 0,
+  "backend": null,
+  "model": null,
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": null,
+  "parse_errors": 0,
+  "total_env_steps": 10000,
+  "episodes": 51,
+  "llm_calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "total_tokens": 0,
+  "wall_time_s": 1.53,
+  "unique_bug_ids": [
+    3,
+    4,
+    9,
+    13,
+    15,
+    16,
+    17,
+    19,
+    20,
+    28,
+    42,
+    47,
+    51,
+    52,
+    53,
+    54,
+    67
+  ],
+  "n_unique_bugs": 17,
+  "first_found_step": {
+    "3": 9563,
+    "4": 6729,
+    "9": 1185,
+    "13": 2118,
+    "15": 49,
+    "16": 270,
+    "17": 836,
+    "19": 15,
+    "20": 143,
+    "28": 1,
+    "42": 266,
+    "47": 1556,
+    "51": 3687,
+    "52": 110,
+    "53": 254,
+    "54": 971,
+    "67": 6729
+  },
+  "discovery_curve": [
+    {
+      "global_step": 1,
+      "cumulative_tokens": 0,
+      "unique_bugs": 1
+    },
+    {
+      "global_step": 15,
+      "cumulative_tokens": 0,
+      "unique_bugs": 2
+    },
+    {
+      "global_step": 49,
+      "cumulative_tokens": 0,
+      "unique_bugs": 3
+    },
+    {
+      "global_step": 110,
+      "cumulative_tokens": 0,
+      "unique_bugs": 4
+    },
+    {
+      "global_step": 143,
+      "cumulative_tokens": 0,
+      "unique_bugs": 5
+    },
+    {
+      "global_step": 254,
+      "cumulative_tokens": 0,
+      "unique_bugs": 6
+    },
+    {
+      "global_step": 266,
+      "cumulative_tokens": 0,
+      "unique_bugs": 7
+    },
+    {
+      "global_step": 270,
+      "cumulative_tokens": 0,
+      "unique_bugs": 8
+    },
+    {
+      "global_step": 836,
+      "cumulative_tokens": 0,
+      "unique_bugs": 9
+    },
+    {
+      "global_step": 971,
+      "cumulative_tokens": 0,
+      "unique_bugs": 10
+    },
+    {
+      "global_step": 1185,
+      "cumulative_tokens": 0,
+      "unique_bugs": 11
+    },
+    {
+      "global_step": 1556,
+      "cumulative_tokens": 0,
+      "unique_bugs": 12
+    },
+    {
+      "global_step": 2118,
+      "cumulative_tokens": 0,
+      "unique_bugs": 13
+    },
+    {
+      "global_step": 3687,
+      "cumulative_tokens": 0,
+      "unique_bugs": 14
+    },
+    {
+      "global_step": 6729,
+      "cumulative_tokens": 0,
+      "unique_bugs": 16
+    },
+    {
+      "global_step": 9563,
+      "cumulative_tokens": 0,
+      "unique_bugs": 17
+    },
+    {
+      "global_step": 10000,
+      "cumulative_tokens": 0,
+      "unique_bugs": 17
+    }
+  ],
+  "deliveries_success": 1,
+  "delivery_attempts": 34,
+  "agent_bug_reports": 0,
+  "ignore_bug_ids": [
+    5
+  ]
+}

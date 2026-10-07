@@ -1,0 +1,11 @@
+[project]
+name = "tkg-agentic-playtesting-ds492"
+version = "0.1.0"
+description = "Agentic playtesting baselines for game bug discovery (Overcooked Plus)"
+readme = "README.md"
+requires-python = ">=3.10,<3.11"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["react_baseline/tests"]
+pythonpath = ["."]

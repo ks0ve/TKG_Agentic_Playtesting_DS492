@@ -1,0 +1,30 @@
+MAP (x = column, y = row; (0,0) is top-left; right = x+1, down = y+1)
+    0 1 2 3 4
+  0 # S # N #
+  1 W @ . . G
+  2 P . X . O
+  3 L . . . T
+  4 # # K # #
+Legend: .=floor (walkable), #=empty counter (holds one item), @=you, T=tomato (on a counter), L=lettuce (on a counter), O=onion (on a counter), S=steak (on a counter), P=plate (on a counter), K=cutting board, X=delivery window, N=pan (stove), W=sink, G=trash can
+
+STATIONS
+- (2,4) cutting board: empty
+- (3,0) pan (stove): empty
+- (0,1) sink: empty
+- (2,2) delivery window
+- (4,1) trash can
+ITEMS
+- (0,2) plate [clean; contents: empty] (on counter)
+- (4,3) tomato [unchopped] (on counter)
+- (0,3) lettuce [unchopped] (on counter)
+- (4,2) onion [unchopped] (on counter)
+- (1,0) steak [unchopped, uncooked] (on counter)
+
+ORDER: steak
+YOU: at (1,1), holding nothing
+ADJACENT (one move away; moving into a non-floor tile interacts with it and you stay in place):
+- 0 right -> (2,1): floor (you walk there)
+- 1 down  -> (1,2): floor (you walk there)
+- 2 left  -> (0,1): sink: empty
+- 3 up    -> (1,0): steak [unchopped, uncooked] on a counter
+STEP: 0/200 in this episode (200 remaining)
