@@ -10,11 +10,12 @@ from .agents import ContextOverflowError, RandomAgent, ReActAgent
 from .env_adapter import list_tasks
 from .llm import DEFAULT_MODELS, LLMSetupError, make_llm
 from .runner import Budgets, make_run_dir, run
+from .cheap_agent import CheapAgent
 
 
 def parse_args(argv=None):
     p = argparse.ArgumentParser(description="ReAct / random bug-hunting baseline on Overcooked Plus")
-    p.add_argument("--agent", choices=["react", "random"], required=True)
+    p.add_argument("--agent", choices=["react", "random", "cheap"], required=True)
     p.add_argument("--task", default="V2_task_01_tomato")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--seeds", default=None,
@@ -59,17 +60,30 @@ def run_one(args, seed: int, ignore: list[int]):
     if args.agent == "random":
         agent = RandomAgent(seed=seed)
         backend, model = None, None
+
+    elif args.agent == "cheap":
+        agent = CheapAgent(seed=seed)
+        backend, model = None, None
+
     else:
         backend = args.llm
         model = args.model or DEFAULT_MODELS[backend]
         try:
-            llm = make_llm(backend, model, args.temperature, seed, args.num_ctx,
-                           args.ollama_host, args.max_output_tokens)
+            llm = make_llm(
+                backend, model, args.temperature,
+                seed, args.num_ctx,
+                args.ollama_host, args.max_output_tokens
+            )
         except LLMSetupError as exc:
             print(f"\nERROR: {exc}", file=sys.stderr)
             return None, None
-        agent = ReActAgent(llm, history=args.history, actions_per_call=args.actions_per_call,
-                           warn=lambda m: print(m, file=sys.stderr))
+
+        agent = ReActAgent(
+            llm,
+            history=args.history,
+            actions_per_call=args.actions_per_call,
+            warn=lambda m: print(m, file=sys.stderr)
+        )
 
     cli_args = {k: v for k, v in vars(args).items() if k != "seed_list"}
     cli_args["seed"] = seed
