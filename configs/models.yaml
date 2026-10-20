@@ -1,0 +1,126 @@
+# Model registry for react_baseline. Select with:  --model-profile <name>
+# Adding a model = one entry here, no code change.
+#
+# Fields
+#   backend            ollama | openai_compat | anthropic | mock
+#   model              model id as the backend knows it
+#   base_url           server URL (ollama / openai_compat); "/v1" is optional for openai_compat
+#   context_window     tokens; the agent keeps prompts under 90% of it (context guard).
+#                      For Ollama this is also the num_ctx requested from the server.
+#   max_output_tokens  per call
+#   temperature        default sampling temperature (CLI --temperature overrides)
+#   price_in_per_mtok / price_out_per_mtok   USD per million tokens (0 for local models)
+#   options            backend-specific:
+#       openai_compat: api_key_env (env var with a bearer token), supports_seed (bool),
+#                      timeout_s, extra_body (merged into the request JSON)
+#       anthropic:     send_temperature (bool; false for models that reject sampling
+#                      params), extra_body (merged into the request JSON)
+#   pricing_source / pricing_date   where and when a paid price was checked
+
+defaults:            # used when only --llm <backend> is given (backward compatible)
+  ollama: qwen2.5-7b
+  anthropic: haiku-4.5
+  openai_compat: vllm-qwen2.5-7b
+  mock: mock
+
+profiles:
+  # ---- local, free (Ollama) -------------------------------------------------
+  qwen2.5-7b:
+    backend: ollama
+    model: qwen2.5:7b
+    base_url: http://localhost:11434
+    context_window: 8192
+    max_output_tokens: 512
+    temperature: 0.7
+    price_in_per_mtok: 0.0
+    price_out_per_mtok: 0.0
+    notes: "4.7 GB download (ollama pull qwen2.5:7b). Default local model."
+
+  qwen2.5-14b:
+    backend: ollama
+    model: qwen2.5:14b
+    base_url: http://localhost:11434
+    context_window: 8192
+    max_output_tokens: 512
+    temperature: 0.7
+    price_in_per_mtok: 0.0
+    price_out_per_mtok: 0.0
+    notes: "9 GB download (ollama pull qwen2.5:14b). Roughly 2x slower than 7b on CPU/GPU split."
+
+  llama3.1-8b:
+    backend: ollama
+    model: llama3.1:8b
+    base_url: http://localhost:11434
+    context_window: 8192
+    max_output_tokens: 512
+    temperature: 0.7
+    price_in_per_mtok: 0.0
+    price_out_per_mtok: 0.0
+    notes: "4.9 GB download (ollama pull llama3.1:8b). Different model family for a sanity check."
+
+  mistral-nemo-12b:
+    backend: ollama
+    model: mistral-nemo:12b
+    base_url: http://localhost:11434
+    context_window: 8192
+    max_output_tokens: 512
+    temperature: 0.7
+    price_in_per_mtok: 0.0
+    price_out_per_mtok: 0.0
+    notes: "7.1 GB download (ollama pull mistral-nemo:12b)."
+
+  # ---- self-hosted, OpenAI-compatible (vLLM, llama.cpp server, LM Studio, TGI) ----
+  vllm-qwen2.5-7b:
+    backend: openai_compat
+    model: Qwen/Qwen2.5-7B-Instruct
+    base_url: http://localhost:8000
+    context_window: 8192
+    max_output_tokens: 512
+    temperature: 0.7
+    price_in_per_mtok: 0.0
+    price_out_per_mtok: 0.0
+    options:
+      supports_seed: true
+      # api_key_env: VLLM_API_KEY     # only if the server was started with --api-key
+    notes: "vllm serve Qwen/Qwen2.5-7B-Instruct --port 8000 --max-model-len 8192"
+
+  # ---- paid API (Anthropic) -------------------------------------------------
+  haiku-4.5:
+    backend: anthropic
+    model: claude-haiku-4-5-20251001
+    context_window: 200000
+    max_output_tokens: 512
+    temperature: 0.7
+    price_in_per_mtok: 1.0
+    price_out_per_mtok: 5.0
+    options:
+      send_temperature: true
+    pricing_source: "https://platform.claude.com/docs/en/about-claude/pricing (Claude Haiku 4.5: $1 in / $5 out per MTok)"
+    pricing_date: "2026-10-20"
+    notes: "Legacy model, still available. No thinking unless requested; honours temperature (matches local runs)."
+
+  haiku-5.5:
+    backend: anthropic
+    model: claude-haiku-5-5
+    context_window: 1000000
+    max_output_tokens: 512
+    temperature: 1.0   # not sent: Haiku 5.5 rejects non-default sampling values (HTTP 400)
+    price_in_per_mtok: 0.10
+    price_out_per_mtok: 0.50
+    options:
+      send_temperature: false
+      extra_body:
+        thinking: {type: disabled}   # adaptive thinking is on by default; disabled is allowed at the default effort
+    pricing_source: "https://platform.claude.com/docs/en/about-claude/pricing (Claude Haiku 5.5, prompts up to 100k tokens: $0.10 in / $0.50 out per MTok; $0.50 / $2.50 above 100k)"
+    pricing_date: "2026-10-20"
+    notes: "Current Haiku. Our prompts are ~2k tokens, far under the 100k price tier. Runs at the API's default temperature."
+
+  # ---- offline -------------------------------------------------------------
+  mock:
+    backend: mock
+    model: mock
+    context_window: 8192
+    max_output_tokens: 512
+    temperature: 0.7
+    price_in_per_mtok: 0.0
+    price_out_per_mtok: 0.0

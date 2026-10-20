@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import random
+import statistics
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -25,6 +26,7 @@ class Budgets:
     max_env_steps: int = 2000
     max_llm_calls: int | None = None
     max_tokens: int | None = None
+    max_usd: float | None = None
 
 
 @dataclass
@@ -32,6 +34,8 @@ class RunStats:
     global_step: int = 0
     episodes: int = 1
     llm_calls: int = 0
+    decisions: int = 0
+    latencies: list = field(default_factory=list)
     input_tokens: int = 0
     output_tokens: int = 0
     parse_errors: int = 0
@@ -42,9 +46,19 @@ class RunStats:
     bug_reports: list = field(default_factory=list)
     stop_reason: str = ""
 
+    price_in_per_mtok: float | None = 0.0
+    price_out_per_mtok: float | None = 0.0
+
     @property
     def tokens(self) -> int:
         return self.input_tokens + self.output_tokens
+
+    @property
+    def usd(self) -> float | None:
+        if self.price_in_per_mtok is None or self.price_out_per_mtok is None:
+            return None
+        return (self.input_tokens * self.price_in_per_mtok
+                + self.output_tokens * self.price_out_per_mtok) / 1e6
 
 
 def git_commit(path: Path) -> str | None:
@@ -105,6 +119,12 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
     (run_dir / "config.json").write_text(json.dumps(config, indent=2))
 
     stats = RunStats()
+    prof = config.get("model_profile") or {}
+    if prof:
+        stats.price_in_per_mtok = prof.get("price_in_per_mtok")
+        stats.price_out_per_mtok = prof.get("price_out_per_mtok")
+    if budgets.max_usd is not None and stats.usd is None:
+        raise ValueError("--max-usd needs a model profile with known prices")
     error = None
     step_rows: list[dict] = []  # kept for the bug-report ±3 window
     t0 = time.perf_counter()
@@ -122,6 +142,9 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         if budgets.max_tokens is not None and stats.tokens >= budgets.max_tokens:
             stats.stop_reason = "max_tokens"
             return False
+        if budgets.max_usd is not None and stats.usd >= budgets.max_usd:
+            stats.stop_reason = "max_usd"
+            return False
         return True
 
     with open(run_dir / "steps.jsonl", "w", encoding="utf-8") as f_steps, \
@@ -129,6 +152,7 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         try:
             while budget_left():
                 decision = agent.act(obs_text)
+                stats.decisions += 1
                 call_id = None
                 if decision.llm_call is not None:
                     call_id = stats.llm_calls
@@ -136,6 +160,7 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
                     rec = decision.llm_call
                     stats.input_tokens += rec["input_tokens"]
                     stats.output_tokens += rec["output_tokens"]
+                    stats.latencies.append(rec["latency_s"])
                     if rec["parse_error"]:
                         stats.parse_errors += 1
                     row = {"llm_call_id": call_id, **llm_meta,
@@ -240,6 +265,13 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         "delivery_attempts": stats.delivery_attempts,
         "agent_bug_reports": len(stats.bug_reports),
         "ignore_bug_ids": sorted(ignore),
+        # v2 additions
+        "usd_cost": None if stats.usd is None else round(stats.usd, 6),
+        "decisions": stats.decisions,
+        "llm_calls_per_decision": (stats.llm_calls / stats.decisions) if stats.decisions else None,
+        "llm_calls_per_env_step": (stats.llm_calls / stats.global_step) if stats.global_step else None,
+        "llm_latency_mean_s": round(statistics.mean(stats.latencies), 4) if stats.latencies else None,
+        "llm_latency_median_s": round(statistics.median(stats.latencies), 4) if stats.latencies else None,
     }
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     if error is not None:
