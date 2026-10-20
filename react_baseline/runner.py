@@ -2,6 +2,11 @@
 
 The runner is the only component that sees the hidden oracle (bug predicate
 IDs). It writes them to steps.jsonl but never passes them to the agent.
+
+Every decision goes through the shared Action reader: an agent returns intents
+(or raw actions, which become one-step intents), the reader turns them into
+button presses through ``step_fn``, and ``step_fn`` hands back only the
+agent-visible ``VisibleStep``.
 """
 from __future__ import annotations
 
@@ -16,7 +21,9 @@ from pathlib import Path
 
 import numpy as np
 
+from .action_reader import ActionReader, Intent, VisibleStep, parse_intent, primitive_intent
 from .env_adapter import EnvAdapter, REPO_ROOT, SAGE_ROOT
+from .transitions import VisibleTransition
 
 BUG_REPORT_WINDOW = 3  # bug_reports.jsonl pairs each report with oracle bugs within ±3 steps
 
@@ -35,6 +42,8 @@ class RunStats:
     episodes: int = 1
     llm_calls: int = 0
     decisions: int = 0
+    intents_executed: int = 0
+    intent_failures: int = 0
     latencies: list = field(default_factory=list)
     input_tokens: int = 0
     output_tokens: int = 0
@@ -45,7 +54,6 @@ class RunStats:
     curve: list = field(default_factory=list)            # discovery points
     bug_reports: list = field(default_factory=list)
     stop_reason: str = ""
-
     price_in_per_mtok: float | None = 0.0
     price_out_per_mtok: float | None = 0.0
 
@@ -98,18 +106,27 @@ def make_run_dir(out_root: Path, agent: str, task: str, seed: int) -> Path:
     return run_dir
 
 
+def _as_intents(decision) -> list[Intent]:
+    if getattr(decision, "intents", None) is not None:
+        return [i if isinstance(i, Intent) else parse_intent(i) for i in decision.intents]
+    return [primitive_intent(a) for a in decision.actions]
+
+
 def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: dict,
-        ignore_bug_ids=(5,), progress=None) -> dict:
+        ignore_bug_ids=(5,), progress=None, reader: ActionReader | None = None) -> dict:
     """Run ``agent`` on ``task`` until a budget is exhausted. Returns the summary."""
     run_dir = Path(run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
     ignore = set(int(b) for b in ignore_bug_ids)
     adapter = EnvAdapter(task)
     seed_everything(seed, adapter)
+    reader = reader or ActionReader()
+    action_space = getattr(agent, "action_space", "primitive")
 
     config = dict(config)
     config.update({
-        "task": task, "seed": seed, "agent": agent.name,
+        "task": task, "seed": seed, "agent": agent.name, "action_space": action_space,
+        "max_macro_len": reader.max_macro_len,
         "ignore_bug_ids": sorted(ignore),
         "budgets": vars(budgets),
         "git_commit": git_commit(REPO_ROOT), "git_dirty": git_dirty(REPO_ROOT),
@@ -126,7 +143,7 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
     if budgets.max_usd is not None and stats.usd is None:
         raise ValueError("--max-usd needs a model profile with known prices")
     error = None
-    step_rows: list[dict] = []  # kept for the bug-report ±3 window
+    step_rows: list[dict] = []  # kept for bug-report attribution
     t0 = time.perf_counter()
     obs_text = adapter.reset()
     episode_step = 0
@@ -147,13 +164,60 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
             return False
         return True
 
+    def make_step_fn(f_steps, decision_id: int, intent_id: int, intent: Intent, call_id):
+        k = 0  # intent_step_index
+
+        def step_fn(action: int) -> VisibleStep | None:
+            nonlocal k, episode_step
+            if stats.global_step >= budgets.max_env_steps:
+                return None
+            res = adapter.step(action)
+            stats.global_step += 1
+            episode_step = res.episode_step
+            bugs = sorted(set(b for b in res.oracle["bugs"] if b not in ignore))
+            new = [b for b in bugs if b not in stats.first_found]
+            for b in new:
+                stats.first_found[b] = stats.global_step
+            if new:
+                stats.curve.append({"global_step": stats.global_step,
+                                    "cumulative_tokens": stats.tokens,
+                                    "unique_bugs": len(stats.first_found)})
+            if res.oracle["event_type"] == "deliver":
+                stats.delivery_attempts += 1
+            if res.oracle["delivery_success"]:
+                stats.deliveries_success += 1
+            row = {
+                "global_step": stats.global_step, "episode": stats.episodes,
+                "episode_step": episode_step, "action": int(action),
+                "reward": res.reward, "done": res.done,
+                "bug_ids_triggered": bugs, "new_unique_bug_ids": new,
+                "bug_ids_raw": sorted(set(res.oracle["bugs"])),
+                "delivery_success": res.oracle["delivery_success"],
+                "llm_call_id": call_id,
+                "decision_id": decision_id, "intent_id": intent_id,
+                "intent": intent.text, "intent_step_index": k,
+            }
+            k += 1
+            step_rows.append(row)
+            f_steps.write(json.dumps(row) + "\n")
+            # agent-visible only: the oracle stays in this function
+            event = (res.state.get("last_event") or {}).get("text") or ""
+            return VisibleStep(res.obs_text, res.summary, res.state, event, res.done)
+
+        return step_fn
+
     with open(run_dir / "steps.jsonl", "w", encoding="utf-8") as f_steps, \
-            open(run_dir / "llm_calls.jsonl", "w", encoding="utf-8") as f_calls:
+            open(run_dir / "llm_calls.jsonl", "w", encoding="utf-8") as f_calls, \
+            open(run_dir / "transitions.jsonl", "w", encoding="utf-8") as f_trans:
+        state = adapter.state
+        decision_id = intent_id = -1
         try:
             while budget_left():
-                decision = agent.act(obs_text)
+                decision = agent.act(obs_text, state)
+                decision_id += 1
                 stats.decisions += 1
-                call_id = None
+                intents = _as_intents(decision)
+                call_id, call_row = None, None
                 if decision.llm_call is not None:
                     call_id = stats.llm_calls
                     stats.llm_calls += 1
@@ -163,59 +227,60 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
                     stats.latencies.append(rec["latency_s"])
                     if rec["parse_error"]:
                         stats.parse_errors += 1
-                    row = {"llm_call_id": call_id, **llm_meta,
-                           "global_step": stats.global_step, "episode": stats.episodes, **rec}
-                    f_calls.write(json.dumps(row) + "\n")
-                    f_calls.flush()
+                    call_row = {"llm_call_id": call_id, **llm_meta,
+                                "global_step": stats.global_step, "episode": stats.episodes, **rec,
+                                "decision_id": decision_id,
+                                "parsed_intents": [i.text for i in intents]}
                     if rec["parsed_bug_report"]:
                         stats.bug_reports.append({
                             "llm_call_id": call_id, "global_step": stats.global_step,
-                            "episode": stats.episodes, "report": rec["parsed_bug_report"]})
+                            "episode": stats.episodes, "report": rec["parsed_bug_report"],
+                            "decision_id": decision_id})
 
-                executed, done, obs_summary = [], False, ""
-                for action in decision.actions:
-                    if stats.global_step >= budgets.max_env_steps:
-                        break
-                    res = adapter.step(action)
-                    stats.global_step += 1
-                    episode_step = res.episode_step
-                    executed.append(action)
-                    obs_summary, done = res.summary, res.done
-
-                    bugs = sorted(set(b for b in res.oracle["bugs"] if b not in ignore))
-                    new = [b for b in bugs if b not in stats.first_found]
-                    for b in new:
-                        stats.first_found[b] = stats.global_step
-                    if new:
-                        stats.curve.append({"global_step": stats.global_step,
-                                            "cumulative_tokens": stats.tokens,
-                                            "unique_bugs": len(stats.first_found)})
-                    if res.oracle["event_type"] == "deliver":
-                        stats.delivery_attempts += 1
-                    if res.oracle["delivery_success"]:
-                        stats.deliveries_success += 1
-                    row = {
-                        "global_step": stats.global_step, "episode": stats.episodes,
-                        "episode_step": episode_step, "action": int(action),
-                        "reward": res.reward, "done": res.done,
-                        "bug_ids_triggered": bugs, "new_unique_bug_ids": new,
-                        "bug_ids_raw": sorted(set(res.oracle["bugs"])),
-                        "delivery_success": res.oracle["delivery_success"],
-                        "llm_call_id": call_id,
-                    }
-                    step_rows.append(row)
-                    f_steps.write(json.dumps(row) + "\n")
-                    obs_text = res.obs_text
-                    if done:
-                        break
+                results, done, obs_summary = [], False, ""
+                try:
+                    for intent in intents:
+                        if stats.global_step >= budgets.max_env_steps:
+                            break
+                        intent_id += 1
+                        prev_state, start = state, stats.global_step + 1
+                        step_fn = make_step_fn(f_steps, decision_id, intent_id, intent, call_id)
+                        r = reader.execute(intent, state, step_fn)
+                        results.append(r)
+                        if r.final is not None:
+                            obs_text, state, obs_summary = r.final.obs_text, r.final.state, r.final.summary
+                        if r.n_steps:
+                            stats.intents_executed += 1
+                            stats.intent_failures += r.error is not None
+                            f_trans.write(json.dumps(VisibleTransition(
+                                prev_state=prev_state, intent=r.intent,
+                                primitive_actions=r.primitive_actions, events=r.events,
+                                new_state=state, decision_id=decision_id, intent_id=intent_id,
+                                episode=stats.episodes, global_step_start=start,
+                                global_step_end=stats.global_step, kind=r.kind,
+                                event_records=r.event_records, stop_reason=r.stop_reason,
+                                error=r.error, note=r.note, episode_ended=r.done).to_row()) + "\n")
+                        if r.done:
+                            done = True
+                            break
+                        if r.stop_reason == "budget":
+                            break
+                finally:
+                    if call_row is not None:
+                        call_row["executor_result"] = [r.to_dict() for r in results]
+                        f_calls.write(json.dumps(call_row) + "\n")
+                        f_calls.flush()
+                decision.results = results
                 if progress and decision.llm_call is not None:
                     progress(stats, decision)
 
+                executed = [a for r in results for a in r.primitive_actions]
                 if executed:
-                    agent.observe(executed, obs_summary)
+                    agent.observe(executed, obs_summary, results)
                 if done:
                     stats.episodes += 1
                     obs_text = adapter.reset()
+                    state = adapter.state
                     episode_step = 0
                     agent.on_episode_reset()
                 elif not executed:
@@ -266,12 +331,16 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         "agent_bug_reports": len(stats.bug_reports),
         "ignore_bug_ids": sorted(ignore),
         # v2 additions
+        "action_space": action_space,
         "usd_cost": None if stats.usd is None else round(stats.usd, 6),
         "decisions": stats.decisions,
         "llm_calls_per_decision": (stats.llm_calls / stats.decisions) if stats.decisions else None,
         "llm_calls_per_env_step": (stats.llm_calls / stats.global_step) if stats.global_step else None,
         "llm_latency_mean_s": round(statistics.mean(stats.latencies), 4) if stats.latencies else None,
         "llm_latency_median_s": round(statistics.median(stats.latencies), 4) if stats.latencies else None,
+        "intents_executed": stats.intents_executed,
+        "intent_failures": stats.intent_failures,
+        "intent_failure_rate": (stats.intent_failures / stats.intents_executed) if stats.intents_executed else None,
     }
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     if error is not None:

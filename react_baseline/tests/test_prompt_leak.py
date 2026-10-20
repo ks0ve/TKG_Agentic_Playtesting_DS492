@@ -51,8 +51,8 @@ def test_system_prompt_names_no_predicates():
         assert _leaks(prompts.system_prompt(k)) == []
 
 
-def test_agent_prompts_never_contain_oracle(tmp_path, monkeypatch):
-    # Make predicates emit sentinel IDs so any leak of oracle output is detectable.
+def _install_sentinels(monkeypatch):
+    """Make predicates emit sentinel IDs so any leak of oracle output is detectable."""
     monkeypatch.setattr(BugManager, "check_pickup_from_empty", lambda self: [SENTINEL_EMPTY])
     orig_extra = BugManager.check_deliver_extra
     monkeypatch.setattr(BugManager, "check_deliver_extra",
@@ -60,6 +60,67 @@ def test_agent_prompts_never_contain_oracle(tmp_path, monkeypatch):
     orig_putdown = BugManager.check_putdown
     monkeypatch.setattr(BugManager, "check_putdown",
                         lambda self, *a, **k: orig_putdown(self, *a, **k) + [SENTINEL_COUNTER])
+
+
+def _assert_sentinels_fired(run_dir):
+    oracle = [json.loads(line) for line in (run_dir / "steps.jsonl").read_text().splitlines()]
+    seen = {b for r in oracle for b in r["bug_ids_triggered"]}
+    assert {SENTINEL_EMPTY, SENTINEL_DELIVER, SENTINEL_COUNTER} <= seen  # oracle did fire
+
+
+def _assert_clean(text: str):
+    assert _leaks(text) == [], text[:500]
+    assert "bug" not in text.lower(), text[:500]
+
+
+# bump an empty counter, fetch the plate, deliver it empty, pick up the returned
+# plate and put it on a counter: the same interactions as SCRIPT_ACTIONS, as intents
+SCRIPT_INTENTS = ["interact(1,0)", "interact(3,0)", "interact(2,2)", "interact(plate)",
+                  "interact(2,0)", "goto(9,9)", "wait(2)"]
+
+
+class _ScriptedIntentAgent:
+    name = "scripted-intent"
+    action_space = "intent"
+
+    def __init__(self, intents):
+        self.intents = list(intents)
+        self.feedback: list[str] = []   # executor traces + summaries the agent receives
+        self.states: list[dict] = []    # structured states the agent receives
+
+    def act(self, obs_text, state=None):
+        from react_baseline.agents import Decision
+        self.states.append(state)
+        self.feedback.append(obs_text)
+        return Decision(intents=[self.intents.pop(0) if self.intents else "wait"])
+
+    def observe(self, executed, summary, results=None):
+        self.feedback.append(summary)
+        self.feedback += [r.trace for r in results or []]
+        self.feedback += [json.dumps(r.to_dict()) for r in results or []]
+
+    def on_episode_reset(self):
+        pass
+
+
+def test_structured_state_feedback_and_transitions_have_no_oracle(tmp_path, monkeypatch):
+    _install_sentinels(monkeypatch)
+    agent = _ScriptedIntentAgent(SCRIPT_INTENTS)
+    run(agent, "V2_task_01_tomato", 0, Budgets(max_env_steps=40), tmp_path,
+        {"backend": None, "model": None}, ignore_bug_ids=())
+    _assert_sentinels_fired(tmp_path)
+    assert any("goto(9,9) failed" in f for f in agent.feedback)  # executor errors reach the agent
+    for f in agent.feedback:
+        _assert_clean(f)
+    for s in agent.states:
+        _assert_clean(json.dumps(s))
+    text = (tmp_path / "transitions.jsonl").read_text()
+    assert text.count("\n") >= len(SCRIPT_INTENTS)
+    _assert_clean(text)
+
+
+def test_agent_prompts_never_contain_oracle(tmp_path, monkeypatch):
+    _install_sentinels(monkeypatch)
 
     script = [f"Thought: step {i}.\nAction: {a}" for i, a in enumerate(SCRIPT_ACTIONS)]
     llm = MockLLM(script=script)

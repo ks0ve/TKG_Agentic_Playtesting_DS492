@@ -20,8 +20,10 @@ _NAME_TO_ACTION = {"right": 0, "down": 1, "left": 2, "up": 3, "wait": 4, "stay":
 
 @dataclass
 class Decision:
-    actions: list[int]
+    actions: list[int] = field(default_factory=list)
     llm_call: dict | None = None
+    intents: list | None = None     # intent strings/Intents; if None, `actions` run as primitives
+    results: list | None = None     # filled by the runner: one ExecResult per executed intent
 
 
 @dataclass
@@ -87,10 +89,10 @@ class RandomAgent:
         # maps), so the global `random` module would replay the same sequence.
         self.rng = random.Random(seed)
 
-    def act(self, obs_text: str) -> Decision:
+    def act(self, obs_text: str, state: dict | None = None) -> Decision:
         return Decision([self.rng.randrange(5)])
 
-    def observe(self, executed: list[int], summary: str):
+    def observe(self, executed: list[int], summary: str, results=None):
         pass
 
     def on_episode_reset(self):
@@ -138,7 +140,7 @@ class ReActAgent:
         self.episode += 1
         self.entries.append(self.RESET_MARKER)
 
-    def observe(self, executed: list[int], summary: str):
+    def observe(self, executed: list[int], summary: str, results=None):
         p = self._pending or ParsedResponse()
         self._turn_index += 1
         line = (f"[turn {self._turn_index}] Thought: {p.thought or '(none)'} | "
@@ -170,7 +172,7 @@ class ReActAgent:
                     "Increase --num-ctx.")
             n -= 1
 
-    def act(self, obs_text: str) -> Decision:
+    def act(self, obs_text: str, state: dict | None = None) -> Decision:
         user, n_used = self.build_prompt(obs_text)
         resp = self.llm.complete(self.system, user)
         parsed = parse_response(resp.text, self.actions_per_call)

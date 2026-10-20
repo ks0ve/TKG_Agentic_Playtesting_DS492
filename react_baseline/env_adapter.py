@@ -283,6 +283,112 @@ def _adjacent_lines(u, agent) -> list[str]:
     return out
 
 
+# ----------------------------------------------------------------------------
+# Structured agent-visible state (for the Action reader and, later, TKG memory)
+def _item_record(item) -> dict | None:
+    """Structured form of what ``describe_item`` shows the agent."""
+    if item is None:
+        return None
+    rec = {"name": getattr(item, "rawName", type(item).__name__)}
+    if isinstance(item, I.Plate):
+        rec["dirty"] = bool(item.dirty)
+        rec["contents"] = [_item_record(f) for f in item.containing]
+    elif isinstance(item, I.Food):
+        if isinstance(item, _CHOPPABLE) and item.is_need_chop:
+            rec["chopped"] = bool(item.chopped)
+        if item.is_need_cook:
+            rec["cooked"] = bool(item.cooked)
+        if getattr(item, "burned", False):
+            rec["burned"] = True
+    return rec
+
+
+def _station_progress(dev) -> str | None:
+    """The '(chop 0/1)'-style progress the renderer prints, without parentheses."""
+    desc = _device_desc(dev)
+    if "(" in desc and desc.endswith(")"):
+        return desc[desc.rindex("(") + 1:-1]
+    return None
+
+
+def event_record(info) -> dict | None:
+    """Agent-visible last event: type, target, success flag and the rendered text."""
+    if info is None:
+        return None
+    ev = _first_event(info)
+    et = ev.get("event_type")
+    et = None if et in ("None", None) else str(et)
+    target = ev.get("target")
+    if et == "move" or not isinstance(target, (str, list)) or not target:
+        target = None  # move targets are in env (row, col) order; the position is in "agent"
+    elif isinstance(target, list):
+        target = [str(t) for t in target]
+    success = (ev.get("details", {}).get("others", {}) or {}).get("success")
+    return {"type": et, "target": target,
+            "success": success if isinstance(success, bool) else None,
+            "text": describe_event(info)}
+
+
+def visible_state(env, info=None) -> dict:
+    """Agent-visible state as a dict, built from the same game state as
+    ``render_text`` (screen frame: pos = [x=column, y=row]). Never reads
+    ``info["bugs"]`` or the bug manager."""
+    u = env.unwrapped
+    im = u.item_Manager
+    agent = u.agent[0]
+    grid = u.map
+    rows = ["".join(TILE_CHARS.get(_REVERSE_IDX.get(code, "?"), "?") for code in row) for row in grid]
+
+    held_by_station = {}
+    stations = []
+    for key in _DEVICE_KEYS:
+        for dev in im.itemDic.get(key, []):
+            if getattr(dev, "holding", None) is not None:
+                held_by_station[id(dev.holding)] = dev
+            stations.append({
+                "kind": dev.rawName,
+                "label": TILE_DESCRIPTIONS.get(dev.rawName, dev.rawName),
+                "pos": list(_pos(dev)),
+                "holding": _item_record(getattr(dev, "holding", None)),
+                "progress": _station_progress(dev),
+            })
+    on_plate = {id(f) for plate in im.plate for f in plate.containing}
+    held = agent.holding
+
+    def where(item):
+        if item is held:
+            return "held"
+        if id(item) in held_by_station:
+            return "station"
+        if id(item) in on_plate:
+            return "plate"
+        return "counter"
+
+    items = []
+    for plate in im.plate:
+        if getattr(plate, "consumed", False) or plate.x < 0:
+            continue
+        items.append({**_item_record(plate), "pos": list(_pos(plate)), "where": where(plate)})
+    for key in _FOOD_KEYS:
+        for food in im.itemDic.get(key, []):
+            if getattr(food, "consumed", False) or food.x < 0:
+                continue
+            w = where(food)
+            if w in ("plate", "station"):
+                continue  # listed with its plate / station, as in render_text
+            items.append({**_item_record(food), "pos": list(_pos(food)), "where": w})
+
+    return {
+        "episode_step": int(u.env_step),
+        "map": rows,
+        "agent": {"pos": list(_pos(agent)), "holding": _item_record(held)},
+        "items": items,
+        "stations": stations,
+        "order": [list(t["ingredients"]) for t in u.tasks],
+        "last_event": event_record(info),
+    }
+
+
 def summarize_state(env, last_event: str | None = None) -> str:
     """One-line observation summary used in the agent's rolling history."""
     agent = env.unwrapped.agent[0]
@@ -341,6 +447,7 @@ class StepResult:
     done: bool
     episode_step: int
     oracle: dict = field(default_factory=dict)  # hidden: never shown to the agent
+    state: dict = field(default_factory=dict)   # agent-visible structured state
 
 
 class EnvAdapter:
@@ -351,14 +458,17 @@ class EnvAdapter:
         self.env = make_env(task_id)
         if seed is not None:
             self.env.action_space.seed(seed)
+        self.state: dict = {}
 
     def reset(self) -> str:
         self.env.reset()
+        self.state = visible_state(self.env)
         return render_text(self.env)
 
     def step(self, action: int) -> StepResult:
         _, reward, done, info = self.env.step(int(action))
         event = describe_event(info)
+        self.state = visible_state(self.env, info)
         return StepResult(
             obs_text=render_text(self.env, last_event=event),
             summary=summarize_state(self.env, last_event=event),
@@ -370,6 +480,7 @@ class EnvAdapter:
                 "delivery_success": delivery_success(info),
                 "event_type": _first_event(info).get("event_type"),
             },
+            state=self.state,
         )
 
     def close(self):
