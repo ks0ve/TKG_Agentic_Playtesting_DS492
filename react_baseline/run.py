@@ -160,9 +160,12 @@ def run_one(args, seed: int, ignore: list[int]):
     for k in ["agent", "action_space", "backend", "model", "stop_reason", "total_env_steps",
               "episodes", "decisions", "llm_calls", "llm_calls_per_env_step", "total_tokens",
               "usd_cost", "llm_latency_median_s", "intent_failure_rate", "n_unique_bugs",
-              "unique_bug_ids", "deliveries_success", "agent_bug_reports", "wall_time_s"]:
+              "unique_bug_ids", "deliveries_success", "agent_bug_reports", "reports_strict_match",
+              "reports_lenient_match", "bugs_by_proposed_class", "wall_time_s"]:
         if k in summary:
             print(f"{k:>22}: {summary[k]}")
+    for w in summary.get("taxonomy_warnings") or []:
+        print(f"WARNING (draft taxonomy): {w}", file=sys.stderr)
     print(f"Logs: {run_dir}\n")
     return summary, run_dir
 

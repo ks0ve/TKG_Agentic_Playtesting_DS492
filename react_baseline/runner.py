@@ -23,6 +23,7 @@ import numpy as np
 
 from .action_reader import ActionReader, Intent, VisibleStep, parse_intent, primitive_intent
 from .env_adapter import EnvAdapter, REPO_ROOT, SAGE_ROOT
+from .taxonomy import taxonomy_counts
 from .transitions import VisibleTransition
 
 BUG_REPORT_WINDOW = 3  # bug_reports.jsonl pairs each report with oracle bugs within ±3 steps
@@ -104,6 +105,33 @@ def make_run_dir(out_root: Path, agent: str, task: str, seed: int) -> Path:
         suffix += 1
     run_dir.mkdir(parents=True)
     return run_dir
+
+
+def attribute_reports(reports: list[dict], step_rows: list[dict],
+                      window: int = BUG_REPORT_WINDOW) -> list[dict]:
+    """Attach oracle evidence to each bug report.
+
+    Lenient (legacy): ``bug_ids_in_window`` = oracle IDs within ±``window`` steps of
+    the report's ``global_step`` (the steps done before the reporting call).
+    Strict: a report made at decision d is about the observation produced by
+    decision d-1, so ``bug_ids_strict`` = oracle IDs that fired during the env
+    steps executed by decision d-1 (``evidence_steps``).
+    """
+    by_decision: dict[int, list[dict]] = {}
+    for r in step_rows:
+        by_decision.setdefault(r.get("decision_id"), []).append(r)
+    out = []
+    for rep in reports:
+        g = rep["global_step"]
+        lo, hi = g - window, g + window
+        nearby = sorted({b for r in step_rows if lo <= r["global_step"] <= hi
+                         for b in r["bug_ids_triggered"]})
+        d = rep.get("decision_id")
+        prev = by_decision.get(d - 1, []) if d is not None else []
+        out.append({**rep, "window": [lo, hi], "bug_ids_in_window": nearby,
+                    "bug_ids_strict": sorted({b for r in prev for b in r["bug_ids_triggered"]}),
+                    "evidence_steps": [r["global_step"] for r in prev]})
+    return out
 
 
 def _as_intents(decision) -> list[Intent]:
@@ -293,14 +321,11 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         finally:
             adapter.close()
 
-    # bug reports with oracle bugs within ±window steps of the report
+    report_rows = attribute_reports(stats.bug_reports, step_rows)
     with open(run_dir / "bug_reports.jsonl", "w", encoding="utf-8") as f:
-        for rep in stats.bug_reports:
-            g = rep["global_step"]
-            lo, hi = g - BUG_REPORT_WINDOW, g + BUG_REPORT_WINDOW
-            nearby = sorted({b for r in step_rows if lo <= r["global_step"] <= hi
-                             for b in r["bug_ids_triggered"]})
-            f.write(json.dumps({**rep, "window": [lo, hi], "bug_ids_in_window": nearby}) + "\n")
+        for row in report_rows:
+            f.write(json.dumps(row) + "\n")
+    strict_ids = sorted({b for r in report_rows for b in r["bug_ids_strict"]})
 
     wall = time.perf_counter() - t0
     # an episode counter that was bumped by a final reset with no steps does not count
@@ -341,6 +366,12 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         "intents_executed": stats.intents_executed,
         "intent_failures": stats.intent_failures,
         "intent_failure_rate": (stats.intent_failures / stats.intents_executed) if stats.intents_executed else None,
+        "reports_strict_match": sum(1 for r in report_rows if r["bug_ids_strict"]),
+        "reports_lenient_match": sum(1 for r in report_rows if r["bug_ids_in_window"]),
+        "unique_bugs_reported_strict": len(strict_ids),
+        "unique_bug_ids_reported_strict": strict_ids,
+        # draft taxonomy: reporting only, never used to filter
+        **taxonomy_counts(stats.first_found),
     }
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     if error is not None:
