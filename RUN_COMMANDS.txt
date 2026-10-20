@@ -9,53 +9,89 @@ git -C external/SAGE checkout 24de803f33123d16fe6f7cfa0062f3c81217a978
 uv venv --python 3.10 .venv
 uv pip install --python .venv\Scripts\python.exe -r requirements.txt
 ollama pull qwen2.5:7b
-.venv\Scripts\python.exe -m pytest          (should say 44 passed)
+.venv\Scripts\python.exe -m pytest          (should say 139 passed)
 
 Mac/Linux: replace  .venv\Scripts\python.exe  with  .venv/bin/python  everywhere,
 and set the API key with  export ANTHROPIC_API_KEY="sk-ant-..."
 
-Before long runs: turn off Ollama auto-update (tray icon -> Settings).
+Before long runs: turn off Ollama auto-update (tray icon -> Settings), and don't run other
+heavy jobs on the machine (a CPU-bound job made one local call take 13 minutes).
 Ctrl-C stops any run cleanly and still writes its summary.
 Results go in runs\<timestamp>_<agent>_<task>_seed<N>\  (headline numbers: summary.json)
 
+AGENTS
+  react          ReAct, intent actions (goto/interact/wait/moves) - the headline baseline
+  react-raw      ReAct, raw moves 0-4 - the MVP, kept as an ablation
+  random         uniform over the 5 raw moves (no LLM)
+  random-intent  uniform over the currently valid intents (no LLM)
+All four use the same runner, Action reader, budgets and logging. Compare at a matched
+--max-env-steps (the primary axis).
 
---- FREE (local Ollama, needs the Ollama app running) ---
-
-1) Pilot, 50 steps (~10 min)
-.venv\Scripts\python.exe -m react_baseline.run --agent react --llm ollama --seed 0 --max-env-steps 50 --out-dir runs/pilot
-
-2) Check the pilot (use the folder name printed by step 1). Continue only if it says PILOT PASSED.
-.venv\Scripts\python.exe -m react_baseline.pilot_check runs\pilot\<folder-from-step-1>
-
-3) Full run, 3 seeds x 300 steps (~3.5 hours)
-.venv\Scripts\python.exe -m react_baseline.run --agent react --llm ollama --seeds 0,1,2 --max-env-steps 300
-
-4) Random baseline (seconds)
-.venv\Scripts\python.exe -m react_baseline.run --agent random --seeds 0,1,2 --max-env-steps 10000
-
-
---- OPTIONAL: bigger local model (free, slower) ---
-
-ollama pull qwen2.5:14b
-.venv\Scripts\python.exe -m react_baseline.run --agent react --llm ollama --model qwen2.5:14b --seed 0 --max-env-steps 50 --out-dir runs/pilot
+MODELS: --model-profile <name>, from configs\models.yaml
+  qwen2.5-7b (default, free)  qwen2.5-14b  llama3.1-8b  mistral-nemo-12b   (Ollama, free)
+  vllm-qwen2.5-7b             (any OpenAI-compatible server on localhost:8000, free)
+  haiku-4.5                   ($1 / $5 per MTok; temperature 0.7 like the local runs)
+  haiku-5.5                   ($0.10 / $0.50 per MTok; API-default temperature, thinking off)
+  Adding a model = one entry in configs\models.yaml.
 
 
---- PAID: Claude Haiku via the API (uses Anthropic Console credits) ---
+--- 1) PILOTS (50 steps each; checked automatically; exit code 0 = PILOT PASSED) ---
 
-Set the key (lasts until you close this terminal):
+Status 2026-10-20: both qwen2.5:7b pilots FAILED (see EXPERIMENT_LOG.md). Pilot a stronger
+model (Haiku, or qwen2.5:14b) before any full run.
+
+Local, free (measured on the RTX 3050 laptop: react ~15-30 min, react-raw ~9 min):
+.venv\Scripts\python.exe -m react_baseline.run --agent react     --model-profile qwen2.5-7b --seed 0 --pilot
+.venv\Scripts\python.exe -m react_baseline.run --agent react-raw --model-profile qwen2.5-7b --seed 0 --pilot
+
+Paid, Haiku (set the key first; est. ~$0.15 per Haiku 4.5 pilot, ~$0.015 per Haiku 5.5 pilot; capped):
 $env:ANTHROPIC_API_KEY = "sk-ant-..."
+.venv\Scripts\python.exe -m react_baseline.run --agent react     --model-profile haiku-4.5 --seed 0 --pilot --max-usd 0.25
+.venv\Scripts\python.exe -m react_baseline.run --agent react-raw --model-profile haiku-4.5 --seed 0 --pilot --max-usd 0.25
 
-Pilot with a spending cap (stops at 100k tokens):
-.venv\Scripts\python.exe -m react_baseline.run --agent react --llm anthropic --seed 0 --max-env-steps 50 --max-tokens 100000 --out-dir runs/pilot
+Check any run by hand:
+.venv\Scripts\python.exe -m react_baseline.pilot_check runs\pilot\<folder>
 
-Full run with a cap:
-.venv\Scripts\python.exe -m react_baseline.run --agent react --llm anthropic --seeds 0,1,2 --max-env-steps 300 --max-tokens 2000000
+Only start a full run for a configuration whose pilot PASSED.
+
+
+--- 2) FULL RUNS: V2_task_01_tomato, 3 seeds x 300 env steps ---
+(--max-usd applies to each seed's run separately)
+
+Local qwen2.5:7b (free). Estimates from the pilots: react <= 300 calls x 12-20 s = 1-1.7 h per
+seed (3-5 h per line); react-raw 300 calls x 10 s = ~50 min per seed (~2.5 h per line):
+.venv\Scripts\python.exe -m react_baseline.run --agent react     --model-profile qwen2.5-7b --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 300
+.venv\Scripts\python.exe -m react_baseline.run --agent react-raw --model-profile qwen2.5-7b --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 300
+
+Haiku 4.5. Estimates at <= 300 calls/seed with the pilots' token counts (2.2k in + 90 out per
+react call, 1.6k + 45 per react-raw call; the Claude tokenizer may count up to ~1.35x more):
+react ~$0.80/seed (~$2.40/line), react-raw ~$0.55/seed (~$1.65/line); cap $1.50 per seed.
+Wall time is API-bound, roughly 1-3 s per call: ~5-15 min per seed:
+.venv\Scripts\python.exe -m react_baseline.run --agent react     --model-profile haiku-4.5 --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 300 --max-usd 1.5
+.venv\Scripts\python.exe -m react_baseline.run --agent react-raw --model-profile haiku-4.5 --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 300 --max-usd 1.5
+
+Haiku 5.5 (cheapest): react ~$0.08/seed, react-raw ~$0.055/seed (< $0.25 per line); cap $0.50
+per seed. Note: runs at the API-default temperature (it rejects 0.7):
+.venv\Scripts\python.exe -m react_baseline.run --agent react     --model-profile haiku-5.5 --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 300 --max-usd 0.5
+.venv\Scripts\python.exe -m react_baseline.run --agent react-raw --model-profile haiku-5.5 --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 300 --max-usd 0.5
+
+
+--- 3) NO-LLM BASELINES, same step budget (seconds) ---
+.venv\Scripts\python.exe -m react_baseline.run --agent random        --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 300
+.venv\Scripts\python.exe -m react_baseline.run --agent random-intent --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 300
+Longer reference curves (~15 s per seed):
+.venv\Scripts\python.exe -m react_baseline.run --agent random        --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 10000
+.venv\Scripts\python.exe -m react_baseline.run --agent random-intent --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 10000
 
 
 --- OTHER ---
 
 Offline test of the harness (no model, instant):
 .venv\Scripts\python.exe -m react_baseline.run --agent react --llm mock --max-env-steps 100
+
+Self-hosted OpenAI-compatible server (vLLM / llama.cpp / LM Studio): edit base_url and model
+of vllm-qwen2.5-7b in configs\models.yaml (or add an entry), then:
+.venv\Scripts\python.exe -m react_baseline.run --agent react --model-profile vllm-qwen2.5-7b --pilot
 
 Run the test suite:
 .venv\Scripts\python.exe -m pytest

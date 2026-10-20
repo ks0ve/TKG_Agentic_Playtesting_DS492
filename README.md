@@ -4,24 +4,39 @@ The baseline arm of a study that compares LLM-agent exploration with algorithmic
 for game bug discovery. The game is **Overcooked Plus** from
 [SAGE](https://github.com/BlueLinkX/SAGE). The package `react_baseline/` contains:
 
-- a **vanilla ReAct agent** (Thought → Action → Observation). Its only memory is a rolling
-  window of the last N turns. It has no planner, reflection, skill library, graph memory or
-  pathfinding macros. Those belong to later experimental arms.
-- a **random agent** (uniform over the 5 actions, seeded) that runs through the same harness
-  and logging.
-- a harness with budgets and auto-reset. It also keeps a **hidden oracle**: the env's
-  bug-predicate IDs are logged but never shown to the agent.
+- a **shared Action reader** (`action_reader.py`): a deterministic, LLM-free action interface
+  that turns intents such as `goto(3,0)`, `interact(0,3)`, `wait(5)` or a raw move into button
+  presses 0–4. **Every agent goes through it**, so the only difference between experimental arms
+  is *when* the LLM is consulted, not how coarse the action interface is
+  (see [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md), 2026-10-20).
+- a **vanilla ReAct agent** (Thought → Action → Observation) in two action spaces: `react`
+  (intents, the headline baseline) and `react-raw` (raw moves 0–4, the MVP, kept as an
+  ablation). Its only memory is a rolling window of the last N turns. It has no planner,
+  reflection, skill library or graph memory. The Action reader is the shared action interface,
+  not a planner.
+- two no-LLM baselines through the same harness and logging: `random` (uniform over the 5 raw
+  actions) and `random-intent` (uniform over the currently valid intents).
+- a harness with budgets (env steps, LLM calls, tokens, USD) and auto-reset. It also keeps a
+  **hidden oracle**: the env's bug-predicate IDs are logged but never shown to the agent.
+- a **model registry** (`configs/models.yaml`): swapping a local or self-hosted model is one
+  YAML entry.
 
 ```
 react_baseline/
-  env_adapter.py   make_env, render_text, EnvAdapter.step -> (agent-visible text, hidden oracle)
-  prompts.py       system prompt + per-turn template
-  llm.py           Ollama / Anthropic / Mock backends with token accounting
-  agents.py        ReActAgent, RandomAgent, tolerant response parser
-  runner.py        budgeted loop, auto-reset, all log files
+  env_adapter.py   make_env, render_text, visible_state, EnvAdapter.step -> (agent-visible, hidden oracle)
+  action_reader.py intent parser + executor (BFS paths, stop rules), valid_intents
+  transitions.py   VisibleTransition (one per executed intent -> transitions.jsonl)
+  prompts.py       system prompt + per-turn template (primitive and intent action sections)
+  llm.py           model registry + Ollama / OpenAI-compatible / Anthropic / Mock backends
+  agents.py        ReActAgent (intent | primitive), RandomAgent, RandomIntentAgent, parsers
+  runner.py        budgeted loop through the Action reader, auto-reset, all log files, attribution
+  taxonomy.py      draft bug-taxonomy counts for summary.json (reporting only)
   run.py           CLI
   pilot_check.py   pass/fail gate for a short pilot run
   tests/           pytest (offline)
+configs/
+  models.yaml              model profiles
+  bug_taxonomy_draft.csv   draft classification of all SAGE bug IDs (status=proposed)
 ```
 
 ## Setup
@@ -56,74 +71,163 @@ uv pip install --python .venv/Scripts/python.exe -r requirements.txt   # Windows
 ```
 
 `requirements.txt` pins the SAGE env dependencies (numpy 2.2.6, gym 0.26.2, pygame 2.6.1,
-PyYAML 6.0, networkx 3.4.2) and adds `anthropic`, `ollama` and `pytest`. The adapter adds
+PyYAML 6.0, networkx 3.4.2) and adds `anthropic`, `ollama`, `httpx` (already a dependency of
+`ollama`; used by the OpenAI-compatible backend) and `pytest`. The adapter adds
 `external/SAGE/scenarios/overcooked_plus` to `sys.path`. It also sets `SDL_VIDEODRIVER`,
 `SDL_AUDIODRIVER` and `PYGAME_HIDE_SUPPORT_PROMPT`, and silences the gym/NumPy-2 deprecation
 banner.
 
 ## Running for free (Ollama, the default)
 
-The default LLM backend is a local Ollama server. Nothing calls a paid API unless you pass
-`--llm anthropic`.
+The default LLM backend is a local Ollama server. Nothing calls a paid API unless you select an
+Anthropic profile (`--model-profile haiku-4.5`, `--model-profile haiku-5.5` or `--llm anthropic`).
 
 1. Install Ollama from https://ollama.com/download.
 2. Start the server if it is not already running: `ollama serve`
 3. Pull the default model (4.7 GB): `ollama pull qwen2.5:7b`
-4. Run:
+4. Pilot first (50 steps, checked automatically), then run:
 
 ```sh
-python -m react_baseline.run --agent react --llm ollama --task V2_task_01_tomato --max-env-steps 200
+python -m react_baseline.run --agent react --model-profile qwen2.5-7b --pilot
+python -m react_baseline.run --agent react --model-profile qwen2.5-7b --task V2_task_01_tomato --max-env-steps 300
 ```
 
 If the server is unreachable or the model has not been downloaded, the CLI exits with code 2.
 The message names the exact command to run (`ollama serve` or `ollama pull <model>`).
 
 The Ollama call is `ollama.chat(model, messages, options={temperature, num_ctx, seed,
-num_predict})`. The defaults are `--model qwen2.5:7b` and `--num-ctx 8192`. `num_predict` is
-set from `--max-output-tokens` (default 512). Token accounting uses the response's
-`prompt_eval_count` (input) and `eval_count` (output), so the logs have the same schema as the
-Anthropic backend.
+num_predict})`. `num_ctx` is the profile's `context_window` (8192 for the shipped profiles) and
+`num_predict` its `max_output_tokens` (512). Token accounting uses the response's
+`prompt_eval_count` (input) and `eval_count` (output), so the logs have the same schema for
+every backend.
 
 **Context-overflow guard.** Before each call the agent estimates the prompt size as
-characters / 3.5. If the estimate is above 90% of `num_ctx`, it prints a
+characters / 3.5. If the estimate is above 90% of the profile's context window, it prints a
 `[context guard]` warning and drops the oldest history turns until the prompt fits. If even a
 prompt with no history does not fit, the run stops with an error asking for a larger
-`--num-ctx`. The system prompt is never cut, so Ollama never has to truncate it silently.
+`--num-ctx`. The system prompt is never cut, so the server never has to truncate it silently.
+
+## Model registry (`configs/models.yaml`)
+
+Each named profile has `backend` (`ollama` | `openai_compat` | `anthropic` | `mock`), `model`,
+`base_url`, `context_window`, `max_output_tokens`, default `temperature`, `price_in_per_mtok` /
+`price_out_per_mtok` (USD; 0 for local models) and backend `options`. **Adding a model is one
+YAML entry, no code change.** Select it with `--model-profile <name>`; `--llm` / `--model` /
+`--temperature` / `--num-ctx` / `--max-output-tokens` / `--ollama-host` still work and override
+the profile. Without `--model-profile`, the `--llm` backend's default profile is used
+(`ollama` → `qwen2.5-7b`, `anthropic` → `haiku-4.5`). If `--model` names an id that matches no
+profile, the price is unknown: `usd_cost` is `null` and `--max-usd` is refused.
+
+| profile | backend | model | $/MTok in / out |
+|---|---|---|---|
+| `qwen2.5-7b` (default) | ollama | `qwen2.5:7b` | 0 / 0 |
+| `qwen2.5-14b` | ollama | `qwen2.5:14b` | 0 / 0 |
+| `llama3.1-8b` | ollama | `llama3.1:8b` | 0 / 0 |
+| `mistral-nemo-12b` | ollama | `mistral-nemo:12b` | 0 / 0 |
+| `vllm-qwen2.5-7b` | openai_compat | `Qwen/Qwen2.5-7B-Instruct` at `http://localhost:8000` | 0 / 0 |
+| `haiku-4.5` | anthropic | `claude-haiku-4-5-20251001` | 1.00 / 5.00 |
+| `haiku-5.5` | anthropic | `claude-haiku-5-5` | 0.10 / 0.50 (prompts ≤ 100k tokens) |
+| `mock` | mock | offline | 0 / 0 |
+
+Anthropic prices were checked on https://platform.claude.com/docs/en/about-claude/pricing on
+2026-10-20; each profile records `pricing_source` and `pricing_date`. Two API details matter:
+
+- `anthropic` 1.11.0's `messages.create` has **no `temperature` keyword**, so temperature is sent
+  in `extra_body`. (The MVP passed it as a keyword, which raises `TypeError`; the paid path had
+  never been exercised.)
+- **Claude Haiku 5.5 rejects non-default sampling values** (HTTP 400), and adaptive thinking is
+  on by default. The `haiku-5.5` profile therefore sends no temperature (`send_temperature:
+  false`) and disables thinking (`extra_body: {thinking: {type: disabled}}`), so it runs at the
+  API's default temperature, unlike the 0.7 used by the local profiles. `haiku-4.5` honours
+  temperature 0.7 and is the like-for-like comparison with local runs.
+
+**OpenAI-compatible servers** (vLLM, llama.cpp `llama-server`, LM Studio, TGI): backend
+`openai_compat`, `base_url` with or without `/v1`. The backend checks readiness with
+`GET /v1/models` (and that the model id is served), posts to `/v1/chat/completions`, reads
+tokens from `usage`, passes `seed` unless `options.supports_seed: false`, reads a bearer token
+from the env var named in `options.api_key_env`, and retries transport errors and 429/502/503/504
+with the same backoff as Ollama (about 3 min in total).
 
 ## Other ways to run
 
 ```sh
-# ReAct with the paid Anthropic API (reads ANTHROPIC_API_KEY from the environment)
-python -m react_baseline.run --agent react --llm anthropic --task V2_task_01_tomato --seed 0 \
-    --max-env-steps 1000 --model claude-haiku-4-5-20251001 --history 10 --actions-per-call 1
+# ReAct with the paid Anthropic API (reads ANTHROPIC_API_KEY), capped at $1
+python -m react_baseline.run --agent react --model-profile haiku-4.5 --seed 0 --max-env-steps 300 --max-usd 1
 
-# random baseline
-python -m react_baseline.run --agent random --task V2_task_01_tomato --seed 0 --max-env-steps 10000
+# the MVP ReAct (raw moves) as an ablation
+python -m react_baseline.run --agent react-raw --model-profile qwen2.5-7b --max-env-steps 300
 
-# fully offline (MockLLM returns seeded random well-formed replies)
-python -m react_baseline.run --agent react --llm mock --task V2_task_01_tomato --max-env-steps 300
+# no-LLM baselines
+python -m react_baseline.run --agent random --seed 0 --max-env-steps 10000
+python -m react_baseline.run --agent random-intent --seed 0 --max-env-steps 10000
+
+# fully offline (the mock returns seeded random well-formed replies / intents)
+python -m react_baseline.run --agent react --llm mock --max-env-steps 300
 ```
 
 | flag | default | meaning |
 |---|---|---|
-| `--agent` | (required) | `react` or `random` |
+| `--agent` | (required) | `react` (intents), `react-raw` (raw moves), `random`, `random-intent` |
 | `--task` | `V2_task_01_tomato` | any ID in `external/SAGE/scenarios/overcooked_plus/tasks.json` |
-| `--seed` | 0 | seeds Python `random`, NumPy, the action space, the random agent and the Ollama sampler |
+| `--seed` | 0 | seeds Python `random`, NumPy, the action space, the random agents and the LLM sampler (Ollama / openai_compat) |
 | `--seeds` | none | comma-separated list, for example `0,1,2`: one run directory per seed plus a mean ± sd summary; overrides `--seed` |
-| `--max-env-steps` | 2000 | budget: env steps |
+| `--max-env-steps` | 2000 | budget: env steps (**the primary comparison axis**) |
 | `--max-llm-calls` | none | budget: LLM calls |
 | `--max-tokens` | none | budget: input + output tokens |
-| `--llm` | `ollama` | `ollama`, `anthropic` or `mock` |
-| `--model` | per backend | `qwen2.5:7b` / `claude-haiku-4-5-20251001` / `mock` |
-| `--temperature` | 0.7 | passed to the backend (0.0 caused a fixed-point loop; see [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md)) |
+| `--max-usd` | none | budget: USD at the profile's prices; checked before each call, so a run can overshoot by at most one call |
+| `--model-profile` | none | profile in `configs/models.yaml` |
+| `--llm` | `ollama` | backend; selects that backend's default profile |
+| `--model` | profile's | override the model id |
+| `--temperature` | profile's (0.7) | 0.0 caused a fixed-point loop; see [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) |
+| `--max-output-tokens` | profile's (512) | |
+| `--num-ctx` | profile's (8192) | context window (and Ollama `num_ctx`) |
+| `--ollama-host` | profile's | override `base_url` |
 | `--history` | 10 | turns kept in the rolling window |
-| `--actions-per-call` | 1 | if > 1, `Action:` may hold up to this many comma-separated actions |
-| `--num-ctx` | 8192 | Ollama context window |
+| `--intents-per-call` | 1 | `react`: intents per call (1 = consulted at every decision point) |
+| `--actions-per-call` | 1 | `react-raw`: raw actions per call |
+| `--max-macro-len` | 40 | Action reader: max env steps one intent may take |
 | `--ignore-bug-ids` | `5` | oracle IDs dropped from metrics (see the investigation below) |
 | `--out-dir` | `runs` | |
+| `--pilot` | off | 50 steps into `runs/pilot`, then `pilot_check` on each run; exit code 1 on a fail |
 
 The run stops when any budget runs out. Episodes auto-reset when they end and the run
 continues. `Ctrl-C` stops the run cleanly and still writes the summary.
+
+## Action reader (shared by every agent)
+
+The Action reader (`action_reader.py`) is deterministic and calls no LLM. Every agent's output
+goes through it; raw moves become one-step intents. Coordinates are in the screen frame the
+agent sees (x = column, y = row).
+
+| intent | accepted spellings | executes |
+|---|---|---|
+| move | `right` `down` `left` `up` `0` `1` `2` `3` | one primitive |
+| wait | `wait`, `4`, `stay`, `wait(n)`, `wait n` (1 ≤ n ≤ 20) | n × action 4 (pans and rice cookers cook over time) |
+| goto | `goto(x,y)`, `go to (x, y)`, `goto x,y`, `move_to(x,y)` | BFS over floor tiles to (x,y), which must be floor |
+| interact | `interact(x,y)`, `use(x,y)`, `interact with x,y`, `interact(sink)` | BFS to the nearest floor tile next to (x,y), then bump into it once; a station/item name must resolve to exactly one tile |
+
+Parsing tolerates case, markdown, backticks, brackets and trailing text. Several intents in one
+`Action:` line are separated by `;`, a newline or `then`, and are capped at `--intents-per-call`.
+
+- **Paths:** breadth-first over floor tiles (`.` and the agent's own tile), expanding neighbours
+  right, down, left, up (= action IDs 0–3); the first shortest path found wins. The reader plans
+  on `visible_state` in screen coordinates; the env's transposed internals (`item.x` = row) are
+  handled once in `env_adapter` and tested by `test_goto_every_reachable_tile_lands_in_screen_frame`.
+- **Stops early** on episode end (`episode_end`), an exhausted budget (`budget`), a goto step whose
+  event is not a plain move to the expected tile (`unexpected_event`), or the length cap
+  (`length_cap`, 40 steps). Otherwise `completed`.
+- **Invalid intents** (unparseable, outside the map, not a floor tile, unreachable, ambiguous or
+  unknown name, `wait(25)`) run **one wait** so budgets always advance, and return an
+  agent-visible error such as `goto(9,9) failed: outside the map`. A goto to the current tile
+  waits one step with the note `already there`.
+- **Returns** the final observation plus a compact agent-visible trace, e.g.
+  `interact(0,2): 2 step(s) [down,left]; events: moved; pickup tomato; stop: completed`.
+- `valid_intents(state)` lists the four moves, `wait`, `goto` to every other reachable floor tile
+  and `interact` with every non-floor tile next to a reachable floor tile (used by `random-intent`).
+
+The module holds no agent logic, so the future TKG arm's cheap policy and its LLM reuse it as-is.
+Every verified demonstration task can be completed by a short hand-written intent sequence
+(`tests/test_action_reader.py::SOLUTIONS`).
 
 ## What the agent sees
 
@@ -181,6 +285,18 @@ such as `left`. A reply with no parseable action runs **action 4 (wait)**, logs 
 `parse_error`, and adds a format reminder to the next turn. `Bug report: None`-style lines
 are not counted as reports.
 
+`react-raw` uses exactly the MVP prompts above (checked byte-for-byte against
+`tests/snapshots/mvp_prompts.json`). `react` changes only the actions bullet of the system prompt
+(it describes the intent grammar) and the `Action:` spec in the output format and the format
+reminder. Its history entries add the executor trace:
+`[turn k] Thought: … | Action: interact(0,3) | Executor: interact(0,3): 3 step(s) [down,down,left]; events: moved x2; putdown knife succeeded; stop: completed | Result: … [| Bug report: …]`.
+A reply with no `Action:` line or an unparseable first intent runs `wait` and counts as a
+parse error; a parseable intent the executor cannot carry out counts as an intent failure.
+
+The agent never sees `visible_state` directly, but it is agent-visible by construction: it is
+built from the same game state as `render_text` (agent position and held item, items, stations
+with progress, order, map, last event type + target + success) and is covered by the leak test.
+
 ## Log schema
 
 Each run writes to `runs/<YYYYmmdd-HHMMSS>_<agent>_<task>_seed<seed>/`.
@@ -223,6 +339,39 @@ precision matching.
 `first_found_step` (`{bug_id: global_step}`), `discovery_curve` (one point per new discovery
 plus a final point, each `{global_step, cumulative_tokens, unique_bugs}`), `deliveries_success`,
 `delivery_attempts`, `agent_bug_reports`, `ignore_bug_ids`.
+
+**v2 additions** (fields are only ever added; nothing above was renamed or removed):
+
+- **config.json**: `action_space` (`intent` | `primitive`), `max_macro_len`, `model_profile`
+  (the full resolved profile, prices included; `null` for no-LLM agents).
+- **steps.jsonl**: `decision_id` (0-based, one per `agent.act`), `intent_id` (0-based, one per
+  executed intent), `intent` (canonical text, e.g. `goto(3,1)`; raw moves appear as `right` …
+  `wait`), `intent_step_index` (0-based position of this step inside its intent).
+- **llm_calls.jsonl**: `decision_id`, `parsed_intents`, `executor_result` (one
+  `{intent, kind, n_steps, stop_reason, error, note}` per executed intent). In intent mode
+  `parsed_actions` is `[]`; the executed actions are in steps.jsonl. The row is written after
+  the call's intents have run.
+- **transitions.jsonl** (new): one `VisibleTransition` per executed intent: `prev_state`,
+  `intent`, `primitive_actions`, `events`, `new_state` (agent-visible state dicts), plus
+  `decision_id`, `intent_id`, `episode`, `global_step_start`, `global_step_end`, `kind`,
+  `event_records`, `stop_reason`, `error`, `note`, `episode_ended`.
+- **bug_reports.jsonl**: `decision_id`; **strict attribution**: a report made at decision d is
+  about the observation produced by decision d−1, so `bug_ids_strict` = oracle IDs that fired
+  during the env steps executed by decision d−1 and `evidence_steps` = those global steps. The
+  legacy ±3 `window` / `bug_ids_in_window` (lenient) is unchanged.
+- **summary.json**: `action_space`, `usd_cost` (profile price × tokens; 0 for local models),
+  `decisions`, `llm_calls_per_decision`, `llm_calls_per_env_step`, `llm_latency_mean_s`,
+  `llm_latency_median_s`, `intents_executed`, `intent_failures`, `intent_failure_rate`,
+  `reports_strict_match` / `reports_lenient_match` (reports with ≥ 1 strict / window match),
+  `unique_bugs_reported_strict` (+ `unique_bug_ids_reported_strict`), and the draft-taxonomy
+  counts `bugs_by_proposed_class`, `bugs_by_family`, `taxonomy_warnings`.
+
+**Draft bug taxonomy (measured alongside, never used to filter).**
+`configs/bug_taxonomy_draft.csv` classifies every SAGE bug ID (family, reachability, trigger
+signature, proposed RQ3 class; all `status=proposed`). `summary.json` counts the run's unique
+bug IDs (after `ignore_bug_ids`) by class and family. It changes no metric, filter or behaviour
+(tested). If a run finds a bug the CSV marks `unreachable_on_shipped_maps`, the CLI prints a
+warning and `taxonomy_warnings` records it. The CSV's classifications are not edited here.
 
 ## Investigation: bug IDs 5 and 20 on V2_task_01_tomato
 
@@ -279,19 +428,28 @@ correct play. Consider filtering it for steak tasks.
 
 ## Pilot gate
 
-Before any full run, do a 50-step pilot and check it:
+Before any full run, do a 50-step pilot. `--pilot` runs it into `runs/pilot` and checks it:
 
 ```sh
-python -m react_baseline.run --agent react --llm ollama --seed 0 --max-env-steps 50 --out-dir runs/pilot
+python -m react_baseline.run --agent react --model-profile qwen2.5-7b --seed 0 --pilot
+# or check any run dir by hand:
 python -m react_baseline.pilot_check runs/pilot/<run_dir>
 ```
 
-The checker replays `steps.jsonl` through the env, which is deterministic, and requires:
-≥ 5 distinct tiles visited, ≥ 1 pickup, a longest same-action streak ≤ 10, a parse error
-rate ≤ 20%, and an exact replay match. Exit code 0 means pass. Both qwen2.5:7b attempts so
-far failed this gate; see [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md).
+The checker replays `steps.jsonl` through the env, which is deterministic. Every agent needs
+≥ 5 distinct tiles visited, ≥ 1 pickup, a parse error rate ≤ 20% and an exact replay match.
+Primitive-action agents (`react-raw`, `random`) also need a longest same-action streak ≤ 10.
+Intent agents (`react`, `random-intent`) instead need a longest run of identical intents ≤ 10
+and an intent-failure rate ≤ 30%: a `goto` legitimately repeats one raw move, so the raw streak
+is not a loop signal there. Exit code 0 means pass. See [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md)
+for the pilot history.
 
 ## Measured results and cost
+
+> **This section records the MVP (pre-Action-reader) runs.** v2 mock verification numbers and
+> the qwen2.5:7b pilots in both action spaces are in [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md)
+> (2026-10-20). The random-agent numbers below are unchanged in v2: the same seed reproduces
+> the same 17 bug IDs in 10,000 steps.
 
 > **The ReAct numbers below come from run #1 (temperature 0, no `ADJACENT` block) and are
 > not a valid baseline**: the agent was stuck in a fixed point. They are kept as a record of
@@ -339,20 +497,37 @@ consider turning off Ollama's auto-update.
 
 ## Tests
 
-`python -m pytest`. All tests run offline (44 tests, about 7 s).
+`python -m pytest`. All tests run offline and never call a paid API (139 tests, about 30–70 s).
 
 1. `test_env_adapter.py`: replays all 6 `verified_demonstrations.json` sequences through the
    adapter, rendering at every step, and checks for a successful delivery. Also covers the
    coordinate convention, distinct legend characters, and render snapshots for 3 tasks (to
    regenerate them, set `UPDATE_SNAPSHOTS=1`).
-2. `test_prompt_leak.py`: the renderer, summaries, system prompt and every logged prompt
-   contain no bug-constant names, no bug-ID sentinels and no oracle markers.
+2. `test_prompt_leak.py`: the renderer, summaries, system prompts (both action spaces), every
+   logged prompt, the structured state, executor feedback (traces, errors, `executor_result`)
+   and `transitions.jsonl` contain no bug-constant names, no bug-ID sentinels and no oracle
+   markers, while the sentinels do reach `steps.jsonl`.
 3. `test_agents.py`: parser cases, the wait fallback and format reminder, multi-action calls,
    bug-report capture with the ±3 window, history window and reset marker, the context guard,
-   and the LLM-call and token budgets. All of these use MockLLM.
+   and the LLM-call and token budgets (MockLLM).
 4. `test_runner.py`: a 500-step random run writes every file with the documented schema, runs
    with the same seed are identical, and episodes differ even though the env reseeds the
    global RNG.
+5. `test_action_reader.py`: intent parsing; BFS tie-break and paths on the snapshot maps;
+   `goto` to every reachable tile on 3 maps lands at screen (x,y) = env (item.y, item.x);
+   interact; name resolution; invalid intents run one wait with an error; the no-op goto; the
+   length cap; budget and unexpected-bump stops; episode end; a hand-written intent sequence
+   that completes each verified-demonstration task; transitions.jsonl consistency.
+6. `test_agents_v2.py`: `react-raw` prompts match the MVP snapshot byte-for-byte; intent mode
+   changes only the action section; intent-response parsing; intent ReAct logs, history and
+   fallbacks; determinism of mock `react` and `random-intent`; the CLI agents and `--pilot`;
+   the intent pilot gate.
+7. `test_llm_registry.py`: models.yaml parsing (a new model is one entry); overrides and unknown
+   prices; the `openai_compat` backend against a mocked httpx transport (usage, seed, retries,
+   setup errors); Anthropic requests bind to the installed SDK's signature; `--max-usd` stops a
+   run; local profiles cost $0.
+8. `test_attribution_taxonomy.py`: strict vs lenient report matching on synthetic step rows and
+   in a run; taxonomy counts and warnings; the taxonomy changes no metric.
 
 ## Attribution
 

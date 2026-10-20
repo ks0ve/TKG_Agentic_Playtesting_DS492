@@ -1,0 +1,43 @@
+{
+  "agent": "react",
+  "task": "V2_task_01_tomato",
+  "seed": 0,
+  "backend": "ollama",
+  "model": "qwen2.5:7b",
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": 0.020833333333333332,
+  "parse_errors": 1,
+  "total_env_steps": 50,
+  "episodes": 1,
+  "llm_calls": 48,
+  "input_tokens": 106887,
+  "output_tokens": 4173,
+  "total_tokens": 111060,
+  "wall_time_s": 1802.72,
+  "unique_bug_ids": [],
+  "n_unique_bugs": 0,
+  "first_found_step": {},
+  "discovery_curve": [
+    {
+      "global_step": 50,
+      "cumulative_tokens": 111060,
+      "unique_bugs": 0
+    }
+  ],
+  "deliveries_success": 0,
+  "delivery_attempts": 0,
+  "agent_bug_reports": 12,
+  "ignore_bug_ids": [
+    5
+  ],
+  "action_space": "intent",
+  "usd_cost": 0.0,
+  "decisions": 48,
+  "llm_calls_per_decision": 1.0,
+  "llm_calls_per_env_step": 0.96,
+  "llm_latency_mean_s": 37.5365,
+  "llm_latency_median_s": 19.5808,
+  "intents_executed": 48,
+  "intent_failures": 36,
+  "intent_failure_rate": 0.75
+}

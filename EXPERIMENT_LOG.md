@@ -54,3 +54,91 @@ the tomato" while the observation listed the tomato as `2 left`.
 qwen2.5:7b does not reliably map the stated directions to action IDs, even when the
 observation spells them out. The remaining bottleneck is model capability, not
 observation format or sampling. The gate criteria were not relaxed.
+
+## 2026-10-20: Baseline v2: shared Action reader; react-raw kept as an ablation
+
+**Problem 1, the strawman.** The MVP ReAct agent emits one raw move (0–4) per LLM call. Most
+calls are spent on navigation: walking three tiles costs three LLM calls before anything
+interesting happens. With qwen2.5:7b it also cannot reliably map directions to action IDs (see
+2026-10-07), so it fails the pilot gate on navigation alone. A baseline that spends its budget
+walking makes any memory-based arm look better for a reason unrelated to the research question.
+
+**Problem 2, the action-interface confound.** The TKG arm will plan at a higher level (a cheap
+policy for routine moves, the LLM only when memory flags an unexpected outcome). If that arm
+also gets a coarser action interface than ReAct, the comparison mixes two effects: "memory
+decides *when* to call the LLM" and "the action interface is coarser".
+
+**Fix.** One shared, deterministic, LLM-free **Action reader** (`react_baseline/action_reader.py`)
+that every agent uses: `goto(x,y)`, `interact(x,y)` (or a unique station/item name), `wait(n)`,
+or a raw move, executed by BFS over floor tiles with fixed tie-breaks, early stops (episode end,
+budget, unexpected event, 40-step cap), and one wait plus an agent-visible error for an invalid
+intent. Raw moves from `react-raw` and `random` become one-step intents through the same reader,
+so all four agents (`react`, `react-raw`, `random`, `random-intent`) share the runner, reader,
+budgets and logging. The only difference left between arms is when the LLM is consulted.
+`react` is consulted at every decision point (`--intents-per-call 1`), so it stays an always-on
+ReAct baseline. The reader is the action interface, not a planner: it never decides what to do.
+ReAct stays vanilla (rolling history only; the prompt names no defect).
+
+**react-raw is kept as an ablation.** It sends byte-for-byte the MVP prompts (snapshot test), and
+its legacy step fields are identical to the MVP runner's for the same seed (checked on 2000 random
+and 300 mock-ReAct steps). It measures the cost of the raw interface.
+
+**Bug taxonomy (draft).** `configs/bug_taxonomy_draft.csv` classifies all 165 SAGE bug IDs
+(family, reachability, trigger signature, proposed RQ3 class; all `status=proposed`). Runs now
+report `bugs_by_proposed_class` / `bugs_by_family`. This is **measured alongside, not yet used for
+analysis**: it changes no filter or metric (`ignore_bug_ids` stays `[5]`). No run so far found a
+bug the draft marks unreachable on shipped maps.
+
+**Other changes.** Model registry (`configs/models.yaml`, `--model-profile`), an OpenAI-compatible
+backend for self-hosted servers, `--max-usd` and USD/call-rate/latency metrics, structured
+agent-visible transitions (`transitions.jsonl`), and strict bug-report attribution (a report at
+decision d is checked against the oracle IDs fired by decision d−1) next to the legacy ±3 window.
+The matched **env-step budget** is the primary comparison axis.
+
+**Found while doing this.** The MVP Anthropic backend passed `temperature=` to
+`messages.create`, which anthropic 1.11.0 does not accept (`TypeError` on the first call); the paid
+path had never run. Temperature now goes through `extra_body`, and a test binds the request to the
+installed SDK. Claude Haiku 5.5 rejects non-default temperatures, so its profile runs at the API
+default; `haiku-4.5` keeps temperature 0.7 for a like-for-like comparison with local runs.
+
+**Mock verification (V2_task_01_tomato, seed 0, offline).** 300 steps: `react` 192 decisions =
+192 LLM calls (0.64 calls per env step), bugs [15, 20, 28]; `react-raw` 300 calls (1.0 per step),
+8 bugs; `random-intent` 129 decisions, 3 bugs. 10,000 steps: `random` 17 bugs (same set as the
+MVP), `random-intent` 15 bugs. Mock replies are random, so these numbers test the harness, not
+the agents. Same seed gives byte-identical `steps.jsonl` and `transitions.jsonl` for all four
+agents.
+
+## 2026-10-20: qwen2.5:7b pilots on v2: both action spaces fail the gate (no full runs started)
+
+V2_task_01_tomato, seed 0, 50 env steps, temperature 0.7, history 10, `num_ctx` 8192, Ollama 0.40.0
+on the RTX 3050 laptop.
+
+| | `react` (intents) | `react-raw` (raw moves) |
+|---|---|---|
+| run | `runs/pilot/20261020-164743_react_…` | `runs/pilot/20261020-171750_react-raw_…` |
+| gate | **FAIL** (tiles 4 < 5; intent failures 75% > 30%) | **FAIL** (tiles 3 < 5) |
+| passed | 1 pickup, longest identical-intent run 10, parse errors 2.1%, replay exact | 11 pickups, longest same-action streak 3, parse errors 0%, replay exact |
+| decisions = LLM calls | 48 (0.96 per env step) | 50 (1.0 per env step) |
+| tokens per call (in / out) | 2,227 / 87 | 1,614 / 45 |
+| median latency per call | 19.6 s (one 790 s outlier while CPU-heavy tests ran in parallel) | 9.7 s |
+| bugs | none | [19] |
+| bug reports (strict / lenient match) | 12 | 48 (2 / 14) |
+
+**What `react` did.** Every one of the 36 failed intents was the same confusion between the two
+navigation intents: `goto` aimed at a counter or station (25 × "not a floor tile", e.g. 10 calls
+in a row of `goto(0,2)` at the tomato) or `interact` aimed at a floor tile (11 × "(2,3) is a floor
+tile; use goto"). Each error reached the model in the next prompt via the executor trace; it
+often repeated the intent anyway and filed bug reports blaming the game ("repeated failure to go
+to (0,2) despite it being a floor tile"). Because every failed intent costs one wait step, the
+call rate stayed near one call per env step instead of the ~0.6 the mock reached.
+
+**What `react-raw` did.** The same short pick-up / walk / trash cycle as on 2026-10-07: 11 pickups
+within 3 tiles, 48 mistaken bug reports.
+
+**Interpretation.** The Action reader removed the direction-to-ID mapping problem, but qwen2.5:7b
+does not follow the intent grammar's floor / non-floor distinction even with explicit error
+feedback. This is a capability limit of the 7B model, not a harness problem (replay exact, parse
+errors low, intent solutions for all 6 demo tasks pass in tests). The gate was not relaxed and
+the prompt was not tuned toward this map. Per protocol, no full runs were started. Next: pilot a
+stronger model through the same interface (Haiku 4.5 / 5.5, or qwen2.5:14b), e.g.
+`--model-profile haiku-4.5 --pilot --max-usd 0.25`.
