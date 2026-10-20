@@ -119,6 +119,28 @@ def test_structured_state_feedback_and_transitions_have_no_oracle(tmp_path, monk
     _assert_clean(text)
 
 
+def test_intent_react_prompts_never_contain_oracle(tmp_path, monkeypatch):
+    """Intent-mode ReAct: prompts carry executor traces/errors and history; none of it
+    may carry oracle output. Also covers the logged executor_result."""
+    _install_sentinels(monkeypatch)
+    script = [f"Thought: step {i}.\nAction: {it}" for i, it in enumerate(SCRIPT_INTENTS)]
+    llm = MockLLM(script=script)
+    agent = ReActAgent(llm, history=50, action_space="intent")
+    run(agent, "V2_task_01_tomato", 0, Budgets(max_env_steps=40, max_llm_calls=len(script)),
+        tmp_path, {"backend": "mock", "model": "mock"}, ignore_bug_ids=())
+    _assert_sentinels_fired(tmp_path)
+    assert any("Executor: goto(9,9)" in u for _, u in llm.calls)
+    for system, user in llm.calls:
+        assert _leaks(system) == []
+        assert _leaks(user) == [], user
+    for row in (tmp_path / "llm_calls.jsonl").read_text().splitlines():
+        rec = json.loads(row)
+        _assert_clean(json.dumps(rec["executor_result"]))
+        _assert_clean(json.dumps(rec["parsed_intents"]))
+    for p in (prompts.system_prompt(1, "intent"), prompts.system_prompt(3, "intent")):
+        assert _leaks(p) == []
+
+
 def test_agent_prompts_never_contain_oracle(tmp_path, monkeypatch):
     _install_sentinels(monkeypatch)
 

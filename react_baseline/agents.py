@@ -1,9 +1,16 @@
-"""Agents sharing one interface: ``act(obs_text) -> Decision``.
+"""Agents sharing one interface: ``act(obs_text, state) -> Decision``.
 
-``Decision.actions`` holds 1..actions_per_call env actions to run in order.
-``Decision.llm_call`` is the record for llm_calls.jsonl (None for RandomAgent).
-After the runner executes the actions it calls ``observe(executed, summary)``,
-and ``on_episode_reset()`` when the env resets.
+``Decision.actions`` holds 1..actions_per_call raw env actions to run in order,
+or ``Decision.intents`` holds intents for the shared Action reader. Either way
+the runner executes them through the reader. ``Decision.llm_call`` is the record
+for llm_calls.jsonl (None for agents without an LLM). After execution the runner
+calls ``observe(executed, summary, results)`` (results = one ExecResult per
+intent), and ``on_episode_reset()`` when the env resets.
+
+Agents: ``ReActAgent(action_space="intent")`` (CLI ``react``, the headline
+baseline), ``ReActAgent(action_space="primitive")`` (CLI ``react-raw``, the MVP
+ablation; prompts byte-identical to the MVP), ``RandomAgent`` (uniform over the
+5 raw actions) and ``RandomIntentAgent`` (uniform over currently valid intents).
 """
 from __future__ import annotations
 
@@ -12,6 +19,7 @@ import re
 from dataclasses import dataclass, field
 
 from . import prompts
+from .action_reader import Intent, parse_intents, valid_intents
 from .llm import estimate_tokens
 
 WAIT = 4
@@ -33,6 +41,7 @@ class ParsedResponse:
     bug_report: str | None = None
     parse_error: str | None = None
     parse_note: str | None = None
+    intents: list = field(default_factory=list)   # intent mode only
 
 
 _ACTION_LINE = re.compile(r"^[\s*#>_`-]*action[\s*_`]*(?:\(s\))?[\s*_`]*[:=：]\s*(.*)$",
@@ -81,8 +90,31 @@ def parse_response(text: str, actions_per_call: int = 1) -> ParsedResponse:
     return out
 
 
+def parse_intent_response(text: str, intents_per_call: int = 1) -> ParsedResponse:
+    """Like ``parse_response``, but the Action line holds intents (Action reader
+    grammar). No Action line, or a first intent that cannot be parsed, is a parse
+    error (the agent then waits, and gets the format reminder)."""
+    out = parse_response(text, 99)
+    out.actions, out.parse_note = [], None
+    a = _ACTION_LINE.search(text or "") or _ACTION_ANYWHERE.search(text or "")
+    if not a:
+        out.parse_error = "no 'Action:' line found"
+        return out
+    out.parse_error = None
+    intents, note = parse_intents(a.group(1), intents_per_call)
+    if intents[0].kind == "invalid":
+        out.parse_error = intents[0].error
+        return out
+    out.intents = [i for i in intents if i.kind != "invalid"]
+    dropped = len(intents) - len(out.intents)
+    notes = [note, f"dropped {dropped} unparseable intent(s)" if dropped else None]
+    out.parse_note = "; ".join(x for x in notes if x) or None
+    return out
+
+
 class RandomAgent:
     name = "random"
+    action_space = "primitive"
 
     def __init__(self, seed: int = 0):
         # A private RNG: the env calls random.seed(42) on every reset (fixed-task
@@ -99,23 +131,46 @@ class RandomAgent:
         pass
 
 
+class RandomIntentAgent(RandomAgent):
+    """No-LLM baseline through the same Action reader: one intent per decision,
+    uniform over ``valid_intents(state)`` (moves, wait, goto every reachable
+    floor tile, interact every reachable non-floor tile)."""
+
+    name = "random-intent"
+    action_space = "intent"
+
+    def act(self, obs_text: str, state: dict | None = None) -> Decision:
+        return Decision(intents=[self.rng.choice(valid_intents(state))])
+
+
 class ContextOverflowError(RuntimeError):
     pass
 
 
 class ReActAgent:
     """Vanilla ReAct: Thought -> Action -> Observation, with only a rolling
-    window of the last ``history`` turns as memory."""
+    window of the last ``history`` turns as memory.
 
-    name = "react"
+    ``action_space="primitive"``: Action is 1..actions_per_call raw moves (MVP).
+    ``action_space="intent"``: Action is 1..intents_per_call intents for the
+    Action reader; the history records the intent, the executor trace and the
+    result. The agent is consulted at every decision point either way."""
+
     RESET_MARKER = "=== EPISODE RESET ==="
 
-    def __init__(self, llm, history: int = 10, actions_per_call: int = 1, warn=print):
+    def __init__(self, llm, history: int = 10, actions_per_call: int = 1, warn=print,
+                 action_space: str = "primitive", intents_per_call: int = 1):
+        if action_space not in ("primitive", "intent"):
+            raise ValueError(f"action_space must be 'primitive' or 'intent', not {action_space!r}")
         self.llm = llm
         self.history = history
+        self.action_space = action_space
+        self.name = "react" if action_space == "intent" else "react-raw"
+        self.per_call = intents_per_call if action_space == "intent" else actions_per_call
         self.actions_per_call = actions_per_call
+        self.intents_per_call = intents_per_call
         self.warn = warn
-        self.system = prompts.system_prompt(actions_per_call)
+        self.system = prompts.system_prompt(self.per_call, action_space)
         self.entries: list[str] = []   # formatted turns and reset markers
         self.episode = 1
         self.remind_format = False
@@ -143,8 +198,14 @@ class ReActAgent:
     def observe(self, executed: list[int], summary: str, results=None):
         p = self._pending or ParsedResponse()
         self._turn_index += 1
-        line = (f"[turn {self._turn_index}] Thought: {p.thought or '(none)'} | "
-                f"Action: {','.join(map(str, executed))} | Result: {summary}")
+        if self.action_space == "intent":
+            intents = "; ".join(r.intent for r in results or []) or "(none)"
+            trace = " / ".join(r.trace for r in results or [])
+            line = (f"[turn {self._turn_index}] Thought: {p.thought or '(none)'} | "
+                    f"Action: {intents} | Executor: {trace} | Result: {summary}")
+        else:
+            line = (f"[turn {self._turn_index}] Thought: {p.thought or '(none)'} | "
+                    f"Action: {','.join(map(str, executed))} | Result: {summary}")
         if p.bug_report:
             line += f" | Bug report: {p.bug_report}"
         self.entries.append(line)
@@ -158,7 +219,7 @@ class ReActAgent:
         n = self.history
         while True:
             user = prompts.turn_prompt("\n".join(self._window(n)), obs_text, self.episode,
-                                       self.actions_per_call, self.remind_format)
+                                       self.per_call, self.remind_format, self.action_space)
             limit = getattr(self.llm, "context_limit", None)
             if limit is None or estimate_tokens(self.system + user) <= limit:
                 if n < self.history:
@@ -175,9 +236,14 @@ class ReActAgent:
     def act(self, obs_text: str, state: dict | None = None) -> Decision:
         user, n_used = self.build_prompt(obs_text)
         resp = self.llm.complete(self.system, user)
-        parsed = parse_response(resp.text, self.actions_per_call)
-        if parsed.parse_error:
-            parsed.actions = [WAIT]
+        if self.action_space == "intent":
+            parsed = parse_intent_response(resp.text, self.intents_per_call)
+            if parsed.parse_error:
+                parsed.intents = [Intent("wait", "wait", action=WAIT, n=1)]
+        else:
+            parsed = parse_response(resp.text, self.actions_per_call)
+            if parsed.parse_error:
+                parsed.actions = [WAIT]
         self.remind_format = parsed.parse_error is not None
         self._pending = parsed
         record = {
@@ -194,4 +260,6 @@ class ReActAgent:
             "parse_note": parsed.parse_note,
             "history_turns_used": n_used,
         }
+        if self.action_space == "intent":
+            return Decision(llm_call=record, intents=list(parsed.intents))
         return Decision(list(parsed.actions), record)
