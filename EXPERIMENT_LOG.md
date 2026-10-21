@@ -142,3 +142,25 @@ errors low, intent solutions for all 6 demo tasks pass in tests). The gate was n
 the prompt was not tuned toward this map. Per protocol, no full runs were started. Next: pilot a
 stronger model through the same interface (Haiku 4.5 / 5.5, or qwen2.5:14b), e.g.
 `--model-profile haiku-4.5 --pilot --max-usd 0.25`.
+
+## 2026-10-20: qwen2.5:14b pilots: both fail, but `react` gets much closer
+
+Same settings as the 7b pilots (tomato, seed 0, 50 steps, temperature 0.7, history 10, `num_ctx`
+8192). The 9 GB model does not fit the 4 GB GPU, so calls are slow.
+
+| | `react` (intents) | `react-raw` (raw moves) |
+|---|---|---|
+| run | `runs/pilot/20261020-191343_react_…` | `runs/pilot/20261020-194257_react-raw_…` |
+| gate | **FAIL** (intent failures 48.6% > 30%) | **FAIL** (same-action streak 14 > 10) |
+| passed | tiles 8, pickups 4, longest identical-intent run 6, parse errors 0%, replay exact | tiles 6, pickups 1, parse errors 0%, replay exact |
+| decisions = LLM calls | 35 (0.70 per env step) | 50 (1.0) |
+| tokens per call (in / out) | 2,164 / 68 | 2,092 / 107 |
+| median latency per call | 48 s | 67 s |
+| deliveries | **1** (order completed) | 0 |
+| bugs / bug reports | none / 4 (0 strict, 0 lenient matches) | none / 35 (0 / 0) |
+
+**`react`.** All 17 failed intents were again the floor / non-floor confusion (15 × `goto` on a
+station or counter, 2 × `interact` on a floor tile), as were all 36 of the 7b's. Unlike the 7b,
+the 14b usually corrected itself after the error (e.g. `goto(3,0)` ×7, then `interact(3,0)`
+worked) and completed the order. **`react-raw`.** It walked right into the wall for 14 steps in a
+row (36 of 50 actions were `right`).
