@@ -29,6 +29,8 @@ class VisibleTransition:
     note: str | None = None
     episode_ended: bool = False
     coerced: str | None = None
+    phase: str = "explore"
+    repro_attempt_id: int | None = None
 
     def to_row(self) -> dict:
         return asdict(self)

@@ -9,6 +9,7 @@ from pathlib import Path
 from . import pilot_check, spend
 from .action_reader import DEFAULT_MAX_MACRO_LEN, ActionReader
 from .agents import ContextOverflowError, RandomAgent, RandomIntentAgent, ReActAgent
+from .repro import ReproConfig
 from .env_adapter import list_tasks
 from .llm import BACKENDS, MODELS_YAML, LLMSetupError, make_llm_from_profile, resolve_profile
 from .runner import Budgets, make_run_dir, run
@@ -74,8 +75,19 @@ def parse_args(argv=None):
     p.add_argument("--pilot", action="store_true",
                    help=f"{PILOT_STEPS}-step pilot into runs/pilot (unless --out-dir is given), "
                         "then run pilot_check on each run; exit code 1 if any check fails")
+    g = p.add_argument_group("agent-driven reproduction (counts against the run's budgets)")
+    g.add_argument("--repro", action="store_true",
+                   help="after a new agent bug report, reset and let the agent try to reproduce it")
+    g.add_argument("--repro-steps", type=int, default=ReproConfig.steps, help="env steps per attempt")
+    g.add_argument("--max-repro-attempts", type=int, default=ReproConfig.max_attempts)
+    g.add_argument("--max-repro-fraction", type=float, default=ReproConfig.max_fraction,
+                   help="max share of --max-env-steps spent on attempts")
+    g.add_argument("--repro-dedup-jaccard", type=float, default=ReproConfig.dedup_jaccard,
+                   help="skip reports whose token Jaccard with an attempted report is >= this")
     p.add_argument("--quiet", action="store_true")
     args = p.parse_args(argv)
+    args.repro_config = ReproConfig(args.repro, args.repro_steps, args.max_repro_attempts,
+                                    args.max_repro_fraction, args.repro_dedup_jaccard)
     if args.task not in list_tasks():
         p.error(f"unknown task {args.task!r}; see external/SAGE/scenarios/overcooked_plus/tasks.json")
     if args.actions_per_call < 1 or args.intents_per_call < 1:
@@ -166,7 +178,7 @@ def run_one(args, seed: int, ignore: list[int]):
         print(f"\nERROR: {exc}", file=sys.stderr)
         return None, None
 
-    cli_args = {k: v for k, v in vars(args).items() if k not in ("seed_list", "profile")}
+    cli_args = {k: v for k, v in vars(args).items() if k not in ("seed_list", "profile", "repro_config")}
     cli_args["seed"] = seed
     config = {"cli_args": cli_args, "backend": backend, "model": model,
               "command": " ".join(sys.argv),
@@ -194,7 +206,8 @@ def run_one(args, seed: int, ignore: list[int]):
     try:
         summary = run(agent, args.task, seed, budgets, run_dir, config,
                       ignore_bug_ids=ignore, progress=progress,
-                      reader=ActionReader(args.max_macro_len), ledger=ledger)
+                      reader=ActionReader(args.max_macro_len), ledger=ledger,
+                      repro=args.repro_config)
     except (LLMSetupError, ContextOverflowError, spend.SpendGuardError) as exc:
         print(f"\nERROR: {exc}", file=sys.stderr)
         return None, run_dir

@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 
 from . import prompts
 from .action_reader import Intent, parse_intents, valid_intents
+from .repro import END_MARKER, START_MARKER, parse_reproduced, task_block
 from .llm import estimate_tokens
 
 WAIT = 4
@@ -42,6 +43,7 @@ class ParsedResponse:
     parse_error: str | None = None
     parse_note: str | None = None
     intents: list = field(default_factory=list)   # intent mode only
+    reproduced: bool = False                      # reply had 'Reproduced: yes'
 
 
 _ACTION_LINE = re.compile(r"^[\s*#>_`-]*action[\s*_`]*(?:\(s\))?[\s*_`]*[:=：]\s*(.*)$",
@@ -60,6 +62,7 @@ _NONE_REPORT = {"", "none", "n/a", "na", "no", "nothing", "-", "null", "none."}
 def parse_response(text: str, actions_per_call: int = 1) -> ParsedResponse:
     """Tolerant parse of 'Thought: ... / Action: ... / [Bug report: ...]'."""
     out = ParsedResponse()
+    out.reproduced = parse_reproduced(text)
     m = _THOUGHT.search(text or "")
     if m:
         out.thought = " ".join(m.group(1).split())
@@ -176,24 +179,44 @@ class ReActAgent:
         self.remind_format = False
         self._pending: ParsedResponse | None = None
         self._turn_index = 0
+        self.repro_report: str | None = None    # set during an agent-driven reproduction attempt
+        self.repro_steps_left = 0
 
     # -- history -------------------------------------------------------------
     def _window(self, n_turns: int) -> list[str]:
         """Last ``n_turns`` turns, plus any reset markers between them."""
         if n_turns <= 0:
             return []
-        turn_idx = [i for i, e in enumerate(self.entries) if e != self.RESET_MARKER]
+        turn_idx = [i for i, e in enumerate(self.entries) if not self._is_marker(e)]
         if not turn_idx:
-            return [e for e in self.entries if e == self.RESET_MARKER][-1:]
+            return [e for e in self.entries if self._is_marker(e)][-1:]
         start = turn_idx[-n_turns] if len(turn_idx) >= n_turns else turn_idx[0]
         # keep a marker that sits immediately before the window start
-        if start > 0 and self.entries[start - 1] == self.RESET_MARKER:
+        if start > 0 and self._is_marker(self.entries[start - 1]):
             start -= 1
         return self.entries[start:]
+
+    @staticmethod
+    def _is_marker(entry: str) -> bool:
+        return entry.startswith("=== ")
 
     def on_episode_reset(self):
         self.episode += 1
         self.entries.append(self.RESET_MARKER)
+
+    # -- agent-driven reproduction hooks (runner-level protocol, see repro.py) --
+    def on_repro_start(self, report: str, steps: int):
+        self.episode += 1
+        self.entries.append(START_MARKER)
+        self.repro_report, self.repro_steps_left = report, steps
+
+    def on_repro_tick(self, steps_left: int):
+        self.repro_steps_left = steps_left
+
+    def on_repro_end(self):
+        self.episode += 1
+        self.entries.append(END_MARKER)
+        self.repro_report = None
 
     def observe(self, executed: list[int], summary: str, results=None):
         p = self._pending or ParsedResponse()
@@ -218,8 +241,11 @@ class ReActAgent:
         """Return (user_prompt, n_history_turns_used), applying the context guard."""
         n = self.history
         while True:
+            block = (task_block(self.repro_report, self.repro_steps_left)
+                     if self.repro_report is not None else None)
             user = prompts.turn_prompt("\n".join(self._window(n)), obs_text, self.episode,
-                                       self.per_call, self.remind_format, self.action_space)
+                                       self.per_call, self.remind_format, self.action_space,
+                                       task_block=block)
             limit = getattr(self.llm, "context_limit", None)
             if limit is None or estimate_tokens(self.system + user) <= limit:
                 if n < self.history:
@@ -259,6 +285,7 @@ class ReActAgent:
             "parse_error": parsed.parse_error,
             "parse_note": parsed.parse_note,
             "history_turns_used": n_used,
+            "parsed_reproduced": parsed.reproduced,
         }
         if self.action_space == "intent":
             return Decision(llm_call=record, intents=list(parsed.intents))

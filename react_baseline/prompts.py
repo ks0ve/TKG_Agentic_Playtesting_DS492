@@ -98,11 +98,13 @@ def system_prompt(actions_per_call: int = 1, action_space: str = "primitive") ->
 
 def turn_prompt(history_text: str, observation: str, episode: int,
                 actions_per_call: int = 1, remind_format: bool = False,
-                action_space: str = "primitive") -> str:
+                action_space: str = "primitive", task_block: str | None = None) -> str:
     reminder = ""
     if remind_format:
         reminder = "\n" + FORMAT_REMINDER.format(
             action_spec=action_spec(actions_per_call, action_space)) + "\n"
+    if task_block:  # e.g. the reproduction task; absent otherwise (prompts unchanged)
+        reminder += "\n" + task_block + "\n"
     return TURN_TEMPLATE.format(
         history=history_text or "(none yet)",
         observation=observation,

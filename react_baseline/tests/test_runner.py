@@ -6,7 +6,7 @@ from react_baseline.runner import Budgets, run
 STEP_KEYS = {"global_step", "episode", "episode_step", "action", "reward", "done",
              "bug_ids_triggered", "new_unique_bug_ids", "bug_ids_raw", "delivery_success",
              "llm_call_id"}
-V2_STEP_KEYS = {"decision_id", "intent_id", "intent", "intent_step_index"}
+V2_STEP_KEYS = {"decision_id", "intent_id", "intent", "intent_step_index", "phase", "repro_attempt_id"}
 SUMMARY_KEYS = {"total_env_steps", "episodes", "llm_calls", "input_tokens", "output_tokens",
                 "total_tokens", "wall_time_s", "unique_bug_ids", "first_found_step",
                 "discovery_curve", "deliveries_success", "agent_bug_reports", "parse_error_rate"}

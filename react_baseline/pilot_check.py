@@ -60,7 +60,12 @@ def check(run_dir: Path) -> tuple[bool, list[str]]:
         agent = adapter.env.unwrapped.agent[0]
         tiles.add((agent.x, agent.y))
         prev_holding = None
+        prev_episode = rows[0]["episode"]
         for r in rows:
+            if r["episode"] != prev_episode:   # a reset without done (e.g. a reproduction attempt)
+                adapter.reset()
+                prev_holding = None
+            prev_episode = r["episode"]
             res = adapter.step(r["action"])
             if res.done != r["done"] or res.episode_step != r["episode_step"]:
                 mismatch += 1
@@ -72,6 +77,7 @@ def check(run_dir: Path) -> tuple[bool, list[str]]:
             if res.done:
                 adapter.reset()
                 prev_holding = None
+                prev_episode = r["episode"] + 1
     finally:
         adapter.close()
 

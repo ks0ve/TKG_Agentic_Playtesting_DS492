@@ -23,6 +23,7 @@ import numpy as np
 
 from .action_reader import ActionReader, Intent, VisibleStep, parse_intent, primitive_intent
 from .env_adapter import EnvAdapter, REPO_ROOT, SAGE_ROOT
+from .repro import ReproConfig, ReproController
 from .taxonomy import taxonomy_counts
 from .transitions import VisibleTransition
 
@@ -58,6 +59,19 @@ class RunStats:
     stop_reason: str = ""
     price_in_per_mtok: float | None = 0.0
     price_out_per_mtok: float | None = 0.0
+    phase_calls: dict = field(default_factory=lambda: {"explore": [0, 0, 0], "repro": [0, 0, 0]})
+    # phase -> [llm_calls, input_tokens, output_tokens]
+
+    def usd_of(self, input_tokens: int, output_tokens: int) -> float | None:
+        if self.price_in_per_mtok is None or self.price_out_per_mtok is None:
+            return None
+        return (input_tokens * self.price_in_per_mtok + output_tokens * self.price_out_per_mtok) / 1e6
+
+    def phase_usd(self, phase: str) -> float | None:
+        if self.price_in_per_mtok is None or self.price_out_per_mtok is None:
+            return None
+        _, i, o = self.phase_calls[phase]
+        return (i * self.price_in_per_mtok + o * self.price_out_per_mtok) / 1e6
 
     @property
     def tokens(self) -> int:
@@ -135,6 +149,20 @@ def attribute_reports(reports: list[dict], step_rows: list[dict],
     return out
 
 
+def phase_split(stats: RunStats, step_rows: list[dict]) -> dict:
+    out = {}
+    for ph in ("explore", "repro"):
+        calls, tin, tout = stats.phase_calls[ph]
+        usd = stats.phase_usd(ph)
+        out.update({f"steps_{ph}": sum(1 for r in step_rows if r.get("phase", "explore") == ph),
+                    f"llm_calls_{ph}": calls, f"tokens_{ph}": tin + tout,
+                    f"usd_{ph}": None if usd is None else round(usd, 6)})
+    explore_ids = {b for r in step_rows if r.get("phase", "explore") == "explore"
+                   for b in r["bug_ids_triggered"]}
+    out["n_unique_bugs_explore"] = len(explore_ids)
+    return out
+
+
 def _as_intents(decision) -> list[Intent]:
     if getattr(decision, "intents", None) is not None:
         return [i if isinstance(i, Intent) else parse_intent(i) for i in decision.intents]
@@ -143,11 +171,14 @@ def _as_intents(decision) -> list[Intent]:
 
 def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: dict,
         ignore_bug_ids=(5,), progress=None, reader: ActionReader | None = None,
-        ledger=None) -> dict:
+        ledger=None, repro: ReproConfig | None = None) -> dict:
     """Run ``agent`` on ``task`` until a budget is exhausted. Returns the summary.
 
     ``ledger`` (spend.Ledger): for paid runs, a reservation is appended before the first
-    call and a final record after the summary is written (also after Ctrl-C or a crash)."""
+    call and a final record after the summary is written (also after Ctrl-C or a crash).
+    ``repro`` (ReproConfig): agent-driven reproduction attempts (see repro.py); their
+    steps, calls and tokens count against the same budgets."""
+    repro = repro or ReproConfig()
     run_dir = Path(run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
     ignore = set(int(b) for b in ignore_bug_ids)
@@ -160,6 +191,7 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
     config.update({
         "task": task, "seed": seed, "agent": agent.name, "action_space": action_space,
         "max_macro_len": reader.max_macro_len,
+        "repro": repro.to_dict(),
         "ignore_bug_ids": sorted(ignore),
         "budgets": vars(budgets),
         "git_commit": git_commit(REPO_ROOT), "git_dirty": git_dirty(REPO_ROOT),
@@ -180,7 +212,8 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
             raise ValueError("a ledgered (paid) run needs max_usd")
         ledger.reserve(run_dir, prof.get("name"), prof.get("model"), budgets.max_usd)
     error = None
-    step_rows: list[dict] = []  # kept for bug-report attribution
+    ctl = ReproController(repro, budgets.max_env_steps)
+    step_rows: list[dict] = []  # kept for bug-report attribution and repro scoring
     t0 = time.perf_counter()
     obs_text = adapter.reset()
     episode_step = 0
@@ -208,6 +241,8 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
             nonlocal k, episode_step
             if stats.global_step >= budgets.max_env_steps:
                 return None
+            if ctl.current is not None and ctl.steps_left(stats.global_step) <= 0:
+                return None  # the reproduction attempt's step allowance is used up
             res = adapter.step(action)
             stats.global_step += 1
             episode_step = res.episode_step
@@ -233,6 +268,7 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
                 "llm_call_id": call_id,
                 "decision_id": decision_id, "intent_id": intent_id,
                 "intent": intent.text, "intent_step_index": k,
+                "phase": ctl.phase, "repro_attempt_id": ctl.attempt_id,
             }
             k += 1
             step_rows.append(row)
@@ -245,34 +281,86 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
 
     with open(run_dir / "steps.jsonl", "w", encoding="utf-8") as f_steps, \
             open(run_dir / "llm_calls.jsonl", "w", encoding="utf-8") as f_calls, \
-            open(run_dir / "transitions.jsonl", "w", encoding="utf-8") as f_trans:
+            open(run_dir / "transitions.jsonl", "w", encoding="utf-8") as f_trans, \
+            open(run_dir / "episodes.jsonl", "w", encoding="utf-8") as f_eps, \
+            open(run_dir / "repro_attempts.jsonl", "w", encoding="utf-8") as f_repro:
         state = adapter.state
         decision_id = intent_id = -1
+        stalled = 0
+        ep = {"start": 1, "phase": ctl.phase}   # current episode: first global step, phase at start
+
+        def close_episode(reason: str):
+            f_eps.write(json.dumps({"episode": stats.episodes, "phase": ep["phase"],
+                                    "start_global_step": ep["start"],
+                                    "end_global_step": stats.global_step,
+                                    "end_reason": reason}) + "\n")
+
+        def new_episode(reason: str):
+            """End the current episode (logging why) and reset the env."""
+            nonlocal obs_text, state, episode_step
+            close_episode(reason)
+            stats.episodes += 1
+            obs_text = adapter.reset()
+            state = adapter.state
+            episode_step = 0
+            ep["start"], ep["phase"] = stats.global_step + 1, ctl.phase
+
+        def episode_has_steps() -> bool:
+            return stats.global_step >= ep["start"]
+
+        def finish_attempt(reason: str, reset: bool = True):
+            row = ctl.finish(reason, stats.global_step, step_rows)
+            f_repro.write(json.dumps(row) + "\n")
+            f_repro.flush()
+            if reset and episode_has_steps():
+                new_episode("repro_end")
+            else:
+                ep["phase"] = ctl.phase
+            hook = getattr(agent, "on_repro_end", None)
+            if hook:
+                hook()
+
         try:
             while budget_left():
+                if ctl.current is not None:
+                    tick = getattr(agent, "on_repro_tick", None)
+                    if tick:
+                        tick(ctl.steps_left(stats.global_step))
+                phase = ctl.phase
                 decision = agent.act(obs_text, state)
                 decision_id += 1
                 stats.decisions += 1
                 intents = _as_intents(decision)
-                call_id, call_row = None, None
-                if decision.llm_call is not None:
+                call_id, call_row, rec = None, None, decision.llm_call
+                if rec is not None:
                     call_id = stats.llm_calls
                     stats.llm_calls += 1
-                    rec = decision.llm_call
                     stats.input_tokens += rec["input_tokens"]
                     stats.output_tokens += rec["output_tokens"]
+                    pc = stats.phase_calls[phase]
+                    pc[0] += 1
+                    pc[1] += rec["input_tokens"]
+                    pc[2] += rec["output_tokens"]
+                    if ctl.current is not None:
+                        ctl.current["llm_calls"] += 1
+                        ctl.current["input_tokens"] += rec["input_tokens"]
+                        ctl.current["output_tokens"] += rec["output_tokens"]
+                        ctl.current["usd"] += (stats.usd_of(rec["input_tokens"], rec["output_tokens"]) or 0.0)
                     stats.latencies.append(rec["latency_s"])
                     if rec["parse_error"]:
                         stats.parse_errors += 1
                     call_row = {"llm_call_id": call_id, **llm_meta,
                                 "global_step": stats.global_step, "episode": stats.episodes, **rec,
                                 "decision_id": decision_id,
-                                "parsed_intents": [i.text for i in intents]}
+                                "parsed_intents": [i.text for i in intents],
+                                "phase": phase, "repro_attempt_id": ctl.attempt_id,
+                                "parsed_reproduced": bool(rec.get("parsed_reproduced"))}
                     if rec["parsed_bug_report"]:
                         stats.bug_reports.append({
                             "llm_call_id": call_id, "global_step": stats.global_step,
                             "episode": stats.episodes, "report": rec["parsed_bug_report"],
-                            "decision_id": decision_id})
+                            "decision_id": decision_id, "phase": phase,
+                            "repro_attempt_id": ctl.attempt_id})
 
                 results, done, obs_summary = [], False, ""
                 try:
@@ -297,7 +385,8 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
                                 global_step_end=stats.global_step, kind=r.kind,
                                 event_records=r.event_records, stop_reason=r.stop_reason,
                                 error=r.error, note=r.note, episode_ended=r.done,
-                                coerced=r.coerced).to_row()) + "\n")
+                                coerced=r.coerced, phase=phase,
+                                repro_attempt_id=ctl.attempt_id).to_row()) + "\n")
                             stats.intents_coerced += r.coerced is not None
                         if r.done:
                             done = True
@@ -310,20 +399,44 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
                         f_calls.write(json.dumps(call_row) + "\n")
                         f_calls.flush()
                 decision.results = results
-                if progress and decision.llm_call is not None:
+                if progress and rec is not None:
                     progress(stats, decision)
 
                 executed = [a for r in results for a in r.primitive_actions]
                 if executed:
                     agent.observe(executed, obs_summary, results)
                 if done:
-                    stats.episodes += 1
-                    obs_text = adapter.reset()
-                    state = adapter.state
-                    episode_step = 0
+                    new_episode("done")
                     agent.on_episode_reset()
-                elif not executed:
-                    break  # step budget hit before any action ran
+
+                # -- reproduction protocol (agent-side information only) --------
+                if ctl.current is not None:
+                    claimed = bool(rec and rec.get("parsed_reproduced"))
+                    if claimed:
+                        ctl.current["agent_claimed_reproduced"] = True
+                    if claimed or ctl.steps_left(stats.global_step) <= 0:
+                        finish_attempt("claimed" if claimed else "steps")
+                elif repro.enabled and rec is not None and rec["parsed_bug_report"]:
+                    report = rec["parsed_bug_report"]
+                    if ctl.consider(report, stats.global_step) is None:
+                        prev_rows = [r for r in step_rows if r["decision_id"] == decision_id - 1]
+                        strict = sorted({b for r in prev_rows for b in r["bug_ids_triggered"]})
+                        if episode_has_steps():
+                            new_episode("repro_start")
+                        ctl.start(report, {"decision_id": decision_id, "llm_call_id": call_id,
+                                           "global_step": stats.global_step}, strict,
+                                  stats.global_step)
+                        ep["phase"] = ctl.phase
+                        hook = getattr(agent, "on_repro_start", None)
+                        if hook:
+                            hook(report, repro.steps)
+
+                # the reader always runs >= 1 step unless a step allowance is used up;
+                # never spin on decisions that execute nothing
+                stalled = 0 if executed else stalled + 1
+                if stalled >= 3:
+                    stats.stop_reason = stats.stop_reason or "stalled"
+                    break
         except KeyboardInterrupt:
             stats.stop_reason = "interrupted"
         except Exception as exc:  # still write bug_reports + summary, then re-raise
@@ -331,6 +444,10 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
             error = exc
         finally:
             adapter.close()
+        if ctl.current is not None:  # the run ended inside an attempt
+            finish_attempt(stats.stop_reason or "budget", reset=False)
+        if episode_has_steps():
+            close_episode(stats.stop_reason or "budget")
 
     report_rows = attribute_reports(stats.bug_reports, step_rows)
     with open(run_dir / "bug_reports.jsonl", "w", encoding="utf-8") as f:
@@ -385,6 +502,9 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         "unique_bug_ids_reported_strict": strict_ids,
         # draft taxonomy: reporting only, never used to filter
         **taxonomy_counts(stats.first_found),
+        # explore vs agent-driven reproduction
+        **phase_split(stats, step_rows),
+        **ctl.summary(),
     }
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     if ledger is not None:
