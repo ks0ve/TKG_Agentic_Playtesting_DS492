@@ -16,10 +16,14 @@
 #       anthropic:     send_temperature (bool; false for models that reject sampling
 #                      params), extra_body (merged into the request JSON)
 #   pricing_source / pricing_date   where and when a paid price was checked
+#   disabled           true = the CLI refuses this profile (edit the YAML to re-enable)
+#
+# Paid profiles (any price > 0) need --allow-paid and --max-usd (<= $2 unless
+# --max-usd-override) and pass the project budget check (configs/budget.yaml, spend/ledger.jsonl).
 
 defaults:            # used when only --llm <backend> is given (backward compatible)
   ollama: qwen2.5-7b
-  anthropic: haiku-4.5
+  anthropic: haiku-5.5
   openai_compat: vllm-qwen2.5-7b
   mock: mock
 
@@ -97,23 +101,25 @@ profiles:
       send_temperature: true
     pricing_source: "https://platform.claude.com/docs/en/about-claude/pricing (Claude Haiku 4.5: $1 in / $5 out per MTok)"
     pricing_date: "2026-10-20"
-    notes: "Legacy model, still available. No thinking unless requested; honours temperature (matches local runs)."
+    disabled: true
+    notes: "DISABLED (2026-10-21): 10x the price of Haiku 5.5. Legacy model; honours temperature."
 
   haiku-5.5:
     backend: anthropic
     model: claude-haiku-5-5
     context_window: 1000000
-    max_output_tokens: 512
+    max_output_tokens: 384
     temperature: 1.0   # not sent: Haiku 5.5 rejects non-default sampling values (HTTP 400)
     price_in_per_mtok: 0.10
     price_out_per_mtok: 0.50
     options:
       send_temperature: false
       extra_body:
-        thinking: {type: disabled}   # adaptive thinking is on by default; disabled is allowed at the default effort
-    pricing_source: "https://platform.claude.com/docs/en/about-claude/pricing (Claude Haiku 5.5, prompts up to 100k tokens: $0.10 in / $0.50 out per MTok; $0.50 / $2.50 above 100k)"
-    pricing_date: "2026-10-20"
-    notes: "Current Haiku. Our prompts are ~2k tokens, far under the 100k price tier. Runs at the API's default temperature."
+        thinking: {type: disabled}   # adaptive thinking is on by default and bills as output; disabled is allowed at the default effort
+      max_prompt_tokens: 90000       # hard abort: above 100k prompt tokens the whole request is billed 5x
+    pricing_source: "https://platform.claude.com/docs/en/models/haiku-5-5/overview and /about-claude/pricing (model ID claude-haiku-5-5; prompts up to 100k tokens: $0.10 in / $0.50 out per MTok; over 100k: $0.50 / $2.50; omit temperature/top_p/top_k)"
+    pricing_date: "2026-10-21"
+    notes: "Headline model. Prompts are ~2-3k tokens. Runs at the API's default temperature. No prompt caching (by choice: the ~600-token system prompt would save fractions of a cent per call)."
 
   # ---- offline -------------------------------------------------------------
   mock:

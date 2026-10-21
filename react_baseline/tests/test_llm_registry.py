@@ -56,10 +56,11 @@ def test_resolve_overrides_and_unknown_price():
 
 
 def test_cli_profile_resolution():
-    a = run_cli.parse_args(["--agent", "react", "--model-profile", "haiku-5.5"])
+    a = run_cli.parse_args(["--agent", "react", "--model-profile", "haiku-5.5", "--allow-paid",
+                            "--max-usd", "0.25"])
     assert a.llm == "anthropic" and a.profile.model == "claude-haiku-5-5"
-    a = run_cli.parse_args(["--agent", "react", "--llm", "anthropic"])
-    assert a.profile.name == "haiku-4.5"
+    a = run_cli.parse_args(["--agent", "react", "--llm", "anthropic", "--allow-paid", "--max-usd", "1"])
+    assert a.profile.name == "haiku-5.5"
     with pytest.raises(SystemExit):  # no price for an ad-hoc model id
         run_cli.parse_args(["--agent", "react", "--model", "mystery:1b", "--max-usd", "1"])
     with pytest.raises(SystemExit):  # backend conflict

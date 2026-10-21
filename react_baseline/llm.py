@@ -64,6 +64,11 @@ class ModelProfile:
     pricing_source: str | None = None
     pricing_date: str | None = None
     notes: str | None = None
+    disabled: bool = False   # refused by the CLI; only re-enabled by editing models.yaml
+
+    @property
+    def is_paid(self) -> bool:
+        return bool((self.price_in_per_mtok or 0) > 0 or (self.price_out_per_mtok or 0) > 0)
 
     def usd(self, input_tokens: int, output_tokens: int) -> float | None:
         if self.price_in_per_mtok is None or self.price_out_per_mtok is None:
@@ -74,8 +79,9 @@ class ModelProfile:
         return asdict(self)
 
 
-def load_profiles(path: Path | str = MODELS_YAML) -> tuple[dict[str, ModelProfile], dict[str, str]]:
+def load_profiles(path: Path | str | None = None) -> tuple[dict[str, ModelProfile], dict[str, str]]:
     """Parse models.yaml -> ({name: ModelProfile}, {backend: default profile name})."""
+    path = MODELS_YAML if path is None else path
     data = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
     known = set(ModelProfile.__dataclass_fields__) - {"name"}
     profiles = {}
@@ -101,7 +107,7 @@ def load_profiles(path: Path | str = MODELS_YAML) -> tuple[dict[str, ModelProfil
 def resolve_profile(profile_name: str | None = None, backend: str | None = None,
                     model: str | None = None, temperature: float | None = None,
                     context_window: int | None = None, max_output_tokens: int | None = None,
-                    base_url: str | None = None, path: Path | str = MODELS_YAML) -> ModelProfile:
+                    base_url: str | None = None, path: Path | str | None = None) -> ModelProfile:
     """Pick a profile (by name, else the backend's default) and apply CLI overrides.
 
     ``model`` overrides the model id. If the new id matches another profile of the
@@ -112,7 +118,7 @@ def resolve_profile(profile_name: str | None = None, backend: str | None = None,
     if profile_name:
         if profile_name not in profiles:
             raise LLMSetupError(f"Unknown --model-profile {profile_name!r}. Profiles in "
-                                f"{path}: {', '.join(sorted(profiles))}")
+                                f"{path or MODELS_YAML}: {', '.join(sorted(profiles))}")
         prof = copy.deepcopy(profiles[profile_name])
     else:
         backend = backend or "ollama"
@@ -158,13 +164,24 @@ def call_with_retries(fn, transient: tuple, give_up_msg: str, label: str, delays
             time.sleep(delay)
 
 
+class PaidAPIError(LLMSetupError):
+    """A paid API call failed in a way we refuse to work around. Stops the run."""
+
+
 class AnthropicLLM:
     """Profile options: ``send_temperature`` (default true; Claude Haiku 5.5 rejects
-    non-default sampling values) and ``extra_body`` (merged into the request, e.g.
-    ``{"thinking": {"type": "disabled"}}``). anthropic 1.x has no ``temperature``
-    keyword, so temperature travels in ``extra_body`` too."""
+    non-default sampling values), ``extra_body`` (merged into the request, e.g.
+    ``{"thinking": {"type": "disabled"}}``) and ``max_prompt_tokens`` (hard abort above
+    it; Haiku 5.5 bills a whole request 5x above 100k prompt tokens). anthropic 1.x has
+    no ``temperature`` keyword, so temperature travels in ``extra_body`` too.
+
+    Errors: SDK retries are off. 429 / 5xx / connection errors are retried with backoff;
+    any other API error (4xx validation, auth, not found) raises ``PaidAPIError``
+    immediately. ``MAX_CONSECUTIVE_ERRORS`` failed attempts in a row stop the run."""
 
     backend = "anthropic"
+    RETRY_DELAYS_S = (2, 5, 10, 20)
+    MAX_CONSECUTIVE_ERRORS = 5
 
     def __init__(self, model: str, temperature: float = 0.0, max_output_tokens: int = 512,
                  context_window: int | None = None, options: dict | None = None, client=None):
@@ -175,8 +192,9 @@ class AnthropicLLM:
                     "ANTHROPIC_API_KEY is not set. Set it in your shell before using an "
                     "anthropic profile, e.g. in PowerShell:\n\n    $env:ANTHROPIC_API_KEY = \"sk-ant-...\"\n")
             import anthropic
-            client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from the environment
+            client = anthropic.Anthropic(max_retries=0)  # our own retry policy below
         self.client = client
+        self.consecutive_errors = 0
         self.model = model
         self.temperature = temperature
         self.max_output_tokens = max_output_tokens
@@ -192,11 +210,49 @@ class AnthropicLLM:
             kw["extra_body"] = extra
         return kw
 
+    @staticmethod
+    def _retryable(exc) -> bool:
+        import anthropic
+        if isinstance(exc, anthropic.APIConnectionError):   # includes timeouts
+            return True
+        status = getattr(exc, "status_code", None)
+        return isinstance(exc, anthropic.APIStatusError) and (status == 429 or (status or 0) >= 500)
+
     def complete(self, system: str, user: str) -> LLMResponse:
+        import anthropic
+
+        limit = self.options.get("max_prompt_tokens")
+        est = estimate_tokens(system + user)
+        if limit and est > limit:
+            raise PaidAPIError(f"Estimated prompt size {est} tokens exceeds max_prompt_tokens={limit} "
+                               "for this profile; refusing to send it (price tier / runaway prompt).")
+        kwargs = self.request_kwargs(system, user)
         t0 = time.perf_counter()
-        resp = self.client.messages.create(**self.request_kwargs(system, user))
+        attempt = 0
+        while True:
+            try:
+                resp = self.client.messages.create(**kwargs)
+            except anthropic.APIError as exc:
+                self.consecutive_errors += 1
+                status = getattr(exc, "status_code", None)
+                desc = f"{type(exc).__name__}" + (f" (HTTP {status})" if status else "") + f": {exc}"
+                if not self._retryable(exc):
+                    raise PaidAPIError(f"Anthropic API rejected the request, not retrying: {desc}") from exc
+                if self.consecutive_errors >= self.MAX_CONSECUTIVE_ERRORS:
+                    raise PaidAPIError(f"{self.consecutive_errors} consecutive Anthropic API errors; "
+                                       f"stopping the run. Last: {desc}") from exc
+                delay = self.RETRY_DELAYS_S[min(attempt, len(self.RETRY_DELAYS_S) - 1)]
+                attempt += 1
+                print(f"[anthropic] {desc}; retrying in {delay}s", file=sys.stderr)
+                time.sleep(delay)
+                continue
+            self.consecutive_errors = 0
+            break
+        usage = getattr(resp, "usage", None)
+        if usage is None or getattr(usage, "input_tokens", None) is None:
+            raise PaidAPIError("Anthropic response had no usage field; cannot account for cost.")
         text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
-        return LLMResponse(text, resp.usage.input_tokens, resp.usage.output_tokens,
+        return LLMResponse(text, int(usage.input_tokens), int(usage.output_tokens or 0),
                            time.perf_counter() - t0)
 
 

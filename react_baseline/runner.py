@@ -142,8 +142,12 @@ def _as_intents(decision) -> list[Intent]:
 
 
 def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: dict,
-        ignore_bug_ids=(5,), progress=None, reader: ActionReader | None = None) -> dict:
-    """Run ``agent`` on ``task`` until a budget is exhausted. Returns the summary."""
+        ignore_bug_ids=(5,), progress=None, reader: ActionReader | None = None,
+        ledger=None) -> dict:
+    """Run ``agent`` on ``task`` until a budget is exhausted. Returns the summary.
+
+    ``ledger`` (spend.Ledger): for paid runs, a reservation is appended before the first
+    call and a final record after the summary is written (also after Ctrl-C or a crash)."""
     run_dir = Path(run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
     ignore = set(int(b) for b in ignore_bug_ids)
@@ -171,6 +175,10 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         stats.price_out_per_mtok = prof.get("price_out_per_mtok")
     if budgets.max_usd is not None and stats.usd is None:
         raise ValueError("--max-usd needs a model profile with known prices")
+    if ledger is not None:
+        if budgets.max_usd is None:
+            raise ValueError("a ledgered (paid) run needs max_usd")
+        ledger.reserve(run_dir, prof.get("name"), prof.get("model"), budgets.max_usd)
     error = None
     step_rows: list[dict] = []  # kept for bug-report attribution
     t0 = time.perf_counter()
@@ -379,6 +387,11 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         **taxonomy_counts(stats.first_found),
     }
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
+    if ledger is not None:
+        status = ("error" if stats.stop_reason.startswith("error") else
+                  "interrupted" if stats.stop_reason == "interrupted" else "completed")
+        ledger.finalize(run_dir, summary["usd_cost"], stats.input_tokens, stats.output_tokens,
+                        status, stats.stop_reason)
     if error is not None:
         raise error
     return summary

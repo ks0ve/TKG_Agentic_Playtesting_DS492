@@ -6,7 +6,7 @@ import statistics
 import sys
 from pathlib import Path
 
-from . import pilot_check
+from . import pilot_check, spend
 from .action_reader import DEFAULT_MAX_MACRO_LEN, ActionReader
 from .agents import ContextOverflowError, RandomAgent, RandomIntentAgent, ReActAgent
 from .env_adapter import list_tasks
@@ -21,6 +21,7 @@ AGENTS = {
 }
 LLM_AGENTS = ("react", "react-raw")
 PILOT_STEPS = 50
+PAID_MAX_USD_CEILING = 2.0
 
 
 def parse_args(argv=None):
@@ -38,6 +39,12 @@ def parse_args(argv=None):
     p.add_argument("--max-usd", type=float, default=None,
                    help="budget: USD at the profile's prices (checked before each call, so a "
                         "run can overshoot by at most one call)")
+    p.add_argument("--allow-paid", action="store_true",
+                   help="required for any profile with a price > 0 (spends real money)")
+    p.add_argument("--max-usd-override", action="store_true",
+                   help=f"allow --max-usd above ${PAID_MAX_USD_CEILING:.0f} for one paid run")
+    p.add_argument("--ledger", default=None, help="spend ledger path (default spend/ledger.jsonl)")
+    p.add_argument("--budget-file", default=None, help="budget YAML (default configs/budget.yaml)")
     p.add_argument("--model-profile", default=None,
                    help=f"named profile in {MODELS_YAML.name} (backend, model, prices, context "
                         "window). Without it, the --llm backend's default profile is used.")
@@ -89,6 +96,22 @@ def parse_args(argv=None):
     args.temperature = args.profile.temperature
     if args.max_usd is not None and args.profile.usd(0, 0) is None:
         p.error(f"--max-usd needs known prices, but profile {args.profile.name!r} has none")
+    if args.agent in LLM_AGENTS:
+        prof = args.profile
+        if prof.disabled:
+            p.error(f"profile {prof.name!r} is disabled in configs/models.yaml "
+                    "(edit the YAML to re-enable it)")
+        if prof.usd(0, 0) is None and args.llm == "anthropic":
+            p.error("an anthropic model with unknown price cannot be guarded; use a priced profile")
+        if prof.is_paid:
+            if not args.allow_paid:
+                p.error(f"profile {prof.name!r} is paid (${prof.price_in_per_mtok}/"
+                        f"${prof.price_out_per_mtok} per MTok); add --allow-paid to spend money")
+            if args.max_usd is None:
+                p.error("paid runs require --max-usd")
+            if args.max_usd > PAID_MAX_USD_CEILING and not args.max_usd_override:
+                p.error(f"--max-usd {args.max_usd} is above the ${PAID_MAX_USD_CEILING:.0f} per-run "
+                        "ceiling; add --max-usd-override if you really mean it")
     try:
         args.seed_list = ([int(s) for s in args.seeds.split(",") if s.strip()]
                           if args.seeds else [args.seed])
@@ -112,8 +135,31 @@ def make_agent(args, seed: int):
     return agent, args.profile.backend, args.profile.model
 
 
+def paid_preflight(args):
+    """For a paid profile: print the cost estimate and check the project ledger.
+    Returns the Ledger to use, None for free runs; raises SpendGuardError."""
+    if args.agent not in LLM_AGENTS or not args.profile.is_paid:
+        return None
+    est = spend.estimate_run(args.agent, args.profile, args.max_env_steps)
+    print(f"[paid] {args.profile.name} ({args.profile.model}): estimate ${est['usd']:.4f} for "
+          f"{args.max_env_steps} steps = {est['calls_per_step']:.2f} calls/step x "
+          f"{est['tokens_in']:.0f} in + {est['tokens_out']:.0f} out tokens/call "
+          f"[{est['source']}]; hard cap --max-usd ${args.max_usd:.2f}", flush=True)
+    ledger = spend.Ledger(args.ledger or spend.LEDGER_PATH,
+                          spend.load_budget(args.budget_file or spend.BUDGET_YAML))
+    ledger.preflight(args.max_usd)
+    print(f"[paid] budget OK: ${ledger.remaining():.4f} of ${ledger.budget.limit:.2f} usable remains "
+          "before this run", flush=True)
+    return ledger
+
+
 def run_one(args, seed: int, ignore: list[int]):
     """Run a single seed. Returns (summary, run_dir), or (None, None) on a setup error."""
+    try:
+        ledger = paid_preflight(args)
+    except spend.SpendGuardError as exc:
+        print(f"\nERROR: {exc}", file=sys.stderr)
+        return None, None
     try:
         agent, backend, model = make_agent(args, seed)
     except LLMSetupError as exc:
@@ -148,8 +194,8 @@ def run_one(args, seed: int, ignore: list[int]):
     try:
         summary = run(agent, args.task, seed, budgets, run_dir, config,
                       ignore_bug_ids=ignore, progress=progress,
-                      reader=ActionReader(args.max_macro_len))
-    except (LLMSetupError, ContextOverflowError) as exc:
+                      reader=ActionReader(args.max_macro_len), ledger=ledger)
+    except (LLMSetupError, ContextOverflowError, spend.SpendGuardError) as exc:
         print(f"\nERROR: {exc}", file=sys.stderr)
         return None, run_dir
 
