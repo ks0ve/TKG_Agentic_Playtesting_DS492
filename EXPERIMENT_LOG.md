@@ -216,3 +216,25 @@ seed), local models 3 seeds; `react-raw` runs ungated as the ablation.
   draft taxonomy).
 - The draft taxonomy (`configs/bug_taxonomy_draft.csv`) is reporting-only: it never filters
   results or changes metrics.
+
+## 2026-10-21: Grid task selection (offline evidence; no LLM calls)
+
+10,000 steps, seed 0, `ignore_bug_ids=[5]`; "excl. normal" drops IDs that also fire during the
+scripted correct-play solution (`configs/normal_play_bugs.yaml`). All four tasks are completable
+through the Action reader (scripted solutions: 17 / 34 / 41 / 57 steps).
+
+| task | random: bugs (excl. normal) | random-intent: bugs (excl. normal) | plate_composition (random / r-intent) | IDs firing in correct play |
+|---|---|---|---|---|
+| 01 tomato | 17 (17) | 15 (15) | 3 / 1 | 5 |
+| 07 tomato + steak | 16 (14) | 15 (14) | 2 / 1 | 1, 3, 5, 6, 21, 68, 127 |
+| 11 tomato + lettuce + onion | 18 (16) | 12 (12) | **6** / 0 | 1, 2, 3, 5, 7, 66, 85, 86, 105, 133, 146 |
+| 78 onion + fish + rice | 18 (16) | **23 (21)** | 3 / **7** | 1, 3, 5, 7, 26, 85, 135 |
+
+**Chosen (as proposed, all check out):** 01 tomato (single ingredient; continuity with every
+pilot), 07 tomato + steak (adds the pan and cooking over time), 11 tomato + lettuce + onion (three
+ingredients; reaches the deep plate-combination rules: 6 plate_composition bugs under random play).
+**Alternative:** 78 onion + fish + rice reaches the broadest coverage (rice cooker, sushi merge,
+23 bugs and one `PENDING_directed_check` bug under random-intent); swapping it in for 11 is one
+line in `configs/grids/baseline_v2.yaml` (re-freeze the task list too). Correct play itself fires
+up to 11 oracle IDs on multi-ingredient tasks, so `unique_bugs_excluding_normal_play` matters
+there; the normal-play sets depend on the scripted path and are reporting-only.
