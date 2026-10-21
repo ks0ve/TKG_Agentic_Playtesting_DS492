@@ -1,0 +1,36 @@
+# Frozen baseline v2 configuration (2026-10-21). Everything that defines the baseline.
+# The grid driver refuses to run if the code's prompt hash or Action-reader version no
+# longer match (override: --allow-unfrozen). Check: python -m react_baseline.frozen --check <this file>
+# After review, tag the commit:  git tag baseline-v2-frozen
+name: baseline_v2
+prompts_sha256: 021e1a897272d0b87933193769c809ed850eecac9ec94c916d5b4f1fb38430ac
+action_reader_version: 2.1-floor-tolerant
+action_reader:
+  floor_tolerance: true      # goto on non-floor approaches without bumping; interact on floor walks
+  max_macro_len: 40
+  bfs_order: [right, down, left, up]
+agent:
+  history: 10
+  temperature: 0.7           # where supported; Claude Haiku 5.5 runs at its API default
+  intents_per_call: 1
+  actions_per_call: 1        # react-raw
+repro:
+  enabled: true
+  steps: 100
+  max_attempts: 5
+  max_fraction: 0.3
+  dedup_jaccard: 0.8
+budget:
+  max_env_steps: 1000
+  max_usd_per_paid_run: 1.00
+tasks:
+  - V2_task_01_tomato
+  - V2_task_07_tomato_steak
+  - V2_task_11_tomato_lettuce_onion
+profiles:
+  headline: haiku-5.5        # claude-haiku-5-5, thinking off, max_output_tokens 384
+  replication: llama3.1-8b
+seeds:
+  haiku-5.5: 5
+  local: 3
+ignore_bug_ids: [5]

@@ -32,6 +32,8 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Callable
 
+# Bump whenever execution semantics change (frozen-config check, configs/frozen/*.yaml).
+ACTION_READER_VERSION = "2.1-floor-tolerant"
 WAIT = 4
 MOVE_NAMES = {0: "right", 1: "down", 2: "left", 3: "up"}
 ACTION_NAMES = {**MOVE_NAMES, 4: "wait"}
