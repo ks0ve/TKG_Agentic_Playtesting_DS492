@@ -72,6 +72,9 @@ def parse_args(argv=None):
                    help="comma-separated oracle bug IDs to drop from logs/metrics "
                         "(default 5: fires on every completed chop on single-knife maps; see README)")
     p.add_argument("--out-dir", default="runs")
+    p.add_argument("--run-dir", default=None,
+                   help="exact run directory (single seed; used by the grid driver)")
+    p.add_argument("--grid-config-hash", default=None, help=argparse.SUPPRESS)
     p.add_argument("--pilot", action="store_true",
                    help=f"{PILOT_STEPS}-step pilot into runs/pilot (unless --out-dir is given), "
                         "then run pilot_check on each run; exit code 1 if any check fails")
@@ -129,6 +132,8 @@ def parse_args(argv=None):
                           if args.seeds else [args.seed])
     except ValueError:
         p.error("--seeds must be comma-separated integers")
+    if args.run_dir and len(args.seed_list) != 1:
+        p.error("--run-dir takes a single seed")
     return args
 
 
@@ -183,7 +188,11 @@ def run_one(args, seed: int, ignore: list[int]):
     config = {"cli_args": cli_args, "backend": backend, "model": model,
               "command": " ".join(sys.argv),
               "model_profile": args.profile.to_dict() if args.agent in LLM_AGENTS else None}
-    run_dir = make_run_dir(Path(args.out_dir), args.agent, args.task, seed)
+    if args.run_dir:
+        run_dir = Path(args.run_dir)
+        run_dir.mkdir(parents=True, exist_ok=False)
+    else:
+        run_dir = make_run_dir(Path(args.out_dir), args.agent, args.task, seed)
     budgets = Budgets(args.max_env_steps, args.max_llm_calls, args.max_tokens, args.max_usd)
 
     def progress(stats, decision):

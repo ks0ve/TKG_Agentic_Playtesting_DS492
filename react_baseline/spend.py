@@ -33,7 +33,8 @@ PILOT_ROOT = REPO_ROOT / "runs" / "pilot"
 DEFAULT_CALLS_PER_STEP = 1.0
 DEFAULT_TOKENS_IN = 3000
 DEFAULT_TOKENS_OUT = 200
-DEFAULT_LATENCY_S = 30.0
+DEFAULT_LATENCY_S = 30.0       # local models on the laptop
+DEFAULT_API_LATENCY_S = 3.0    # hosted API
 
 
 class SpendGuardError(RuntimeError):
@@ -225,10 +226,11 @@ def estimate_run(agent: str, profile, steps: int, pilot_root: Path | str = PILOT
             m = {"source": "default (no LLM)", "calls_per_step": 0.0, "tokens_in": 0, "tokens_out": 0,
                  "latency_s": 0.0, "wall_per_step_s": 0.002}
         else:
+            lat = DEFAULT_API_LATENCY_S if profile.backend == "anthropic" else DEFAULT_LATENCY_S
             m = {"source": "conservative default (no pilot found)",
                  "calls_per_step": DEFAULT_CALLS_PER_STEP, "tokens_in": DEFAULT_TOKENS_IN,
-                 "tokens_out": DEFAULT_TOKENS_OUT, "latency_s": DEFAULT_LATENCY_S,
-                 "wall_per_step_s": DEFAULT_CALLS_PER_STEP * DEFAULT_LATENCY_S}
+                 "tokens_out": DEFAULT_TOKENS_OUT, "latency_s": lat,
+                 "wall_per_step_s": DEFAULT_CALLS_PER_STEP * lat}
     calls = steps * m["calls_per_step"]
     usd = 0.0
     if profile is not None:
