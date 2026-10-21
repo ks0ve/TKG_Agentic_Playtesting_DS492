@@ -149,6 +149,45 @@ def attribute_reports(reports: list[dict], step_rows: list[dict],
     return out
 
 
+def decision_keys(step_rows: list[dict]) -> list[str]:
+    """One key per decision: its executed intents in order (raw agents: action names)."""
+    keys, seen = {}, set()
+    for r in step_rows:
+        d, i = r.get("decision_id"), r.get("intent_id")
+        if (d, i) in seen:
+            continue
+        seen.add((d, i))
+        keys.setdefault(d, []).append(r.get("intent") or str(r["action"]))
+    return ["; ".join(v) for _, v in sorted(keys.items())]
+
+
+def loop_metrics(keys: list[str]) -> dict:
+    """Reporting only. Share of decisions inside runs of >= 3 identical decisions, and
+    inside A,B,A,B alternations (A != B) of length >= 4."""
+    n = len(keys)
+    if not n:
+        return {"loop_decision_fraction": None, "cycle2_decision_fraction": None}
+    in_loop = [False] * n
+    i = 0
+    while i < n:
+        j = i
+        while j + 1 < n and keys[j + 1] == keys[i]:
+            j += 1
+        if j - i + 1 >= 3:
+            in_loop[i:j + 1] = [True] * (j - i + 1)
+        i = j + 1
+    in_cyc = [False] * n
+    start = 0
+    for k in range(1, n + 1):
+        ok = k < n and keys[k] != keys[k - 1] and (k - start < 2 or keys[k] == keys[k - 2])
+        if not ok:
+            if k - start >= 4:
+                in_cyc[start:k] = [True] * (k - start)
+            # the next alternation may start at the previous decision
+            start = k - 1 if k < n and keys[k] != keys[k - 1] else k
+    return {"loop_decision_fraction": sum(in_loop) / n, "cycle2_decision_fraction": sum(in_cyc) / n}
+
+
 def phase_split(stats: RunStats, step_rows: list[dict]) -> dict:
     out = {}
     for ph in ("explore", "repro"):
@@ -505,6 +544,8 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         # explore vs agent-driven reproduction
         **phase_split(stats, step_rows),
         **ctl.summary(),
+        # stuck-behaviour metrics (reporting only)
+        **loop_metrics(decision_keys(step_rows)),
     }
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     if ledger is not None:
