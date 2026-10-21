@@ -164,3 +164,55 @@ station or counter, 2 × `interact` on a floor tile), as were all 36 of the 7b's
 the 14b usually corrected itself after the error (e.g. `goto(3,0)` ×7, then `interact(3,0)`
 worked) and completed the order. **`react-raw`.** It walked right into the wall for 14 steps in a
 row (36 of 50 actions were `right`).
+
+## 2026-10-20: Action reader tolerates goto / interact floor mix-ups (`a53743d`)
+
+**Why.** Every failed intent in the first v2 pilots was the same confusion between the two
+navigation verbs (qwen2.5:7b 36/36, qwen2.5:14b 17/17): `goto` aimed at a counter or station
+("not a floor tile") or `interact` aimed at a floor tile. Each cost an LLM call plus a wasted wait
+step even though the intended target was clear.
+
+**Change.** `goto(x,y)` on a non-floor tile now walks to the nearest floor tile next to it and stops
+**without bumping** (it never performs an interaction the agent did not ask for); `interact(x,y)`
+on a floor tile walks onto it. Both are noted in the agent-visible trace and logged as `coerced`
+(`executor_result`, `transitions.jsonl`, summary `intents_coerced` / `intent_coercion_rate`); they
+are not intent failures. Off-map, unreachable and unparseable intents are still errors. The prompt
+and the pilot gate are unchanged.
+
+**Scope.** This is part of the shared Action reader, so it applies identically to every agent,
+including the future TKG arm's cheap policy and LLM. It is interface design, not planning.
+
+## 2026-10-20/21: Post-tolerance pilots (tomato, seed 0, 50 steps, temperature 0.7, history 10)
+
+| model | agent | run (`runs/pilot/…`) | gate | calls/step | tok/call | median s/call | deliveries | bugs | reports (strict / lenient) |
+|---|---|---|---|---|---|---|---|---|---|
+| qwen2.5:7b | react | `20261020-205935_react_…` | FAIL: 2 tiles | 1.00 | 2,315 | 20.9 | 0 | – | 22 (0 / 0) |
+| **llama3.1:8b** | react | `20261020-211948_react_…` | **PASS** | 0.48 | 1,928 | 8.2 | 1 | – | 0 |
+| llama3.1:8b | react-raw | `20261020-212427_react-raw_…` | FAIL: 3 tiles | 1.00 | 1,838 | 18.2 | 0 | – | 0 |
+| mistral-nemo:12b | react | `20261020-213913_react_…` | **PASS** | 0.48 | 2,087 | 20.1 | 0 | 19, 20 | 5 (0 / 1) |
+| mistral-nemo:12b | react-raw | `20261020-215919_react-raw_…` | FAIL: same-action streak 14 | 1.00 | 1,932 | 23.1 | 0 | 20 | 17 (0 / 3) |
+| qwen2.5:14b | react | `20261021-004127_react_…` | **PASS (barely)** | 0.70 | 2,437 | 29.1 (spikes ~190) | 1 | – | 3 (0 / 0) |
+
+- **qwen2.5:7b**: 0% intent failures after the change (28/50 intents remapped), but it looped
+  `goto(2,2)` ↔ `interact(2,2)` at the delivery window, trying to put a bare tomato on it
+  ("putdown delivery failed") 21 times.
+- **llama3.1:8b**: completed the order in 8 clean intents, then tried unusual interactions.
+- **qwen2.5:14b**: rerun by the user (the 2026-10-20 checkpoint listed it as on hold). Passed with
+  the longest identical-intent run at 9 against a limit of 10: its last 9 calls were all
+  `interact(0,2)`, juggling the tomato. 1,340 s wall time for 50 steps.
+- `react-raw` fails with every local model; as the ablation it is the result, so it runs ungated.
+
+**Decisions (2026-10-21).** Headline LLM: Claude Haiku 5.5 (paid; $20 project budget, guarded by a
+spend ledger). Local replication: llama3.1:8b. qwen2.5:14b is too slow for full runs and stays a
+pilot data point. Grid: 1,000 steps per run on 3 tasks; Haiku 5 seeds (the API has no sampling
+seed), local models 3 seeds; `react-raw` runs ungated as the ablation.
+
+## Note: how SAGE's bug predicates behave
+
+- The bug checks have **no side effects**: the game never actually misbehaves. A predicate fires
+  when the agent *attempts* an edge-case interaction, so the oracle labels the agent's attempts,
+  not visible malfunctions. An agent can therefore trigger a "bug" without seeing anything wrong.
+- 52 of the 165 bug IDs are unreachable on the shipped maps (`unreachable_on_shipped_maps` in the
+  draft taxonomy).
+- The draft taxonomy (`configs/bug_taxonomy_draft.csv`) is reporting-only: it never filters
+  results or changes metrics.

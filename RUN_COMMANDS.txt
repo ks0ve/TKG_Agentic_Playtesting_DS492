@@ -37,8 +37,8 @@ MODELS: --model-profile <name>, from configs\models.yaml
 
 --- 1) PILOTS (50 steps each; checked automatically; exit code 0 = PILOT PASSED) ---
 
-Status 2026-10-20: both qwen2.5:7b pilots FAILED (see EXPERIMENT_LOG.md). Pilot a stronger
-model (Haiku, or qwen2.5:14b) before any full run.
+Status 2026-10-21: react PASSED with llama3.1:8b, mistral-nemo:12b and (barely) qwen2.5:14b;
+react-raw FAILS with every local model (it runs ungated as the ablation). See EXPERIMENT_LOG.md.
 
 Local, free (measured on the RTX 3050 laptop: react ~15-30 min, react-raw ~9 min):
 .venv\Scripts\python.exe -m react_baseline.run --agent react     --model-profile qwen2.5-7b --seed 0 --pilot

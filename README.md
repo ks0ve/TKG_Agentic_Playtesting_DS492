@@ -216,10 +216,13 @@ Parsing tolerates case, markdown, backticks, brackets and trailing text. Several
 - **Stops early** on episode end (`episode_end`), an exhausted budget (`budget`), a goto step whose
   event is not a plain move to the expected tile (`unexpected_event`), or the length cap
   (`length_cap`, 40 steps). Otherwise `completed`.
-- **Invalid intents** (unparseable, outside the map, not a floor tile, unreachable, ambiguous or
-  unknown name, `wait(25)`) run **one wait** so budgets always advance, and return an
-  agent-visible error such as `goto(9,9) failed: outside the map`. A goto to the current tile
-  waits one step with the note `already there`.
+- **Floor / non-floor tolerance:** `goto(x,y)` on a non-floor tile walks next to it and stops
+  without bumping; `interact(x,y)` on a floor tile walks onto it. Both are noted in the trace and
+  logged as `coerced`, not as failures (EXPERIMENT_LOG, 2026-10-20).
+- **Invalid intents** (unparseable, outside the map, unreachable, ambiguous or unknown name,
+  `wait(25)`) run **one wait** so budgets always advance, and return an agent-visible error such
+  as `goto(9,9) failed: outside the map`. A goto to the current tile waits one step with the note
+  `already there`.
 - **Returns** the final observation plus a compact agent-visible trace, e.g.
   `interact(0,2): 2 step(s) [down,left]; events: moved; pickup tomato; stop: completed`.
 - `valid_intents(state)` lists the four moves, `wait`, `goto` to every other reachable floor tile
