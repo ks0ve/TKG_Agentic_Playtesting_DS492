@@ -80,7 +80,7 @@ banner.
 ## Running for free (Ollama, the default)
 
 The default LLM backend is a local Ollama server. Nothing calls a paid API unless you select an
-Anthropic profile (`--model-profile haiku-4.5`, `--model-profile haiku-5.5` or `--llm anthropic`).
+Anthropic profile (`--model-profile haiku-5.5` or `--llm anthropic`) together with `--allow-paid`.
 
 1. Install Ollama from https://ollama.com/download.
 2. Start the server if it is not already running: `ollama serve`
@@ -115,18 +115,18 @@ Each named profile has `backend` (`ollama` | `openai_compat` | `anthropic` | `mo
 YAML entry, no code change.** Select it with `--model-profile <name>`; `--llm` / `--model` /
 `--temperature` / `--num-ctx` / `--max-output-tokens` / `--ollama-host` still work and override
 the profile. Without `--model-profile`, the `--llm` backend's default profile is used
-(`ollama` → `qwen2.5-7b`, `anthropic` → `haiku-4.5`). If `--model` names an id that matches no
+(`ollama` → `qwen2.5-7b`, `anthropic` → `haiku-5.5`). If `--model` names an id that matches no
 profile, the price is unknown: `usd_cost` is `null` and `--max-usd` is refused.
 
 | profile | backend | model | $/MTok in / out |
 |---|---|---|---|
 | `qwen2.5-7b` (default) | ollama | `qwen2.5:7b` | 0 / 0 |
 | `qwen2.5-14b` | ollama | `qwen2.5:14b` | 0 / 0 |
-| `llama3.1-8b` | ollama | `llama3.1:8b` | 0 / 0 |
+| `llama3.1-8b` (replication) | ollama | `llama3.1:8b` | 0 / 0 |
 | `mistral-nemo-12b` | ollama | `mistral-nemo:12b` | 0 / 0 |
 | `vllm-qwen2.5-7b` | openai_compat | `Qwen/Qwen2.5-7B-Instruct` at `http://localhost:8000` | 0 / 0 |
-| `haiku-4.5` | anthropic | `claude-haiku-4-5-20251001` | 1.00 / 5.00 |
-| `haiku-5.5` | anthropic | `claude-haiku-5-5` | 0.10 / 0.50 (prompts ≤ 100k tokens) |
+| `haiku-4.5` (**disabled**) | anthropic | `claude-haiku-4-5-20251001` | 1.00 / 5.00 |
+| `haiku-5.5` (headline) | anthropic | `claude-haiku-5-5` | 0.10 / 0.50 (prompts ≤ 100k tokens) |
 | `mock` | mock | offline | 0 / 0 |
 
 Anthropic prices were checked on https://platform.claude.com/docs/en/about-claude/pricing on
@@ -138,7 +138,7 @@ Anthropic prices were checked on https://platform.claude.com/docs/en/about-claud
 - **Claude Haiku 5.5 rejects non-default sampling values** (HTTP 400), and adaptive thinking is
   on by default. The `haiku-5.5` profile therefore sends no temperature (`send_temperature:
   false`) and disables thinking (`extra_body: {thinking: {type: disabled}}`), so it runs at the
-  API's default temperature, unlike the 0.7 used by the local profiles. `haiku-4.5` honours
+  API's default temperature, unlike the 0.7 used by the local profiles. `haiku-4.5` (now disabled) honours
   temperature 0.7 and is the like-for-like comparison with local runs.
 
 **OpenAI-compatible servers** (vLLM, llama.cpp `llama-server`, LM Studio, TGI): backend
@@ -152,7 +152,7 @@ with the same backoff as Ollama (about 3 min in total).
 
 ```sh
 # ReAct with the paid Anthropic API (reads ANTHROPIC_API_KEY), capped at $1
-python -m react_baseline.run --agent react --model-profile haiku-4.5 --seed 0 --max-env-steps 300 --max-usd 1
+python -m react_baseline.run --agent react --model-profile haiku-5.5 --seed 0 --max-env-steps 300 --allow-paid --max-usd 1
 
 # the MVP ReAct (raw moves) as an ablation
 python -m react_baseline.run --agent react-raw --model-profile qwen2.5-7b --max-env-steps 300
@@ -189,6 +189,15 @@ python -m react_baseline.run --agent react --llm mock --max-env-steps 300
 | `--ignore-bug-ids` | `5` | oracle IDs dropped from metrics (see the investigation below) |
 | `--out-dir` | `runs` | |
 | `--pilot` | off | 50 steps into `runs/pilot`, then `pilot_check` on each run; exit code 1 on a fail |
+| `--run-dir` | none | exact run directory, single seed (used by the grid driver) |
+| `--allow-paid` | off | required for any profile with a price > 0 |
+| `--max-usd-override` | off | allow `--max-usd` above the $2 per-run ceiling |
+| `--ledger`, `--budget-file` | `spend/ledger.jsonl`, `configs/budget.yaml` | spend guardrail files |
+| `--repro` | off | agent-driven reproduction after new bug reports (on in the grid) |
+| `--repro-steps` | 100 | env steps per reproduction attempt |
+| `--max-repro-attempts` | 5 | per run |
+| `--max-repro-fraction` | 0.3 | max share of `--max-env-steps` spent on attempts |
+| `--repro-dedup-jaccard` | 0.8 | skip near-duplicate reports (token Jaccard) |
 
 The run stops when any budget runs out. Episodes auto-reset when they end and the run
 continues. `Ctrl-C` stops the run cleanly and still writes the summary.
@@ -376,6 +385,89 @@ bug IDs (after `ignore_bug_ids`) by class and family. It changes no metric, filt
 (tested). If a run finds a bug the CSV marks `unreachable_on_shipped_maps`, the CLI prints a
 warning and `taxonomy_warnings` records it. The CSV's classifications are not edited here.
 
+## Paid runs: budget and guardrails
+
+- **Project budget** `configs/budget.yaml`: `project_cap_usd: 20.00`, `safety_margin_usd: 1.00`.
+  A paid run starts only if finalized spend + open reservations + its `--max-usd` ≤ $19.00.
+- **Ledger** `spend/ledger.jsonl` (tracked in git, append-only): a `reservation` record at run
+  start and a `final` record (actual `usd_cost`, tokens, status) at run end, including after
+  Ctrl-C or a crash. A reservation without a final record (killed process) counts at its full
+  `max_usd` until `python -m react_baseline.spend --reconcile <run_dir>`.
+- `python -m react_baseline.spend` prints spent, remaining, per-profile / per-run costs and open
+  reservations.
+- **Paid profiles** (any price > 0) need `--allow-paid` and `--max-usd` (≤ $2 unless
+  `--max-usd-override`). Before the first call the CLI prints an estimate: steps × calls/step ×
+  tokens/call × price, from the latest pilot of that agent + model, else labelled conservative
+  defaults (1 call/step, 3,000 in + 200 out tokens).
+- `haiku-4.5` is `disabled: true` (10× the price); only editing `models.yaml` re-enables it.
+- **Haiku 5.5** (`claude-haiku-5-5`, $0.10 / $0.50 per MTok for prompts ≤ 100k tokens; verified
+  2026-10-21): thinking disabled (it bills as output), no temperature sent (the API rejects
+  sampling parameters), `max_output_tokens: 384`, and a hard abort if a prompt is estimated above
+  90k tokens (above 100k the whole request is billed 5×).
+- **Errors**: SDK retries are off; 429 / 5xx / connection errors are retried with backoff; any
+  other API error (e.g. a 400 validation error) stops the run with a clear message; 5 consecutive
+  API errors stop the run. A response without `usage` is refused.
+- **No prompt caching.** Haiku 5.5's minimum cacheable prompt is 512 tokens and our ~600-token
+  system prompt would qualify, but caching it would save fractions of a cent per call, so it is
+  left off deliberately (one fewer moving part in the cost accounting).
+
+## Agent-driven reproduction (`--repro`)
+
+A runner-level protocol with optional agent hooks (`on_repro_start`, `on_repro_tick`,
+`on_repro_end`), so the future TKG arm reuses it unchanged.
+
+1. A bug report filed while exploring starts an attempt unless it is a near-duplicate of an
+   already-attempted report (same normalized text or token Jaccard ≥ 0.8), 5 attempts were made,
+   or the attempts would exceed 30% of the step budget. This is decided from agent-side
+   information only; the oracle is never consulted.
+2. The env resets (`episodes.jsonl` end_reason `repro_start`), the history gets
+   `=== REPRODUCTION ATTEMPT ===`, and each turn prompt carries
+   `REPRODUCTION TASK: reproduce the defect you reported: "<report>". Steps left: k. If you believe
+   it happened again, add a line "Reproduced: yes".`
+3. The attempt ends after 100 env steps, a `Reproduced: yes` reply, or the run budget. Reports
+   during an attempt are logged but never start another. Then the env resets, the history gets
+   `=== END REPRODUCTION ===`, and exploration resumes.
+4. Scoring (oracle, post hoc): `oracle_reproduced` = any of the source report's `bug_ids_strict`
+   fire during the attempt (`null` if the report had no strict match), plus the agent's claim,
+   `first_repro_step`, `other_bug_ids_seen`, and steps / calls / tokens / $.
+
+Logs: `repro_attempts.jsonl` (one row per attempt), `episodes.jsonl` (one row per episode with its
+end reason), and `phase` (`explore` | `repro`) + `repro_attempt_id` on steps, llm_calls,
+transitions and bug_reports. Summary: `{steps,llm_calls,tokens,usd}_{explore,repro}`,
+`n_unique_bugs_explore` (next to the unchanged `n_unique_bugs`), `repro_attempts`,
+`repro_skipped`, `repro_success_rate` (over attempts with a strict-matched source),
+`unique_bugs_reproduced`, `agent_claim_accuracy`. Repro steps count against the run's budgets.
+
+## Post-hoc metrics (reporting only)
+
+- `loop_decision_fraction`: share of decisions inside runs of ≥ 3 identical decisions;
+  `cycle2_decision_fraction`: share inside A,B,A,B alternations of length ≥ 4 (the 14b's tomato
+  juggling and the 7b's goto/interact loop show up here).
+- **Scripted correct play**: `configs/solutions/<task>.yaml` completes each grid task through the
+  Action reader (tested). `configs/normal_play_bugs.yaml` lists the oracle IDs that fire during
+  that solution (`python -m react_baseline.solutions --write`; a test keeps it in sync); summary
+  `unique_bugs_excluding_normal_play`. `ignore_bug_ids` stays `[5]`.
+
+## Grid, frozen config and bundles
+
+- **Grid** `configs/grids/baseline_v2.yaml`: tasks 01 tomato, 07 tomato + steak, 11 tomato +
+  lettuce + onion; 1,000 steps; history 10; temperature 0.7 where supported; $1 per paid run;
+  repro on. Rows: `react` × haiku-5.5 (5 seeds), `react` and `react-raw` × llama3.1-8b (3 seeds),
+  `random` and `random-intent` (3 seeds).
+- `python -m react_baseline.grid configs/grids/baseline_v2.yaml [--only react/llama3.1-8b]
+  [--dry-run] [--allow-paid] [--allow-unfrozen]`. Sequential and resumable: a combination is done
+  when `runs/grids/baseline_v2/<agent>_<profile>_<task>_seed<N>/summary.json` has stop_reason
+  `max_env_steps` and the same config hash; anything else is re-run (the old dir is kept as
+  `*_stale<timestamp>`). Paid combinations go through every guardrail above. `--dry-run` shows
+  status and estimated wall time / $ per combination.
+- **Frozen config** `configs/frozen/baseline_v2.yaml` records everything that defines the
+  baseline (prompt hash, Action-reader version, agent / repro / budget settings, tasks, profiles,
+  `ignore_bug_ids`). The grid refuses to run if the code's prompt hash or reader version no longer
+  match (`python -m react_baseline.frozen --check configs/frozen/baseline_v2.yaml`).
+- **Bundle** `python -m react_baseline.bundle <run_dir> ... -o out.zip`: per-run logs plus a fresh
+  `pilot_check.txt`, the ledger, the spend report, git HEAD / status and the grid dry run, in one
+  zip for analysis elsewhere.
+
 ## Investigation: bug IDs 5 and 20 on V2_task_01_tomato
 
 The task brief said that bugs 5 and 20 fired exactly once per episode in random play. I checked
@@ -500,7 +592,10 @@ consider turning off Ollama's auto-update.
 
 ## Tests
 
-`python -m pytest`. All tests run offline and never call a paid API (139 tests, about 30–70 s).
+`python -m pytest`. All tests run offline and never call an LLM (paid or local); about 40 s.
+Since 2026-10-21 also: `test_spend.py` (ledger, cap, reservations, paid-profile rules, Anthropic
+error policy with a fake client), `test_repro.py`, `test_metrics.py`, `test_solutions.py`,
+`test_grid_frozen.py`, `test_bundle.py`.
 
 1. `test_env_adapter.py`: replays all 6 `verified_demonstrations.json` sequences through the
    adapter, rendering at every step, and checks for a successful delivery. Also covers the
