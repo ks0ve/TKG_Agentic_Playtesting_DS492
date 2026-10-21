@@ -1,0 +1,20 @@
+# Scripted correct-play solution through the Action reader (post-hoc reference only).
+task: V2_task_78_onion_fish_rice
+note: rice into the cooker first; onion then fish onto the plate (parked on (1,0)); scoop cooked rice
+  last (fish + rice merge into sushi)
+intents:
+- interact(5,2)
+- interact(1,4)
+- interact(4,4)
+- interact(3,4)
+- interact(3,4)
+- interact(3,0)
+- interact(3,4)
+- interact(1,0)
+- interact(5,1)
+- interact(3,4)
+- interact(3,4)
+- interact(1,0)
+- interact(3,4)
+- interact(1,4)
+- interact(3,2)

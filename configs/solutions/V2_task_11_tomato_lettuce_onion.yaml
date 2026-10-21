@@ -1,0 +1,23 @@
+# Scripted correct-play solution through the Action reader (post-hoc reference only).
+task: V2_task_11_tomato_lettuce_onion
+note: chop each vegetable on the board and scoop it onto the plate, parking the plate on counter (4,1)
+  between items
+intents:
+- interact(2,0)
+- interact(4,2)
+- interact(4,2)
+- interact(4,3)
+- interact(4,2)
+- interact(4,1)
+- interact(0,2)
+- interact(4,2)
+- interact(4,2)
+- interact(4,1)
+- interact(4,2)
+- interact(4,1)
+- interact(1,0)
+- interact(4,2)
+- interact(4,2)
+- interact(4,1)
+- interact(4,2)
+- interact(2,2)

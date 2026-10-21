@@ -24,6 +24,7 @@ import numpy as np
 from .action_reader import ActionReader, Intent, VisibleStep, parse_intent, primitive_intent
 from .env_adapter import EnvAdapter, REPO_ROOT, SAGE_ROOT
 from .repro import ReproConfig, ReproController
+from .solutions import load_normal_play
 from .taxonomy import taxonomy_counts
 from .transitions import VisibleTransition
 
@@ -186,6 +187,15 @@ def loop_metrics(keys: list[str]) -> dict:
             # the next alternation may start at the previous decision
             start = k - 1 if k < n and keys[k] != keys[k - 1] else k
     return {"loop_decision_fraction": sum(in_loop) / n, "cycle2_decision_fraction": sum(in_cyc) / n}
+
+
+def normal_play_excluded(task: str, found) -> dict:
+    """Reporting only; never changes ignore_bug_ids or what counts as a bug."""
+    normal = load_normal_play().get(task)
+    if normal is None:
+        return {"unique_bugs_excluding_normal_play": None, "normal_play_bug_ids": None}
+    return {"unique_bugs_excluding_normal_play": len(set(found) - set(normal)),
+            "normal_play_bug_ids": sorted(normal)}
 
 
 def phase_split(stats: RunStats, step_rows: list[dict]) -> dict:
@@ -546,6 +556,8 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         **ctl.summary(),
         # stuck-behaviour metrics (reporting only)
         **loop_metrics(decision_keys(step_rows)),
+        # post hoc: IDs that also fire during scripted correct play (configs/normal_play_bugs.yaml)
+        **normal_play_excluded(task, stats.first_found),
     }
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     if ledger is not None:
