@@ -17,6 +17,11 @@ y = row; see env_adapter for the env's transposed internals):
 Paths are breadth-first over floor tiles, expanding neighbours in the order
 right, down, left, up (= action IDs 0..3), so ties go to the first path found.
 
+Floor/non-floor tolerance: ``goto`` aimed at a non-floor tile walks to the
+nearest floor tile next to it and stops without bumping (it never performs an
+interaction the agent did not ask for); ``interact`` aimed at a floor tile walks
+onto it. Both are reported in the trace note and logged as ``coerced``.
+
 The reader only reads the agent-visible state dict (``env_adapter.visible_state``)
 and the agent-visible ``VisibleStep`` the runner returns; it never sees the oracle.
 """
@@ -239,6 +244,7 @@ class ExecResult:
     stop_reason: str = ""   # completed | episode_end | budget | unexpected_event | length_cap | invalid
     error: str | None = None
     note: str | None = None
+    coerced: str | None = None   # "goto->approach" | "interact->goto" when the verb was remapped
     final: VisibleStep | None = None
 
     @property
@@ -270,7 +276,8 @@ class ExecResult:
 
     def to_dict(self) -> dict:
         return {"intent": self.intent, "kind": self.kind, "n_steps": self.n_steps,
-                "stop_reason": self.stop_reason, "error": self.error, "note": self.note}
+                "stop_reason": self.stop_reason, "error": self.error, "note": self.note,
+                "coerced": self.coerced}
 
 
 class ActionReader:
@@ -278,47 +285,71 @@ class ActionReader:
         self.max_macro_len = max_macro_len
 
     def plan(self, intent: Intent, state: dict):
-        """-> (steps, error, note); each step is (action, expected screen pos or None)."""
+        """-> (steps, error, note, coerced); each step is (action, expected screen pos or None).
+
+        Floor/non-floor tolerance (same for every agent): ``goto`` on a non-floor tile
+        walks next to it and stops without bumping (coerced "goto->approach");
+        ``interact`` on a floor tile walks onto it (coerced "interact->goto")."""
         if intent.kind == "invalid":
-            return None, intent.error, None
+            return None, intent.error, None, None
         if intent.kind == "move":
-            return [(intent.action, None)], None, None
+            return [(intent.action, None)], None, None, None
         if intent.kind == "wait":
-            return [(WAIT, None)] * intent.n, None, None
+            return [(WAIT, None)] * intent.n, None, None, None
         me = tuple(state["agent"]["pos"])
         if intent.kind == "goto":
             goal = (intent.x, intent.y)
             if not _in_map(state, *goal):
-                return None, "outside the map", None
+                return None, "outside the map", None, None
             if not _is_floor(state, *goal):
-                return None, "not a floor tile", None
+                path, _ = bfs_path(state, me, set(self._adjacent_floor(state, goal)))
+                if path is None:
+                    return None, "not a floor tile, and no floor tile next to it is reachable", None, None
+                note = (f"({goal[0]},{goal[1]}) is not a floor tile: stopped next to it; "
+                        f"use interact({goal[0]},{goal[1]}) to use it")
+                if not path:
+                    note = f"already next to ({goal[0]},{goal[1]}), which is not a floor tile; " \
+                           f"use interact({goal[0]},{goal[1]}) to use it"
+                return self._walk(me, path), None, note, "goto->approach"
             path, _ = bfs_path(state, me, {goal})
             if path is None:
-                return None, "no floor path to that tile", None
+                return None, "no floor path to that tile", None, None
             if not path:
-                return [], None, "already there"
-            return self._walk(me, path), None, None
+                return [], None, "already there", None
+            return self._walk(me, path), None, None, None
         if intent.kind == "interact":
             if intent.name is not None:
                 target, err = resolve_name(state, intent.name)
                 if err:
-                    return None, err, None
+                    return None, err, None, None
             else:
                 target = (intent.x, intent.y)
             if not _in_map(state, *target):
-                return None, "outside the map", None
+                return None, "outside the map", None, None
             if _is_floor(state, *target):
-                return None, f"({target[0]},{target[1]}) is a floor tile; use goto", None
-            adj = {}
-            for a, (dx, dy) in SCREEN_DELTAS.items():
-                spot = (target[0] - dx, target[1] - dy)  # stand here, press a to bump target
-                if _is_floor(state, *spot):
-                    adj[spot] = a
+                path, _ = bfs_path(state, me, {target})
+                if path is None:
+                    return None, f"({target[0]},{target[1]}) is a floor tile with no path to it", None, None
+                note = f"({target[0]},{target[1]}) is a floor tile: walked onto it"
+                if not path:
+                    note = f"({target[0]},{target[1]}) is a floor tile and you are on it"
+                return self._walk(me, path), None, note, "interact->goto"
+            adj = self._adjacent_floor(state, target)
             path, spot = bfs_path(state, me, set(adj))
             if path is None:
-                return None, "no floor tile next to it is reachable", None
-            return self._walk(me, path) + [(adj[spot], None)], None, None
-        return None, f"unknown intent kind {intent.kind!r}", None
+                return None, "no floor tile next to it is reachable", None, None
+            return self._walk(me, path) + [(adj[spot], None)], None, None, None
+        return None, f"unknown intent kind {intent.kind!r}", None, None
+
+    @staticmethod
+    def _adjacent_floor(state, target) -> dict:
+        """{floor tile next to target: action that bumps target from there}."""
+        adj = {}
+        for a, (dx, dy) in SCREEN_DELTAS.items():
+            spot = (target[0] - dx, target[1] - dy)
+            if _is_floor(state, *spot):
+                adj[spot] = a
+        return adj
 
     @staticmethod
     def _walk(start, path):
@@ -336,7 +367,7 @@ class ActionReader:
         if isinstance(intent, str):
             intent = parse_intent(intent)
         res = ExecResult(intent=intent.text, kind=intent.kind)
-        steps, err, note = self.plan(intent, state)
+        steps, err, note, res.coerced = self.plan(intent, state)
         if err is not None:
             res.error = f"{intent.text} failed: {err}"
             steps = [(WAIT, None)]  # budgets always advance

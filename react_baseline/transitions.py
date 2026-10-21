@@ -28,6 +28,7 @@ class VisibleTransition:
     error: str | None = None
     note: str | None = None
     episode_ended: bool = False
+    coerced: str | None = None
 
     def to_row(self) -> dict:
         return asdict(self)

@@ -141,9 +141,7 @@ def test_resolve_name():
 # ---------------------------------------------------------------- failures and stop rules
 @pytest.mark.parametrize("intent,msg", [
     ("goto(9,9)", "goto(9,9) failed: outside the map"),
-    ("goto(0,0)", "goto(0,0) failed: not a floor tile"),
-    ("goto(2,2)", "goto(2,2) failed: not a floor tile"),
-    ("interact(2,1)", "interact(2,1) failed: (2,1) is a floor tile; use goto"),
+    ("goto(0,0)", "goto(0,0) failed: not a floor tile, and no floor tile next to it is reachable"),
     ("interact(0,0)", "interact(0,0) failed: no floor tile next to it is reachable"),
     ("interact(pizza)", "interact(pizza) failed: no visible station or item called 'pizza'"),
     ("dance", "failed: unparseable intent"),
@@ -155,6 +153,31 @@ def test_invalid_intent_runs_one_wait_with_error(intent, msg):
     assert r.stop_reason == "invalid"
     assert msg in r.error
     assert msg in r.trace
+
+
+def test_goto_non_floor_approaches_without_bumping():
+    """goto on a station/item walks next to it and never interacts with it."""
+    r = _run_intents("V2_task_01_tomato", ["goto(0,2)"])[0][0]   # the tomato, on a counter
+    assert r.error is None and r.coerced == "goto->approach" and r.stop_reason == "completed"
+    assert r.primitive_actions == [1]                              # (1,1) -> (1,2), no bump
+    assert r.events == ["moved"]
+    assert r.final.state["agent"]["pos"] == [1, 2] and r.final.state["agent"]["holding"] is None
+    assert "use interact(0,2) to use it" in r.note and "use interact(0,2)" in r.trace
+    r = _run_intents("V2_task_01_tomato", ["goto(2,2)"])[0][0]   # delivery window
+    assert r.coerced == "goto->approach" and r.primitive_actions == [0]   # right is expanded first
+    assert r.final.state["agent"]["pos"] == [2, 1]
+    # already adjacent: waits one step, still no interaction
+    results, _ = _run_intents("V2_task_01_tomato", ["goto(0,2)", "goto(0,2)"])
+    assert results[1].primitive_actions == [4] and results[1].error is None
+    assert "already next to (0,2)" in results[1].note
+    assert results[1].final.state["agent"]["holding"] is None
+
+
+def test_interact_floor_walks_onto_it():
+    r = _run_intents("V2_task_01_tomato", ["interact(2,3)"])[0][0]
+    assert r.error is None and r.coerced == "interact->goto"
+    assert r.final.state["agent"]["pos"] == [2, 3] and r.events == ["moved", "moved", "moved"]
+    assert "is a floor tile: walked onto it" in r.note
 
 
 def test_goto_current_tile_waits_one_step():

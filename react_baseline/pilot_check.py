@@ -103,6 +103,9 @@ def check(run_dir: Path) -> tuple[bool, list[str]]:
         (mismatch == 0, f"replay mismatches vs steps.jsonl: {mismatch} (need 0)"),
     ]
     lines = [f"[{'PASS' if ok else 'FAIL'}] {msg}" for ok, msg in results]
+    if intent_mode and summary.get("intents_coerced") is not None:
+        lines.append(f"(info) intents with goto/interact remapped (not failures): "
+                     f"{summary['intents_coerced']}/{summary.get('intents_executed', 0)}")
     lines.append(f"(info) unique bug IDs: {summary['unique_bug_ids']}, deliveries: "
                  f"{summary['deliveries_success']}, agent bug reports: {summary['agent_bug_reports']}")
     return all(ok for ok, _ in results), lines

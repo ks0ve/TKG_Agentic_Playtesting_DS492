@@ -45,6 +45,7 @@ class RunStats:
     decisions: int = 0
     intents_executed: int = 0
     intent_failures: int = 0
+    intents_coerced: int = 0
     latencies: list = field(default_factory=list)
     input_tokens: int = 0
     output_tokens: int = 0
@@ -287,7 +288,9 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
                                 episode=stats.episodes, global_step_start=start,
                                 global_step_end=stats.global_step, kind=r.kind,
                                 event_records=r.event_records, stop_reason=r.stop_reason,
-                                error=r.error, note=r.note, episode_ended=r.done).to_row()) + "\n")
+                                error=r.error, note=r.note, episode_ended=r.done,
+                                coerced=r.coerced).to_row()) + "\n")
+                            stats.intents_coerced += r.coerced is not None
                         if r.done:
                             done = True
                             break
@@ -366,6 +369,8 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         "intents_executed": stats.intents_executed,
         "intent_failures": stats.intent_failures,
         "intent_failure_rate": (stats.intent_failures / stats.intents_executed) if stats.intents_executed else None,
+        "intents_coerced": stats.intents_coerced,
+        "intent_coercion_rate": (stats.intents_coerced / stats.intents_executed) if stats.intents_executed else None,
         "reports_strict_match": sum(1 for r in report_rows if r["bug_ids_strict"]),
         "reports_lenient_match": sum(1 for r in report_rows if r["bug_ids_in_window"]),
         "unique_bugs_reported_strict": len(strict_ids),
