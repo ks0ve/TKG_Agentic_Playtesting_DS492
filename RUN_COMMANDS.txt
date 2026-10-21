@@ -1,5 +1,5 @@
-RUN COMMANDS (PowerShell, from the project folder)
-=====================================================
+RUN COMMANDS (PowerShell, from the project folder)                         updated 2026-10-21
+=========================================================================================
 
 FIRST-TIME SETUP (once per machine; needs git, uv and Ollama installed)
 git clone https://github.com/ks0ve/TKG_Agentic_Playtesting_DS492.git
@@ -8,93 +8,80 @@ git clone https://github.com/BlueLinkX/SAGE external/SAGE
 git -C external/SAGE checkout 24de803f33123d16fe6f7cfa0062f3c81217a978
 uv venv --python 3.10 .venv
 uv pip install --python .venv\Scripts\python.exe -r requirements.txt
-ollama pull qwen2.5:7b
-.venv\Scripts\python.exe -m pytest          (should say 139 passed)
+ollama pull llama3.1:8b
+.venv\Scripts\python.exe -m pytest          (all offline; no LLM calls)
 
-Mac/Linux: replace  .venv\Scripts\python.exe  with  .venv/bin/python  everywhere,
-and set the API key with  export ANTHROPIC_API_KEY="sk-ant-..."
+Mac/Linux: use .venv/bin/python, and export ANTHROPIC_API_KEY="sk-ant-..."
+Before long local runs: turn off Ollama auto-update; don't run other heavy jobs.
+Ctrl-C stops any run cleanly and still writes its summary (and the spend ledger).
 
-Before long runs: turn off Ollama auto-update (tray icon -> Settings), and don't run other
-heavy jobs on the machine (a CPU-bound job made one local call take 13 minutes).
-Ctrl-C stops any run cleanly and still writes its summary.
-Results go in runs\<timestamp>_<agent>_<task>_seed<N>\  (headline numbers: summary.json)
+AGENTS   react (intents, headline) | react-raw (raw moves, ablation) | random | random-intent
+MODELS   --model-profile from configs\models.yaml:
+         haiku-5.5 (headline, PAID $0.10/$0.50 per MTok) | llama3.1-8b (replication, free)
+         qwen2.5-7b / qwen2.5-14b / mistral-nemo-12b (free) | haiku-4.5 (DISABLED)
+PAID     needs --allow-paid and --max-usd (<= $2 unless --max-usd-override); checked against
+         configs\budget.yaml ($20 cap, $1 margin) and recorded in spend\ledger.jsonl.
+REPRO    --repro turns on agent-driven reproduction (100 steps per attempt, <= 5 attempts,
+         <= 30% of the steps). The grid always uses it.
 
-AGENTS
-  react          ReAct, intent actions (goto/interact/wait/moves) - the headline baseline
-  react-raw      ReAct, raw moves 0-4 - the MVP, kept as an ablation
-  random         uniform over the 5 raw moves (no LLM)
-  random-intent  uniform over the currently valid intents (no LLM)
-All four use the same runner, Action reader, budgets and logging. Compare at a matched
---max-env-steps (the primary axis).
-
-MODELS: --model-profile <name>, from configs\models.yaml
-  qwen2.5-7b (default, free)  qwen2.5-14b  llama3.1-8b  mistral-nemo-12b   (Ollama, free)
-  vllm-qwen2.5-7b             (any OpenAI-compatible server on localhost:8000, free)
-  haiku-4.5                   ($1 / $5 per MTok; temperature 0.7 like the local runs)
-  haiku-5.5                   ($0.10 / $0.50 per MTok; API-default temperature, thinking off)
-  Adding a model = one entry in configs\models.yaml.
+Pilot status (2026-10-21): react PASSED with llama3.1:8b, mistral-nemo:12b, qwen2.5:14b (barely);
+react-raw fails every local pilot and runs ungated as the ablation. Haiku 5.5 not yet piloted.
 
 
---- 1) PILOTS (50 steps each; checked automatically; exit code 0 = PILOT PASSED) ---
+--- 1) PILOTS (50 steps, checked automatically, written to runs\pilot\) ---
 
-Status 2026-10-21: react PASSED with llama3.1:8b, mistral-nemo:12b and (barely) qwen2.5:14b;
-react-raw FAILS with every local model (it runs ungated as the ablation). See EXPERIMENT_LOG.md.
+.venv\Scripts\python.exe -m react_baseline.run --agent react --model-profile llama3.1-8b --task V2_task_01_tomato --seed 0 --pilot --repro --repro-steps 15
+   local llama pilot with reproduction on (~5-10 min, free). --repro-steps 15: attempts may use
+   at most 30% of the steps, i.e. 15 of a 50-step pilot (the default 100 only fits runs >= 334 steps)
 
-Local, free (measured on the RTX 3050 laptop: react ~15-30 min, react-raw ~9 min):
-.venv\Scripts\python.exe -m react_baseline.run --agent react     --model-profile qwen2.5-7b --seed 0 --pilot
-.venv\Scripts\python.exe -m react_baseline.run --agent react-raw --model-profile qwen2.5-7b --seed 0 --pilot
-
-Paid, Haiku (set the key first; est. ~$0.15 per Haiku 4.5 pilot, ~$0.015 per Haiku 5.5 pilot; capped):
 $env:ANTHROPIC_API_KEY = "sk-ant-..."
-.venv\Scripts\python.exe -m react_baseline.run --agent react     --model-profile haiku-4.5 --seed 0 --pilot --max-usd 0.25
-.venv\Scripts\python.exe -m react_baseline.run --agent react-raw --model-profile haiku-4.5 --seed 0 --pilot --max-usd 0.25
+.venv\Scripts\python.exe -m react_baseline.run --agent react --model-profile haiku-5.5 --task V2_task_01_tomato --seed 0 --pilot --repro --repro-steps 15 --allow-paid --max-usd 0.25
+   PAID Haiku 5.5 pilot (est. a few cents; hard cap $0.25; refuses if the budget is short)
 
-Check any run by hand:
 .venv\Scripts\python.exe -m react_baseline.pilot_check runs\pilot\<folder>
-
-Only start a full run for a configuration whose pilot PASSED.
-
-
---- 2) FULL RUNS: V2_task_01_tomato, 3 seeds x 300 env steps ---
-(--max-usd applies to each seed's run separately)
-
-Local qwen2.5:7b (free). Estimates from the pilots: react <= 300 calls x 12-20 s = 1-1.7 h per
-seed (3-5 h per line); react-raw 300 calls x 10 s = ~50 min per seed (~2.5 h per line):
-.venv\Scripts\python.exe -m react_baseline.run --agent react     --model-profile qwen2.5-7b --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 300
-.venv\Scripts\python.exe -m react_baseline.run --agent react-raw --model-profile qwen2.5-7b --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 300
-
-Haiku 4.5. Estimates at <= 300 calls/seed with the pilots' token counts (2.2k in + 90 out per
-react call, 1.6k + 45 per react-raw call; the Claude tokenizer may count up to ~1.35x more):
-react ~$0.80/seed (~$2.40/line), react-raw ~$0.55/seed (~$1.65/line); cap $1.50 per seed.
-Wall time is API-bound, roughly 1-3 s per call: ~5-15 min per seed:
-.venv\Scripts\python.exe -m react_baseline.run --agent react     --model-profile haiku-4.5 --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 300 --max-usd 1.5
-.venv\Scripts\python.exe -m react_baseline.run --agent react-raw --model-profile haiku-4.5 --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 300 --max-usd 1.5
-
-Haiku 5.5 (cheapest): react ~$0.08/seed, react-raw ~$0.055/seed (< $0.25 per line); cap $0.50
-per seed. Note: runs at the API-default temperature (it rejects 0.7):
-.venv\Scripts\python.exe -m react_baseline.run --agent react     --model-profile haiku-5.5 --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 300 --max-usd 0.5
-.venv\Scripts\python.exe -m react_baseline.run --agent react-raw --model-profile haiku-5.5 --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 300 --max-usd 0.5
+   re-check any run by hand
 
 
---- 3) NO-LLM BASELINES, same step budget (seconds) ---
-.venv\Scripts\python.exe -m react_baseline.run --agent random        --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 300
-.venv\Scripts\python.exe -m react_baseline.run --agent random-intent --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 300
-Longer reference curves (~15 s per seed):
-.venv\Scripts\python.exe -m react_baseline.run --agent random        --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 10000
-.venv\Scripts\python.exe -m react_baseline.run --agent random-intent --task V2_task_01_tomato --seeds 0,1,2 --max-env-steps 10000
+--- 2) MONEY, ESTIMATES, BUNDLES ---
+
+.venv\Scripts\python.exe -m react_baseline.spend
+   spent / remaining budget, per profile and run, open reservations
+.venv\Scripts\python.exe -m react_baseline.spend --reconcile runs\pilot\<folder>
+   finalize a reservation left open by a killed run (uses its summary.json)
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\baseline_v2.yaml --dry-run
+   every grid combination with status (done/pending/stale) and est. wall time and $
+   (uses the latest pilot for each agent/model; otherwise labelled defaults)
+.venv\Scripts\python.exe -m react_baseline.bundle runs\pilot\<llama-folder> runs\pilot\<haiku-folder> -o pilots_2026-10-21.zip
+   one zip with the pilot logs, pilot checks, ledger, spend report, git state and grid dry run
+
+
+--- 3) FREEZE + FULL GRID (after reviewing the pilots) ---
+
+.venv\Scripts\python.exe -m react_baseline.frozen --check configs\frozen\baseline_v2.yaml
+   confirm the code still matches the frozen baseline (the grid refuses otherwise)
+git tag baseline-v2-frozen
+   tag the reviewed commit
+
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\baseline_v2.yaml --only random
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\baseline_v2.yaml --only random-intent
+   no-LLM baselines, 9 runs each (~1 min total)
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\baseline_v2.yaml --only react/llama3.1-8b
+   local replication, 9 runs x 1,000 steps (est. ~1.5 h per run from the pilot -> ~14 h)
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\baseline_v2.yaml --only react-raw/llama3.1-8b
+   raw-move ablation, 9 runs (est. ~5 h per run at 1 call/step -> ~44 h; consider running last)
+
+PAID - DO NOT RUN UNTIL APPROVED:
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\baseline_v2.yaml --only react/haiku-5.5 --allow-paid
+   headline, 15 runs x 1,000 steps, each capped at $1.00 (worst case $15; the dry run gives the
+   estimate from the Haiku pilot). Every run passes the budget check and is ledgered.
+
+The grid is resumable: rerun the same command after a crash or Ctrl-C; finished runs are skipped.
 
 
 --- OTHER ---
 
-Offline test of the harness (no model, instant):
+.venv\Scripts\python.exe -m react_baseline.solutions
+   replay the scripted correct-play solutions (--write regenerates configs\normal_play_bugs.yaml)
 .venv\Scripts\python.exe -m react_baseline.run --agent react --llm mock --max-env-steps 100
-
-Self-hosted OpenAI-compatible server (vLLM / llama.cpp / LM Studio): edit base_url and model
-of vllm-qwen2.5-7b in configs\models.yaml (or add an entry), then:
-.venv\Scripts\python.exe -m react_baseline.run --agent react --model-profile vllm-qwen2.5-7b --pilot
-
-Run the test suite:
-.venv\Scripts\python.exe -m pytest
-
-Different task (list in external\SAGE\scenarios\overcooked_plus\tasks.json):
-add  --task V2_task_04_steak  to any command
+   offline harness check (no model)
+Different task: add --task V2_task_07_tomato_steak (list in external\SAGE\scenarios\overcooked_plus\tasks.json)

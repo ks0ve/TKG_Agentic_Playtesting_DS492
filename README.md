@@ -419,7 +419,8 @@ A runner-level protocol with optional agent hooks (`on_repro_start`, `on_repro_t
 1. A bug report filed while exploring starts an attempt unless it is a near-duplicate of an
    already-attempted report (same normalized text or token Jaccard ≥ 0.8), 5 attempts were made,
    or the attempts would exceed 30% of the step budget. This is decided from agent-side
-   information only; the oracle is never consulted.
+   information only; the oracle is never consulted. With the defaults (100-step attempts, 30% cap) a run needs
+   ≥ 334 steps for any attempt; short pilots should pass e.g. `--repro-steps 15`.
 2. The env resets (`episodes.jsonl` end_reason `repro_start`), the history gets
    `=== REPRODUCTION ATTEMPT ===`, and each turn prompt carries
    `REPRODUCTION TASK: reproduce the defect you reported: "<report>". Steps left: k. If you believe
