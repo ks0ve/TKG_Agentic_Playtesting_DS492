@@ -21,8 +21,8 @@ MODELS   --model-profile from configs\models.yaml:
          qwen2.5-7b / qwen2.5-14b / mistral-nemo-12b (free) | haiku-4.5 (DISABLED)
 PAID     needs --allow-paid and --max-usd (<= $2 unless --max-usd-override); checked against
          configs\budget.yaml ($20 cap, $1 margin) and recorded in spend\ledger.jsonl.
-REPRO    --repro turns on agent-driven reproduction (100 steps per attempt, <= 5 attempts,
-         <= 30% of the steps). The grid always uses it.
+REPRO    --repro turns on agent-driven reproduction (<= 5 attempts, <= 30% of the steps). The
+         grids use 50-step attempts (5 x 50 = 250 of 1,000); 50-step pilots use --repro-steps 15.
 
 Pilot status (2026-10-21): react PASSED with llama3.1:8b, mistral-nemo:12b, qwen2.5:14b (barely);
 react-raw fails every local pilot and runs ungated as the ablation. Haiku 5.5 not yet piloted.
@@ -51,8 +51,10 @@ $env:ANTHROPIC_API_KEY = "sk-ant-..."
 .venv\Scripts\python.exe -m react_baseline.grid configs\grids\baseline_v2.yaml --dry-run
    every grid combination with status (done/pending/stale) and est. wall time and $
    (uses the latest pilot for each agent/model; otherwise labelled defaults)
-.venv\Scripts\python.exe -m react_baseline.bundle runs\pilot\<llama-folder> runs\pilot\<haiku-folder> -o pilots_2026-10-21.zip
-   one zip with the pilot logs, pilot checks, ledger, spend report, git state and grid dry run
+.venv\Scripts\python.exe -m react_baseline.bundle --latest-pilots -o pilots.zip
+   newest pilot per agent/model + pilot checks, ledger, spend report, git state, grid dry run
+.venv\Scripts\python.exe -m react_baseline.bundle --grid configs\grids\baseline_v2_progress.yaml -o progress.zip
+   every finished run of a grid (plus that grid's dry run)
 
 
 --- 3) FREEZE + FULL GRID (after reviewing the pilots) ---
@@ -67,12 +69,15 @@ git tag baseline-v2-frozen
    no-LLM baselines, 9 runs each (~1 min total)
 .venv\Scripts\python.exe -m react_baseline.grid configs\grids\baseline_v2.yaml --only react/llama3.1-8b
    local replication, 9 runs x 1,000 steps (est. ~1.5 h per run from the pilot -> ~14 h)
-.venv\Scripts\python.exe -m react_baseline.grid configs\grids\baseline_v2.yaml --only react-raw/llama3.1-8b
-   raw-move ablation, 9 runs (est. ~5 h per run at 1 call/step -> ~44 h; consider running last)
+
+PROGRESS GRID (subset of baseline_v2 with identical settings; its runs count toward the main grid)
+Run as two parallel processes with DISJOINT --only filters; only the Haiku one touches the ledger:
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\baseline_v2_progress.yaml --only react/haiku-5.5,react-raw/haiku-5.5 --allow-paid
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\baseline_v2_progress.yaml --only react/llama3.1-8b,random,random-intent
 
 PAID - DO NOT RUN UNTIL APPROVED:
-.venv\Scripts\python.exe -m react_baseline.grid configs\grids\baseline_v2.yaml --only react/haiku-5.5 --allow-paid
-   headline, 15 runs x 1,000 steps, each capped at $1.00 (worst case $15; the dry run gives the
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\baseline_v2.yaml --only react/haiku-5.5,react-raw/haiku-5.5 --allow-paid
+   headline 15 runs + react-raw ablation 3 runs (tomato) x 1,000 steps, each capped at $1.00 (worst case $18; the dry run gives the
    estimate from the Haiku pilot). Every run passes the budget check and is ledgered.
 
 The grid is resumable: rerun the same command after a crash or Ctrl-C; finished runs are skipped.
