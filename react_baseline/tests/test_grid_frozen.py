@@ -24,18 +24,40 @@ def test_frozen_mismatch_detected(tmp_path):
 def test_shipped_grid_combinations():
     g = grid.load_grid(REPO / "configs" / "grids" / "baseline_v2.yaml")
     cs = grid.combos(g)
-    assert len(cs) == 15 + 9 + 9 + 9 + 9
-    haiku = [c for c in cs if c.profile == "haiku-5.5"]
+    assert len(cs) == 15 + 9 + 3 + 9 + 9
+    haiku = [c for c in cs if c.profile == "haiku-5.5" and c.agent == "react"]
     assert len(haiku) == 15 and all(c.paid for c in haiku)
     a = haiku[0].argv
     assert "--allow-paid" in a and a[a.index("--max-usd") + 1] == "1.00"
     assert "--temperature" not in a and "--repro" in a and a[a.index("--max-env-steps") + 1] == "1000"
+    assert a[a.index("--repro-steps") + 1] == "50"
     llama = next(c for c in cs if c.profile == "llama3.1-8b" and c.agent == "react")
     assert llama.argv[llama.argv.index("--temperature") + 1] == "0.7" and not llama.paid
-    assert not any(c.agent == "react-raw" and c.profile == "haiku-5.5" for c in cs)
+    raw = [c for c in cs if c.agent == "react-raw"]
+    assert len(raw) == 3 and {c.profile for c in raw} == {"haiku-5.5"}
+    assert {c.task for c in raw} == {"V2_task_01_tomato"} and all(c.paid for c in raw)
+    assert not any(c.agent == "react-raw" and c.profile == "llama3.1-8b" for c in cs)
     assert len({c.config_hash for c in cs}) == len(cs)
     assert {c.task for c in cs} == {"V2_task_01_tomato", "V2_task_07_tomato_steak",
                                     "V2_task_11_tomato_lettuce_onion"}
+
+
+def test_progress_grid_is_a_subset_with_identical_hashes():
+    main = {c.label: c for c in grid.combos(grid.load_grid(REPO / "configs/grids/baseline_v2.yaml"))}
+    prog = grid.combos(grid.load_grid(REPO / "configs/grids/baseline_v2_progress.yaml"))
+    assert len(prog) == 9 + 3 + 9 + 9 + 3
+    for c in prog:
+        m = main[c.label]   # every progress run exists in the main grid ...
+        assert (c.run_dir, c.config_hash, c.argv) == (m.run_dir, m.config_hash, m.argv)  # ... identically
+    assert {c.task for c in prog if c.profile == "llama3.1-8b"} == {"V2_task_01_tomato"}
+
+
+def test_only_accepts_comma_list():
+    g = grid.load_grid(REPO / "configs/grids/baseline_v2_progress.yaml")
+    cs = grid.combos(g, "react/haiku-5.5,react-raw/haiku-5.5")
+    assert {(c.agent, c.profile) for c in cs} == {("react", "haiku-5.5"), ("react-raw", "haiku-5.5")}
+    cs = grid.combos(g, "react/llama3.1-8b,random,random-intent")
+    assert not any(c.paid for c in cs) and len(cs) == 3 + 9 + 9
 
 
 @pytest.fixture

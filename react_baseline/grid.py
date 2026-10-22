@@ -45,7 +45,24 @@ class Combo:
 
 
 def load_grid(path) -> dict:
-    return yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    """Load a grid YAML. ``base: <yaml>`` inherits every setting from another grid (only keys
+    given here override it), so a sub-grid produces the same run dirs and config hashes."""
+    g = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    if g.get("base"):
+        base_path = Path(g["base"])
+        if not base_path.is_absolute():
+            base_path = REPO_ROOT / base_path
+        merged = load_grid(base_path)
+        merged.update({k: v for k, v in g.items() if k != "base"})
+        g = merged
+    return g
+
+
+def _matches(only: str | None, agent: str, pname) -> bool:
+    if not only:
+        return True
+    keys = {agent, f"{agent}/{pname}"}
+    return any(o.strip() in keys for o in only.split(","))
 
 
 def _base_argv(g: dict, agent: str, prof, task: str, seed: int) -> list[str]:
@@ -74,10 +91,10 @@ def combos(g: dict, only: str | None = None) -> list[Combo]:
     res = []
     for row in g["rows"]:
         agent, pname = row["agent"], row.get("profile")
-        if only and only not in (agent, f"{agent}/{pname}"):
+        if not _matches(only, agent, pname):
             continue
         prof = resolve_profile(pname) if pname else None
-        for task in g["tasks"]:
+        for task in row.get("tasks", g["tasks"]):
             for seed in row["seeds"]:
                 argv = _base_argv(g, agent, prof, task, seed)
                 h = hashlib.sha256(json.dumps({"argv": argv, "code": identity,
@@ -127,7 +144,9 @@ def dry_run(g: dict, cs: list[Combo]) -> str:
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Resumable experiment grid")
     ap.add_argument("grid")
-    ap.add_argument("--only", default=None, help="agent or agent/profile, e.g. react/llama3.1-8b")
+    ap.add_argument("--only", default=None,
+                    help="comma-separated agents or agent/profile pairs, e.g. "
+                         "react/haiku-5.5,react-raw/haiku-5.5")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--allow-paid", action="store_true", help="run paid combinations (guarded)")
     ap.add_argument("--allow-unfrozen", action="store_true",
