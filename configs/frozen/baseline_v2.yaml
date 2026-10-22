@@ -1,9 +1,10 @@
-# Frozen baseline v2 configuration (2026-10-21). Everything that defines the baseline.
-# The grid driver refuses to run if the code's prompt hash or Action-reader version no
-# longer match (override: --allow-unfrozen). Check: python -m react_baseline.frozen --check <this file>
+# Frozen baseline v2 configuration (2026-10-21, updated for the display-name renderer fix).
+# Everything that defines the baseline. The grid driver refuses to run if the code's prompt
+# hash, renderer hash or Action-reader version no longer match (override: --allow-unfrozen). Check: python -m react_baseline.frozen --check <this file>
 # After review, tag the commit:  git tag baseline-v2-frozen
 name: baseline_v2
 prompts_sha256: 021e1a897272d0b87933193769c809ed850eecac9ec94c916d5b4f1fb38430ac
+renderer_sha256: 45bf2957de7943f9aa283ff3535607647a1aa22d847fd5ff002f55031e030781   # event text uses legend display names
 action_reader_version: 2.1-floor-tolerant
 action_reader:
   floor_tolerance: true      # goto on non-floor approaches without bumping; interact on floor walks
@@ -16,7 +17,7 @@ agent:
   actions_per_call: 1        # react-raw
 repro:
   enabled: true
-  steps: 100
+  steps: 50
   max_attempts: 5
   max_fraction: 0.3
   dedup_jaccard: 0.8
@@ -30,6 +31,7 @@ tasks:
 profiles:
   headline: haiku-5.5        # claude-haiku-5-5, thinking off, max_output_tokens 384
   replication: llama3.1-8b
+  ablation: react-raw on haiku-5.5, V2_task_01_tomato only
 seeds:
   haiku-5.5: 5
   local: 3

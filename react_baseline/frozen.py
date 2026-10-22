@@ -40,9 +40,46 @@ def prompt_hash() -> str:
     return hashlib.sha256(blob).hexdigest()
 
 
+RENDER_PROBE_TASKS = ("V2_task_01_tomato", "V2_task_07_tomato_steak", "V2_task_11_tomato_lettuce_onion")
+
+
+def renderer_hash() -> str:
+    """Hash of every agent-visible text (observation, history summary, event, executor trace)
+    produced by replaying the scripted solutions of the probe tasks, plus the display names.
+    Changes whenever the renderer or event wording changes."""
+    from .action_reader import ActionReader, VisibleStep
+    from .env_adapter import EnvAdapter, display_name, TILE_DESCRIPTIONS
+    from .solutions import load_solution
+
+    h = hashlib.sha256()
+    names = {k: display_name(k) for k in sorted(TILE_DESCRIPTIONS)}
+    h.update(json.dumps(names, sort_keys=True).encode())
+    for task in RENDER_PROBE_TASKS:
+        adapter = EnvAdapter(task)
+        try:
+            h.update(adapter.reset().encode())
+            state, reader = adapter.state, ActionReader()
+
+            def step(a):
+                r = adapter.step(a)
+                h.update((r.obs_text + "\x00" + r.summary).encode())
+                return VisibleStep(r.obs_text, r.summary, r.state, r.state["last_event"]["text"], r.done)
+
+            for intent in load_solution(task):
+                res = reader.execute(intent, state, step)
+                h.update(res.trace.encode())
+                state = res.final.state
+                if res.done:
+                    break
+        finally:
+            adapter.close()
+    return h.hexdigest()
+
+
 def code_identity() -> dict:
     from .action_reader import ACTION_READER_VERSION
-    return {"prompts_sha256": prompt_hash(), "action_reader_version": ACTION_READER_VERSION}
+    return {"prompts_sha256": prompt_hash(), "renderer_sha256": renderer_hash(),
+            "action_reader_version": ACTION_READER_VERSION}
 
 
 def load(path: Path | str = FROZEN_DEFAULT) -> dict:
@@ -56,7 +93,7 @@ def check(path: Path | str = FROZEN_DEFAULT) -> list[str]:
         return [f"frozen config {p} not found"]
     frozen, code = load(p), code_identity()
     out = []
-    for key in ("prompts_sha256", "action_reader_version"):
+    for key in ("prompts_sha256", "renderer_sha256", "action_reader_version"):
         if frozen.get(key) != code[key]:
             out.append(f"{key}: frozen {frozen.get(key)!r} != code {code[key]!r}")
     return out

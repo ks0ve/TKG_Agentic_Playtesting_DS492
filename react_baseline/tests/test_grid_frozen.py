@@ -18,7 +18,14 @@ def test_frozen_mismatch_detected(tmp_path):
     f = tmp_path / "frozen.yaml"
     f.write_text("prompts_sha256: deadbeef\naction_reader_version: 0.1\n", encoding="utf-8")
     bad = frozen.check(f)
-    assert len(bad) == 2 and "prompts_sha256" in bad[0]
+    assert len(bad) == 3 and "prompts_sha256" in bad[0] and "renderer_sha256" in bad[1]
+
+
+def test_renderer_hash_tracks_event_wording(monkeypatch):
+    from react_baseline import env_adapter
+    h = frozen.renderer_hash()
+    monkeypatch.setattr(env_adapter, "display_name", lambda raw: raw)   # the old internal names
+    assert frozen.renderer_hash() != h
 
 
 def test_shipped_grid_combinations():
