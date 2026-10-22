@@ -238,3 +238,21 @@ ingredients; reaches the deep plate-combination rules: 6 plate_composition bugs 
 line in `configs/grids/baseline_v2.yaml` (re-freeze the task list too). Correct play itself fires
 up to 11 oracle IDs on multi-ingredient tasks, so `unique_bugs_excluding_normal_play` matters
 there; the normal-play sets depend on the scripted path and are reporting-only.
+
+## 2026-10-21: Event text used SAGE's internal names (translator bug, fixed)
+
+**Haiku 5.5 pilot** (`runs/pilot/20261021-210802_react_…`, tomato, seed 0, 50 steps, repro on with
+15-step attempts): 26 calls, $0.013 (ledgered), 1 reproduction attempt. Both of its bug reports
+were **false and caused by our label**, not the game: after putting the tomato on the cutting
+board the event read "putdown knife succeeded", and Haiku reported that a knife was being
+mentioned where none exists. (Local llama3.1:8b pilot `20261021-140329_react_…` with repro on:
+PASSED, 0 reports, so no attempt.)
+
+**Fix.** Event text (`describe_event` → LAST EVENT, history summaries, executor traces,
+transitions, `visible_state.last_event.target`) now uses the same display names as the map
+legend and STATIONS list: knife → cutting board, trash_can → trash can, delivery → delivery
+window, ricecooker → rice cooker, pan → pan (stove), block → wall. Structured `stations[].kind`
+keeps the internal id. A test walks random valid intents on all 37 task maps and fails on any
+internal name in agent-visible text. The renderer is shared by every agent; the MVP prompt
+snapshot changed in exactly one line ("bumped delivery" → "bumped delivery window"). The earlier
+pilots ran with the old labels.

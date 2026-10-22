@@ -1,0 +1,2 @@
+{"type": "reservation", "run_dir": "runs/pilot/20261021-210802_react_V2_task_01_tomato_seed0", "profile": "haiku-5.5", "model": "claude-haiku-5-5", "max_usd": 0.25, "ts": "2026-10-21T21:08:03", "status": "running"}
+{"type": "final", "run_dir": "runs/pilot/20261021-210802_react_V2_task_01_tomato_seed0", "usd_cost": 0.013019, "input_tokens": 102636, "output_tokens": 5511, "status": "completed", "stop_reason": "max_env_steps", "ts": "2026-10-21T21:08:49"}

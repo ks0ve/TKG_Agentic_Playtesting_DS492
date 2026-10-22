@@ -322,7 +322,9 @@ def event_record(info) -> dict | None:
     if et == "move" or not isinstance(target, (str, list)) or not target:
         target = None  # move targets are in env (row, col) order; the position is in "agent"
     elif isinstance(target, list):
-        target = [str(t) for t in target]
+        target = [display_name(str(t)) for t in target]
+    else:
+        target = display_name(target)
     success = (ev.get("details", {}).get("others", {}) or {}).get("success")
     return {"type": et, "target": target,
             "success": success if isinstance(success, bool) else None,
@@ -411,6 +413,17 @@ def delivery_success(info) -> bool:
                for e in info.get("item_log", []) if isinstance(e, dict))
 
 
+# Event targets come from SAGE's internal names ("knife", "trash_can", ...). Show the
+# agent the same names the map legend and STATIONS list use ("cutting board", ...).
+_DISPLAY_KEYS = set(_DEVICE_KEYS) | {"block"}
+
+
+def display_name(raw: str) -> str:
+    if raw == "block":
+        return "wall"
+    return TILE_DESCRIPTIONS.get(raw, raw) if raw in _DISPLAY_KEYS else raw
+
+
 def describe_event(info) -> str:
     """Player-visible feedback for the last action (no bug information).
 
@@ -424,14 +437,15 @@ def describe_event(info) -> str:
     if et == "move":
         return "moved"
     if et in ("None", None):
-        return f"nothing happened (bumped {target})" if isinstance(target, str) and target else "nothing happened"
+        return (f"nothing happened (bumped {display_name(target)})"
+                if isinstance(target, str) and target else "nothing happened")
     if et == "deliver":
         return "delivery ACCEPTED (order complete)" if others.get("success") else "delivery REJECTED"
     parts = [et.replace("_", " ")]
     if isinstance(target, str) and target:
-        parts.append(target)
+        parts.append(display_name(target))
     elif isinstance(target, list):
-        parts.append("+".join(map(str, target)))
+        parts.append("+".join(display_name(str(t)) for t in target))
     if others.get("success") is True:
         parts.append("succeeded")
     elif others.get("success") is False:
