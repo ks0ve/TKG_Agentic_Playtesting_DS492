@@ -151,7 +151,9 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
                 for action in decision.actions:
                     if stats.global_step >= budgets.max_env_steps:
                         break
+                    state_before = obs_text
                     res = adapter.step(action)
+                    state_after = res.obs_text
                     stats.global_step += 1
                     episode_step = res.episode_step
                     executed.append(action)
@@ -172,6 +174,8 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
                     row = {
                         "global_step": stats.global_step, "episode": stats.episodes,
                         "episode_step": episode_step, "action": int(action),
+                        "state_before": state_before,
+                        "state_after": state_after,
                         "reward": res.reward, "done": res.done,
                         "bug_ids_triggered": bugs, "new_unique_bug_ids": new,
                         "bug_ids_raw": sorted(set(res.oracle["bugs"])),
