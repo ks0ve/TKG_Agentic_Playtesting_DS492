@@ -86,7 +86,10 @@ The grid is resumable: rerun the same command after a crash or Ctrl-C; finished 
 --- OTHER ---
 
 .venv\Scripts\python.exe -m react_baseline.solutions
-   replay the scripted correct-play solutions (--write regenerates configs\normal_play_bugs.yaml)
+   replay the scripted correct-play solutions (--write refreshes their entries in configs\normal_play_bugs.yaml)
+.venv\Scripts\python.exe -m react_baseline.normal_play --grid --write
+   play every correct-play variant of the 3 grid tasks (~1 min) and rewrite their normal-play sets
+   (--task <id> or --all instead of --grid; --verbose prints every variant)
 .venv\Scripts\python.exe -m react_baseline.run --agent react --llm mock --max-env-steps 100
    offline harness check (no model)
 Different task: add --task V2_task_07_tomato_steak (list in external\SAGE\scenarios\overcooked_plus\tasks.json)

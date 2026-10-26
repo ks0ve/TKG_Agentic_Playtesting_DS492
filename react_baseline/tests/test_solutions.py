@@ -3,6 +3,7 @@ import pytest
 
 from react_baseline.agents import RandomAgent
 from react_baseline.runner import Budgets, run
+from react_baseline.normal_play import load_yaml
 from react_baseline.solutions import load_normal_play, run_solution, solution_tasks
 
 GRID_TASKS = ["V2_task_01_tomato", "V2_task_07_tomato_steak", "V2_task_11_tomato_lettuce_onion"]
@@ -16,8 +17,13 @@ def test_grid_tasks_have_solutions():
 def test_solution_delivers_and_normal_play_file_in_sync(task):
     r = run_solution(task)
     assert r["delivered"], "\n".join(r["traces"])
-    assert load_normal_play()[task] == r["bug_ids_raw"], \
+    entry = load_yaml()["tasks"][task]
+    assert entry["scripted_solution"] == {"bug_ids_raw": r["bug_ids_raw"], "steps": r["steps"]}, \
         "configs/normal_play_bugs.yaml is stale: run python -m react_baseline.solutions --write"
+    # the scripted path is one correct-play variant: its IDs are inside the normal-play set
+    assert set(r["bug_ids_raw"]) <= set(load_normal_play()[task])
+    if entry["source"] == "scripted_solution":
+        assert load_normal_play()[task] == r["bug_ids_raw"]
 
 
 def test_summary_excludes_normal_play_but_changes_nothing_else(tmp_path):

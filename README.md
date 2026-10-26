@@ -449,9 +449,14 @@ transitions and bug_reports. Summary: `{steps,llm_calls,tokens,usd}_{explore,rep
   `cycle2_decision_fraction`: share inside A,B,A,B alternations of length ≥ 4 (the 14b's tomato
   juggling and the 7b's goto/interact loop show up here).
 - **Scripted correct play**: `configs/solutions/<task>.yaml` completes each grid task through the
-  Action reader (tested). `configs/normal_play_bugs.yaml` lists the oracle IDs that fire during
-  that solution (`python -m react_baseline.solutions --write`; a test keeps it in sync); summary
-  `unique_bugs_excluding_normal_play`. `ignore_bug_ids` stays `[5]`.
+  Action reader (tested).
+- **Normal-play bug sets**: `configs/normal_play_bugs.yaml` lists the oracle IDs that fire during
+  correct play. For the grid tasks this is the union over every correct-play variant: preparation
+  order, assembly order, plating method (scoop into the held plate from a station or counter, or
+  put down onto the plate) and putting the plate down partway. It comes from
+  `python -m react_baseline.normal_play --grid --write`, with a per-variant breakdown. Other tasks
+  keep the scripted solution's IDs (`python -m react_baseline.solutions --write`). Used for summary
+  `unique_bugs_excluding_normal_play` and the `*_adj` metrics. `ignore_bug_ids` stays `[5]`.
 
 ## Grid, frozen config and bundles
 

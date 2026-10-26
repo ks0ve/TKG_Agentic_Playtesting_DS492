@@ -212,8 +212,8 @@ seed), local models 3 seeds; `react-raw` runs ungated as the ablation.
 - The bug checks have **no side effects**: the game never actually misbehaves. A predicate fires
   when the agent *attempts* an edge-case interaction, so the oracle labels the agent's attempts,
   not visible malfunctions. An agent can therefore trigger a "bug" without seeing anything wrong.
-- 52 of the 165 bug IDs are unreachable on the shipped maps (`unreachable_on_shipped_maps` in the
-  draft taxonomy).
+- 51 of the 165 bug IDs are unreachable on the shipped maps (`unreachable_on_shipped_maps` in the
+  draft taxonomy; 52 until 2026-10-26, when bug 78 was corrected to `fires_in_runs`).
 - The draft taxonomy (`configs/bug_taxonomy_draft.csv`) is reporting-only: it never filters
   results or changes metrics.
 
@@ -312,3 +312,89 @@ runs (300 steps, seed 0; identical action sequences before and after; mean chara
 
 That is about +6% (react) and +8% (react-raw) input tokens per call. Mock agents rarely reach
 plates or stations, so event-heavy real runs may grow somewhat more.
+
+## 2026-10-26: Order-independent normal-play bug sets (recipe planner)
+
+**Why.** The old normal-play sets came from one scripted solution per task, so they reflected one
+recipe order. For example, bug 78 (a steak on the plate, then a tomato added) fired in the v2.0
+grid but never on the scripted path, which adds tomato first.
+
+**Planner** (`python -m react_baseline.normal_play --task <id> | --grid | --all`, offline). It plays
+every correct-play variant on the real game through the shared Action reader:
+- **Preparation order:** interleaved (prepare an ingredient, add it, prepare the next), or
+  prepare-first in every order (chopped vegetables parked on counters; a steak keeps cooking in
+  the pan meanwhile).
+- **Assembly order:** every order.
+- **Plating method per ingredient:**
+  - scoop into the held plate from the cutting board, pan or a counter;
+  - carry the item and put it down onto the plate on a counter;
+  - park it on a counter, then scoop it.
+- **Plate handling:** the plate is held between consecutive scoops or put down partway.
+
+Plates always start clean, and a correct delivery ends the episode (SAGE `Plate.__init__` /
+`overcooked_env.step`), so no correct path washes a plate. There is no washing variant.
+
+Oracle IDs are recorded on every step whose event did not fail. No valid variant has a failed
+event. A variant counts only if the delivery is accepted.
+
+`configs/normal_play_bugs.yaml` now has, per task:
+- the union (`bug_ids_raw`, used by the metrics)
+- the variant count
+- the IDs that fire in every variant
+- how many variants fire each ID
+- the full per-variant breakdown
+- the scripted solution's IDs, for comparison
+
+Task 78 (not in the grid) keeps its scripted-solution set. The taxonomy draft row 78 now reads
+`fires_in_runs` / `EXCLUDED_normal_play` (copied from the root draft into
+`configs/bug_taxonomy_draft.csv`).
+
+| task | variants (all delivered) | normal-play union | in every variant | old (scripted) set |
+|---|---|---|---|---|
+| 01 tomato | 5 | 5 | 5 | 5 |
+| 07 tomato + steak | 46 | 1, 3, 4, 5, 6, 21, 68, 78, 127 | 5, 6 | 1, 3, 5, 6, 21, 68, 127 |
+| 11 tomato + lettuce + onion | 558 | 1, 2, 3, 4, 5, 7, 66, 67, 70, 71, 73, 74, 85, 86, 87, 88, 102, 103, 105, 107, 109, 133, 134, 135, 146, 147, 148 | 5, 7 | 1, 2, 3, 5, 7, 66, 85, 86, 105, 133, 146 |
+
+**Cross-check against the hand-built lists from the v2.0 runs.**
+
+The hand-built lists were:
+- tomato: 47
+- tomato + steak: 4, 6, 68, 78, 127
+- salad: 3, 4, 7, 70, 73, 74, 86, 87, 88, 102, 103, 109
+- uncertain: 67, 71, 107
+
+In the planner but not in the hand-built lists:
+- **IDs that fire in every variant:** 5 (every completed chop; already in `ignore_bug_ids`), 6 and
+  7 (delivering two or three items).
+- **Plate handling:**
+  - 1 (adding to a held plate that holds one item): any scoop as the second ingredient.
+  - 3 (putting a plate with one item on a counter): putting the plate down partway.
+- **Timing:** 21 (cooked steak stays in the pan for a step): any variant that does not take the
+  steak out on the step it finishes cooking.
+- **Cutting-board scoops:** 2, 85, 105, 133, 134, 135, 146, 147, 148. These are scooping a chopped
+  vegetable from the cutting board into a plate that already holds one or two items. They fire in
+  18–54 of the 558 salad variants.
+- **Salad orders:** 66, 67, 71, 107. The ordered pairs (tomato→lettuce, tomato→onion,
+  lettuce→onion, tomato→chopped onion) each fire in 93 variants. They are as normal as their
+  mirror images (70, 73, 74, 109), which were in the hand-built list. This **resolves 67, 71 and
+  107 as normal play.**
+
+In the hand-built lists but not in the planner:
+- **47** (SINK_HOLD_AFTER_CLEAN, tomato). It fires when a washed plate sits clean in the sink.
+  That needs a dirty plate, and the only source is a delivery. A correct delivery ends the
+  episode, so 47 comes from recovering after a REJECTED delivery (wash the returned plate, then
+  deliver again). That is not correct play from the starting state, so it stays a counted bug.
+  Say if you want recovery play treated as normal.
+
+Every other hand-built ID is in the planner's union: 4, 6, 68, 78, 127 for tomato + steak; all 12
+for the salad.
+
+Variants that never put the plate down (carry every item onto the plate on its counter) avoid
+1 and 3. Variants that never scoop from the cutting board avoid the knife family. Every path
+fires the delivery-count IDs.
+
+`--all` (offline, about 6.5 min) plans 25 of the 37 tasks, all variants delivered except on 78.
+The 12 skipped tasks need cheese or dough, which the planner does not handle. On 78 (onion + fish
++ rice), 240 of 726 variants fail once fish and rice merge into sushi: later additions to that
+plate are refused. The file therefore keeps 78's scripted-solution set, and only the three grid
+tasks are written.
