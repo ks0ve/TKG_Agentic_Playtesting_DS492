@@ -1,0 +1,128 @@
+{
+  "agent": "random-intent",
+  "task": "V2_task_11_tomato_lettuce_onion",
+  "seed": 0,
+  "backend": null,
+  "model": null,
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": null,
+  "parse_errors": 0,
+  "total_env_steps": 1000,
+  "episodes": 5,
+  "llm_calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "total_tokens": 0,
+  "wall_time_s": 0.72,
+  "unique_bug_ids": [
+    15,
+    19,
+    20,
+    28,
+    42
+  ],
+  "n_unique_bugs": 5,
+  "first_found_step": {
+    "15": 322,
+    "19": 64,
+    "20": 46,
+    "28": 1,
+    "42": 600
+  },
+  "discovery_curve": [
+    {
+      "global_step": 1,
+      "cumulative_tokens": 0,
+      "unique_bugs": 1
+    },
+    {
+      "global_step": 46,
+      "cumulative_tokens": 0,
+      "unique_bugs": 2
+    },
+    {
+      "global_step": 64,
+      "cumulative_tokens": 0,
+      "unique_bugs": 3
+    },
+    {
+      "global_step": 322,
+      "cumulative_tokens": 0,
+      "unique_bugs": 4
+    },
+    {
+      "global_step": 600,
+      "cumulative_tokens": 0,
+      "unique_bugs": 5
+    },
+    {
+      "global_step": 1000,
+      "cumulative_tokens": 0,
+      "unique_bugs": 5
+    }
+  ],
+  "deliveries_success": 0,
+  "delivery_attempts": 3,
+  "agent_bug_reports": 0,
+  "ignore_bug_ids": [
+    5
+  ],
+  "action_space": "intent",
+  "usd_cost": 0.0,
+  "decisions": 429,
+  "llm_calls_per_decision": 0.0,
+  "llm_calls_per_env_step": 0.0,
+  "llm_latency_mean_s": null,
+  "llm_latency_median_s": null,
+  "intents_executed": 429,
+  "intent_failures": 0,
+  "intent_failure_rate": 0.0,
+  "intents_coerced": 0,
+  "intent_coercion_rate": 0.0,
+  "reports_strict_match": 0,
+  "reports_lenient_match": 0,
+  "unique_bugs_reported_strict": 0,
+  "unique_bug_ids_reported_strict": [],
+  "bugs_by_proposed_class": {
+    "A_transition_anomaly": 4,
+    "B_no_transition_anomaly": 1
+  },
+  "bugs_by_family": {
+    "counter_pickup": 1,
+    "delivery": 1,
+    "dirty_plate": 1,
+    "station_misuse": 2
+  },
+  "taxonomy_warnings": [],
+  "steps_explore": 1000,
+  "llm_calls_explore": 0,
+  "tokens_explore": 0,
+  "usd_explore": 0.0,
+  "steps_repro": 0,
+  "llm_calls_repro": 0,
+  "tokens_repro": 0,
+  "usd_repro": 0.0,
+  "n_unique_bugs_explore": 5,
+  "repro_attempts": 0,
+  "repro_skipped": {},
+  "repro_success_rate": null,
+  "unique_bugs_reproduced": 0,
+  "unique_bug_ids_reproduced": [],
+  "agent_claim_accuracy": null,
+  "loop_decision_fraction": 0.0,
+  "cycle2_decision_fraction": 0.009324009324009324,
+  "unique_bugs_excluding_normal_play": 5,
+  "normal_play_bug_ids": [
+    1,
+    2,
+    3,
+    5,
+    7,
+    66,
+    85,
+    86,
+    105,
+    133,
+    146
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "agent": "react",
+  "task": "V2_task_01_tomato",
+  "seed": 1,
+  "backend": "anthropic",
+  "model": "claude-haiku-5-5",
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": 0.01839080459770115,
+  "parse_errors": 16,
+  "total_env_steps": 1000,
+  "episodes": 65,
+  "llm_calls": 870,
+  "input_tokens": 3900861,
+  "output_tokens": 188591,
+  "total_tokens": 4089452,
+  "wall_time_s": 1551.45,
+  "unique_bug_ids": [
+    3,
+    19
+  ],
+  "n_unique_bugs": 2,
+  "first_found_step": {
+    "3": 26,
+    "19": 97
+  },
+  "discovery_curve": [
+    {
+      "global_step": 26,
+      "cumulative_tokens": 73594,
+      "unique_bugs": 1
+    },
+    {
+      "global_step": 97,
+      "cumulative_tokens": 406370,
+      "unique_bugs": 2
+    },
+    {
+      "global_step": 1000,
+      "cumulative_tokens": 4089452,
+      "unique_bugs": 2
+    }
+  ],
+  "deliveries_success": 54,
+  "delivery_attempts": 54,
+  "agent_bug_reports": 45,
+  "ignore_bug_ids": [
+    5
+  ],
+  "action_space": "intent",
+  "usd_cost": 0.484382,
+  "decisions": 870,
+  "llm_calls_per_decision": 1.0,
+  "llm_calls_per_env_step": 0.87,
+  "llm_latency_mean_s": 1.7684,
+  "llm_latency_median_s": 1.6422,
+  "intents_executed": 870,
+  "intent_failures": 0,
+  "intent_failure_rate": 0.0,
+  "intents_coerced": 0,
+  "intent_coercion_rate": 0.0,
+  "reports_strict_match": 0,
+  "reports_lenient_match": 0,
+  "unique_bugs_reported_strict": 0,
+  "unique_bug_ids_reported_strict": [],
+  "bugs_by_proposed_class": {
+    "A_transition_anomaly": 1,
+    "B_no_transition_anomaly": 1
+  },
+  "bugs_by_family": {
+    "counter_pickup": 1,
+    "station_misuse": 1
+  },
+  "taxonomy_warnings": [],
+  "steps_explore": 756,
+  "llm_calls_explore": 643,
+  "tokens_explore": 2950858,
+  "usd_explore": 0.348773,
+  "steps_repro": 244,
+  "llm_calls_repro": 227,
+  "tokens_repro": 1138594,
+  "usd_repro": 0.135608,
+  "n_unique_bugs_explore": 0,
+  "repro_attempts": 5,
+  "repro_skipped": {
+    "max_attempts": 37
+  },
+  "repro_success_rate": null,
+  "unique_bugs_reproduced": 0,
+  "unique_bug_ids_reproduced": [],
+  "agent_claim_accuracy": null,
+  "loop_decision_fraction": 0.31264367816091954,
+  "cycle2_decision_fraction": 0.32068965517241377,
+  "unique_bugs_excluding_normal_play": 2,
+  "normal_play_bug_ids": [
+    5
+  ]
+}

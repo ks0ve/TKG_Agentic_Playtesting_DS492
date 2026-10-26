@@ -1,0 +1,88 @@
+{
+  "agent": "react",
+  "task": "V2_task_01_tomato",
+  "seed": 2,
+  "backend": "anthropic",
+  "model": "claude-haiku-5-5",
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": 0.02011173184357542,
+  "parse_errors": 18,
+  "total_env_steps": 1000,
+  "episodes": 64,
+  "llm_calls": 895,
+  "input_tokens": 4032659,
+  "output_tokens": 196112,
+  "total_tokens": 4228771,
+  "wall_time_s": 1571.71,
+  "unique_bug_ids": [
+    3
+  ],
+  "n_unique_bugs": 1,
+  "first_found_step": {
+    "3": 196
+  },
+  "discovery_curve": [
+    {
+      "global_step": 196,
+      "cumulative_tokens": 827329,
+      "unique_bugs": 1
+    },
+    {
+      "global_step": 1000,
+      "cumulative_tokens": 4228771,
+      "unique_bugs": 1
+    }
+  ],
+  "deliveries_success": 53,
+  "delivery_attempts": 53,
+  "agent_bug_reports": 56,
+  "ignore_bug_ids": [
+    5
+  ],
+  "action_space": "intent",
+  "usd_cost": 0.501322,
+  "decisions": 895,
+  "llm_calls_per_decision": 1.0,
+  "llm_calls_per_env_step": 0.895,
+  "llm_latency_mean_s": 1.7419,
+  "llm_latency_median_s": 1.6313,
+  "intents_executed": 895,
+  "intent_failures": 0,
+  "intent_failure_rate": 0.0,
+  "intents_coerced": 0,
+  "intent_coercion_rate": 0.0,
+  "reports_strict_match": 0,
+  "reports_lenient_match": 0,
+  "unique_bugs_reported_strict": 0,
+  "unique_bug_ids_reported_strict": [],
+  "bugs_by_proposed_class": {
+    "B_no_transition_anomaly": 1
+  },
+  "bugs_by_family": {
+    "counter_pickup": 1
+  },
+  "taxonomy_warnings": [],
+  "steps_explore": 750,
+  "llm_calls_explore": 666,
+  "tokens_explore": 3052404,
+  "usd_explore": 0.361229,
+  "steps_repro": 250,
+  "llm_calls_repro": 229,
+  "tokens_repro": 1176367,
+  "usd_repro": 0.140093,
+  "n_unique_bugs_explore": 0,
+  "repro_attempts": 5,
+  "repro_skipped": {
+    "max_attempts": 46
+  },
+  "repro_success_rate": null,
+  "unique_bugs_reproduced": 0,
+  "unique_bug_ids_reproduced": [],
+  "agent_claim_accuracy": null,
+  "loop_decision_fraction": 0.3486033519553073,
+  "cycle2_decision_fraction": 0.32849162011173183,
+  "unique_bugs_excluding_normal_play": 1,
+  "normal_play_bug_ids": [
+    5
+  ]
+}

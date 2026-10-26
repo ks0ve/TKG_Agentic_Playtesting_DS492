@@ -1,0 +1,213 @@
+{
+  "agent": "react",
+  "task": "V2_task_11_tomato_lettuce_onion",
+  "seed": 1,
+  "backend": "anthropic",
+  "model": "claude-haiku-5-5",
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": 0.015018773466833541,
+  "parse_errors": 12,
+  "total_env_steps": 1000,
+  "episodes": 31,
+  "llm_calls": 799,
+  "input_tokens": 3677893,
+  "output_tokens": 182553,
+  "total_tokens": 3860446,
+  "wall_time_s": 1537.81,
+  "unique_bug_ids": [
+    1,
+    3,
+    4,
+    7,
+    15,
+    42,
+    47,
+    67,
+    70,
+    73,
+    74,
+    86,
+    87,
+    88,
+    102,
+    103,
+    107,
+    109
+  ],
+  "n_unique_bugs": 18,
+  "first_found_step": {
+    "1": 446,
+    "3": 452,
+    "4": 22,
+    "7": 36,
+    "15": 303,
+    "42": 307,
+    "47": 310,
+    "67": 72,
+    "70": 142,
+    "73": 113,
+    "74": 22,
+    "86": 156,
+    "87": 93,
+    "88": 33,
+    "102": 33,
+    "103": 93,
+    "107": 84,
+    "109": 142
+  },
+  "discovery_curve": [
+    {
+      "global_step": 22,
+      "cumulative_tokens": 36077,
+      "unique_bugs": 2
+    },
+    {
+      "global_step": 33,
+      "cumulative_tokens": 61560,
+      "unique_bugs": 4
+    },
+    {
+      "global_step": 36,
+      "cumulative_tokens": 74754,
+      "unique_bugs": 5
+    },
+    {
+      "global_step": 72,
+      "cumulative_tokens": 229511,
+      "unique_bugs": 6
+    },
+    {
+      "global_step": 84,
+      "cumulative_tokens": 303678,
+      "unique_bugs": 7
+    },
+    {
+      "global_step": 93,
+      "cumulative_tokens": 333920,
+      "unique_bugs": 9
+    },
+    {
+      "global_step": 113,
+      "cumulative_tokens": 403504,
+      "unique_bugs": 10
+    },
+    {
+      "global_step": 142,
+      "cumulative_tokens": 534423,
+      "unique_bugs": 12
+    },
+    {
+      "global_step": 156,
+      "cumulative_tokens": 610113,
+      "unique_bugs": 13
+    },
+    {
+      "global_step": 303,
+      "cumulative_tokens": 1284091,
+      "unique_bugs": 14
+    },
+    {
+      "global_step": 307,
+      "cumulative_tokens": 1306177,
+      "unique_bugs": 15
+    },
+    {
+      "global_step": 310,
+      "cumulative_tokens": 1321881,
+      "unique_bugs": 16
+    },
+    {
+      "global_step": 446,
+      "cumulative_tokens": 1922237,
+      "unique_bugs": 17
+    },
+    {
+      "global_step": 452,
+      "cumulative_tokens": 1954066,
+      "unique_bugs": 18
+    },
+    {
+      "global_step": 1000,
+      "cumulative_tokens": 3860446,
+      "unique_bugs": 18
+    }
+  ],
+  "deliveries_success": 21,
+  "delivery_attempts": 23,
+  "agent_bug_reports": 55,
+  "ignore_bug_ids": [
+    5
+  ],
+  "action_space": "intent",
+  "usd_cost": 0.459066,
+  "decisions": 799,
+  "llm_calls_per_decision": 1.0,
+  "llm_calls_per_env_step": 0.799,
+  "llm_latency_mean_s": 1.9103,
+  "llm_latency_median_s": 1.7529,
+  "intents_executed": 799,
+  "intent_failures": 0,
+  "intent_failure_rate": 0.0,
+  "intents_coerced": 0,
+  "intent_coercion_rate": 0.0,
+  "reports_strict_match": 12,
+  "reports_lenient_match": 27,
+  "unique_bugs_reported_strict": 7,
+  "unique_bug_ids_reported_strict": [
+    1,
+    4,
+    15,
+    73,
+    74,
+    87,
+    103
+  ],
+  "bugs_by_proposed_class": {
+    "A_transition_anomaly": 8,
+    "B_no_transition_anomaly": 5,
+    "PENDING_directed_check": 5
+  },
+  "bugs_by_family": {
+    "counter_pickup": 1,
+    "delivery": 2,
+    "dirty_plate": 1,
+    "plate_composition": 13,
+    "station_misuse": 1
+  },
+  "taxonomy_warnings": [],
+  "steps_explore": 790,
+  "llm_calls_explore": 599,
+  "tokens_explore": 2784470,
+  "usd_explore": 0.329664,
+  "steps_repro": 210,
+  "llm_calls_repro": 200,
+  "tokens_repro": 1075976,
+  "usd_repro": 0.129402,
+  "n_unique_bugs_explore": 10,
+  "repro_attempts": 5,
+  "repro_skipped": {
+    "max_attempts": 48
+  },
+  "repro_success_rate": 1.0,
+  "unique_bugs_reproduced": 1,
+  "unique_bug_ids_reproduced": [
+    4
+  ],
+  "agent_claim_accuracy": 0.0,
+  "loop_decision_fraction": 0.2327909887359199,
+  "cycle2_decision_fraction": 0.015018773466833541,
+  "unique_bugs_excluding_normal_play": 14,
+  "normal_play_bug_ids": [
+    1,
+    2,
+    3,
+    5,
+    7,
+    66,
+    85,
+    86,
+    105,
+    133,
+    146
+  ]
+}
