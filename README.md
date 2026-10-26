@@ -288,8 +288,12 @@ emit sentinel IDs, then confirms the sentinels reach `steps.jsonl` and never app
 prompt.
 
 Each history entry has the form
-`[turn k] Thought: … | Action: a | Result: you at (x,y) holding …; event: … [| Bug report: …]`.
-An `=== EPISODE RESET ===` marker is inserted when an episode ends. Entries are not summarized.
+`[turn k | ep e | steps a–b (n steps)] Thought: … | Action: a | Result: you at (x,y) holding …; event: … [| Bug report: …]`,
+where `a–b` are episode steps numbered like the observation's `STEP: k/200` line (one step: `step a (1 step)`).
+An `=== EPISODE RESET: the kitchen was reset to its starting state ===` marker is inserted when an
+episode ends (reproduction attempts use the same suffix). Entries are not summarized. Event text
+describes the outcome from the player's view, using the legend's names, e.g. "put tomato on the
+cutting board at (0,3)" or "tried to put tomato down at (1,4), where the onion is: nothing changed".
 
 Reply format: `Thought: …` / `Action: <0-4>[,…]` / optional `Bug report: …`. The parser accepts
 case differences, markdown bold, backticks, brackets, a trailing `(left)`, and action names
@@ -297,11 +301,11 @@ such as `left`. A reply with no parseable action runs **action 4 (wait)**, logs 
 `parse_error`, and adds a format reminder to the next turn. `Bug report: None`-style lines
 are not counted as reports.
 
-`react-raw` uses exactly the MVP prompts above (checked byte-for-byte against
-`tests/snapshots/mvp_prompts.json`). `react` changes only the actions bullet of the system prompt
+`react-raw` uses exactly the MVP system prompt; its observations and history come from the shared
+translator (snapshot `tests/snapshots/mvp_prompts.json`, regenerated for the v2.1 wording). `react` changes only the actions bullet of the system prompt
 (it describes the intent grammar) and the `Action:` spec in the output format and the format
 reminder. Its history entries add the executor trace:
-`[turn k] Thought: … | Action: interact(0,3) | Executor: interact(0,3): 3 step(s) [down,down,left]; events: moved x2; putdown knife succeeded; stop: completed | Result: … [| Bug report: …]`.
+`[turn k | ep e | steps a–b (n steps)] Thought: … | Action: interact(0,3) | Executor: interact(0,3): 3 step(s) [down,down,left]; events: moved x2; put tomato on the cutting board at (0,3); stop: completed | Result: … [| Bug report: …]`.
 A reply with no `Action:` line or an unparseable first intent runs `wait` and counts as a
 parse error; a parseable intent the executor cannot carry out counts as an intent failure.
 

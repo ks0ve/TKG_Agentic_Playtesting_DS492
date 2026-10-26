@@ -18,8 +18,9 @@ import re
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 
-START_MARKER = "=== REPRODUCTION ATTEMPT ==="
-END_MARKER = "=== END REPRODUCTION ==="
+RESET_NOTE = "the kitchen was reset to its starting state"
+START_MARKER = f"=== REPRODUCTION ATTEMPT: {RESET_NOTE} ==="
+END_MARKER = f"=== END REPRODUCTION: {RESET_NOTE} ==="
 TASK_TEMPLATE = ('REPRODUCTION TASK: reproduce the defect you reported: "{report}". '
                  'Steps left: {steps}. If you believe it happened again, add a line "Reproduced: yes".')
 _REPRODUCED = re.compile(r"^[\s*#>_`-]*reproduced[\s*_`]*[:：]\s*[*_`]*\s*(yes|true|y)\b",

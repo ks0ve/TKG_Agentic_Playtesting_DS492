@@ -256,3 +256,59 @@ keeps the internal id. A test walks random valid intents on all 37 task maps and
 internal name in agent-visible text. The renderer is shared by every agent; the MVP prompt
 snapshot changed in exactly one line ("bumped delivery" → "bumped delivery window"). The earlier
 pilots ran with the old labels.
+
+## 2026-10-26: Translator wording v2.1 (event text from the player's view)
+
+**Why.** In the 33-run v2.0 progress grid, Haiku filed 1,019 bug reports, and about 73% were about
+our text interface, not the game:
+- "putdown plate succeeded" was ambiguous;
+- held items were listed twice, once with a coordinate;
+- history step counters looked out of sync across macros, resets and repro;
+- station letters did not show what a station holds.
+
+**Change (shared translator, so `react`, `react-raw`, the random baselines and the TKG arm all get it).**
+- **Event text** says what happened from the player's view: what you held before and after, the
+  tile you acted on (legend name and position), and the result. It never explains why. Examples:
+  - "put chopped lettuce onto the plate at (3,0); the plate now holds [chopped tomato, chopped lettuce]"
+  - "tried to put tomato down at (1,4), where the onion is: nothing changed"
+  - "tried to add from the empty cutting board at (0,3) to the plate you are holding: nothing changed"
+  - "delivered the empty plate: order REJECTED"
+  - "waited"
+
+  When ingredients merge on a plate, the merged result is shown ("the plate now holds [sushi]").
+  The full approved table is in `react_baseline/tests/test_event_wording.py`.
+- **Names.** The legend's display names are used everywhere, with no synonyms. The pan's legend
+  entry is now just "pan" (was "pan (stove)"). The no-raw-names test covers all 37 maps and every
+  channel: observation, history summary, event record text and names, executor trace, and full
+  ReAct prompts. It also rejects SAGE event types ("putdown", "pickup", "dump"), "succeeded" and
+  snake_case identifiers.
+- **ITEMS** lists a held item as `- plate [clean; contents: ...] (held by you)`, with no coordinate.
+- **Legend.** One added line: "Station letters do not show what the station holds; see STATIONS."
+- **History lines** are labelled `[turn 12 | ep 3 | steps 14–18 (5 steps)]`, using episode steps
+  numbered like the observation's `STEP: k/200` line. A test checks every label against
+  steps.jsonl across macros, a natural 200-step episode end and a reproduction attempt.
+- **Markers.** `=== EPISODE RESET: the kitchen was reset to its starting state ===`, and the same
+  suffix on the reproduction start and end markers.
+- **New event-record fields** (add-only; `type`, `target`, `success` unchanged), in
+  transitions.jsonl and `visible_state.last_event`:
+  - `held_before`, `held_after`
+  - `tile`: the [x, y] the action was aimed at
+  - `tile_before`, `tile_after`: `{kind, holding}`
+- The system prompts are byte-identical. The react-raw prompt snapshot was regenerated, since its
+  observations and history use the shared translator. The frozen identity changed; see
+  `configs/frozen/baseline_v2_1.yaml`.
+
+**Token cost.** The longer event text and labels increase prompt size slightly. Measured on mock
+runs (300 steps, seed 0; identical action sequences before and after; mean characters per call):
+
+| arm / task | user prompt before → after | system + user |
+|---|---|---|
+| react / 01 tomato | 3,522 → 3,896 (+10.6%) | 6,401 → 6,775 (+5.8%) |
+| react / 07 tomato+steak | 3,558 → 3,945 (+10.9%) | 6,437 → 6,824 (+6.0%) |
+| react / 11 salad | 3,514 → 3,874 (+10.3%) | 6,392 → 6,753 (+5.6%) |
+| react-raw / 01 tomato | 2,368 → 2,765 (+16.8%) | 4,686 → 5,083 (+8.5%) |
+| react-raw / 07 tomato+steak | 2,401 → 2,768 (+15.3%) | 4,719 → 5,086 (+7.8%) |
+| react-raw / 11 salad | 2,379 → 2,763 (+16.1%) | 4,697 → 5,081 (+8.2%) |
+
+That is about +6% (react) and +8% (react-raw) input tokens per call. Mock agents rarely reach
+plates or stations, so event-heavy real runs may grow somewhat more.

@@ -9,7 +9,8 @@ intent), and ``on_episode_reset()`` when the env resets.
 
 Agents: ``ReActAgent(action_space="intent")`` (CLI ``react``, the headline
 baseline), ``ReActAgent(action_space="primitive")`` (CLI ``react-raw``, the MVP
-ablation; prompts byte-identical to the MVP), ``RandomAgent`` (uniform over the
+ablation; system prompt byte-identical to the MVP, observations and history from the
+shared translator), ``RandomAgent`` (uniform over the
 5 raw actions) and ``RandomIntentAgent`` (uniform over currently valid intents).
 """
 from __future__ import annotations
@@ -20,7 +21,7 @@ from dataclasses import dataclass, field
 
 from . import prompts
 from .action_reader import Intent, parse_intents, valid_intents
-from .repro import END_MARKER, START_MARKER, parse_reproduced, task_block
+from .repro import END_MARKER, RESET_NOTE, START_MARKER, parse_reproduced, task_block
 from .llm import estimate_tokens
 
 WAIT = 4
@@ -159,7 +160,7 @@ class ReActAgent:
     Action reader; the history records the intent, the executor trace and the
     result. The agent is consulted at every decision point either way."""
 
-    RESET_MARKER = "=== EPISODE RESET ==="
+    RESET_MARKER = f"=== EPISODE RESET: {RESET_NOTE} ==="
 
     def __init__(self, llm, history: int = 10, actions_per_call: int = 1, warn=print,
                  action_space: str = "primitive", intents_per_call: int = 1):
@@ -218,16 +219,31 @@ class ReActAgent:
         self.entries.append(END_MARKER)
         self.repro_report = None
 
+    def _turn_label(self, executed: list[int], results) -> str:
+        """'[turn 12 | ep 3 | steps 14–18 (5 steps)]': episode steps, numbered like the
+        observation's 'STEP: k/200' line (the step counter after each executed step)."""
+        label = f"turn {self._turn_index} | ep {self.episode}"
+        finals = [r.final for r in results or [] if r.final is not None]
+        n = len(executed)
+        if finals and n:
+            last = finals[-1].state.get("episode_step")
+            if last is not None:
+                first = last - n + 1
+                span = f"step {last}" if n == 1 else f"steps {first}–{last}"
+                label += f" | {span} ({n} step{'s' if n != 1 else ''})"
+        return f"[{label}]"
+
     def observe(self, executed: list[int], summary: str, results=None):
         p = self._pending or ParsedResponse()
         self._turn_index += 1
+        head = self._turn_label(executed, results)
         if self.action_space == "intent":
             intents = "; ".join(r.intent for r in results or []) or "(none)"
             trace = " / ".join(r.trace for r in results or [])
-            line = (f"[turn {self._turn_index}] Thought: {p.thought or '(none)'} | "
+            line = (f"{head} Thought: {p.thought or '(none)'} | "
                     f"Action: {intents} | Executor: {trace} | Result: {summary}")
         else:
-            line = (f"[turn {self._turn_index}] Thought: {p.thought or '(none)'} | "
+            line = (f"{head} Thought: {p.thought or '(none)'} | "
                     f"Action: {','.join(map(str, executed))} | Result: {summary}")
         if p.bug_report:
             line += f" | Bug report: {p.bug_report}"

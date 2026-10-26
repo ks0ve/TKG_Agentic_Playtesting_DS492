@@ -19,7 +19,8 @@ def _read(path):
 
 # ---------------------------------------------------------------- MVP snapshot
 def test_primitive_prompts_match_mvp_snapshot(tmp_path):
-    """react-raw must send byte-for-byte the prompts the MVP sent."""
+    """react-raw sends the MVP system prompt byte-for-byte; its turn prompts use the shared
+    translator, so this snapshot was regenerated for the v2.1 event wording (EXPERIMENT_LOG)."""
     assert prompts.system_prompt(1) == SNAP["system_k1"]
     assert prompts.system_prompt(3) == SNAP["system_k3"]
     llm = MockLLM(script=["Thought: a\nAction: 0", "garbage",
@@ -93,7 +94,10 @@ def test_react_intent_run_history_fallback_and_logs(tmp_path):
     assert s["llm_calls_per_env_step"] == pytest.approx(4 / 6)
     # history: intent, executor trace, result; the error and the reminder reach the agent
     u = llm.calls[3][1]
-    assert "Action: interact(0,2) | Executor: interact(0,2): 2 step(s) [down,left]; events: moved; pickup tomato; stop: completed | Result: you at (1,2) holding tomato" in u
+    assert ("[turn 1 | ep 1 | steps 1–2 (2 steps)] Thought: get tomato | Action: interact(0,2) | "
+            "Executor: interact(0,2): 2 step(s) [down,left]; events: moved; picked up tomato from the "
+            "counter at (0,2); stop: completed | Result: you at (1,2) holding tomato") in u
+    assert "[turn 3 | ep 1 | step 4 (1 step)] Thought: off map" in u
     assert "error: goto(9,9) failed: outside the map" in u
     assert "FORMAT REMINDER" in llm.calls[2][1] and "FORMAT REMINDER" not in u
     assert llm.calls[0][0] == prompts.system_prompt(1, "intent")

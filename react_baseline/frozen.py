@@ -1,6 +1,6 @@
 """Frozen baseline configuration: what defines "baseline v2", and a check against the code.
 
-    python -m react_baseline.frozen --check configs/frozen/baseline_v2.yaml
+    python -m react_baseline.frozen --check configs/frozen/baseline_v2_1.yaml
     python -m react_baseline.frozen --print-identity
 
 The grid driver refuses to run when the code's prompt hash or Action-reader version
@@ -18,12 +18,14 @@ from pathlib import Path
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-FROZEN_DEFAULT = REPO_ROOT / "configs" / "frozen" / "baseline_v2.yaml"
+FROZEN_DEFAULT = REPO_ROOT / "configs" / "frozen" / "baseline_v2_1.yaml"
 
 
 def prompt_texts() -> dict[str, str]:
     from . import prompts, repro
+    from .agents import ReActAgent
     return {
+        "reset_marker": ReActAgent.RESET_MARKER,
         "system_intent_1": prompts.system_prompt(1, "intent"),
         "system_primitive_1": prompts.system_prompt(1, "primitive"),
         "turn_template": prompts.TURN_TEMPLATE,

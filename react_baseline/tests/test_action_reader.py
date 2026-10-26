@@ -125,7 +125,7 @@ def test_interact_walks_adjacent_then_bumps_once():
     results, _ = _run_intents("V2_task_01_tomato", ["interact(0,2)"])
     r = results[0]
     assert r.primitive_actions == [1, 2]  # down to (1,2), then left into the tomato
-    assert r.events[-1] == "pickup tomato" and r.stop_reason == "completed"
+    assert r.events[-1] == "picked up tomato from the counter at (0,2)" and r.stop_reason == "completed"
     assert r.final.state["agent"]["holding"]["name"] == "tomato"
 
 
@@ -261,7 +261,7 @@ def test_verified_demo_tasks_solvable_with_intents(task):
     traces = "\n".join(r.trace for r in results)
     assert all(r.error is None for r in results), traces
     last = results[-1]
-    assert last.done and last.events[-1] == "delivery ACCEPTED (order complete)", traces
+    assert last.done and last.events[-1].endswith(": order ACCEPTED"), traces
     assert len(results) == len(SOLUTIONS[task]), traces
 
 

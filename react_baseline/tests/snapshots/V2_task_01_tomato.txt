@@ -6,6 +6,7 @@ MAP (x = column, y = row; (0,0) is top-left; right = x+1, down = y+1)
   3 K . . . W
   4 # G # L #
 Legend: .=floor (walkable), #=empty counter (holds one item), @=you, T=tomato (on a counter), L=lettuce (on a counter), O=onion (on a counter), S=steak (on a counter), P=plate (on a counter), K=cutting board, X=delivery window, W=sink, G=trash can
+Station letters do not show what the station holds; see STATIONS.
 
 STATIONS
 - (0,3) cutting board: empty
