@@ -431,3 +431,41 @@ Haiku reproduction attempts (react and react-raw) had a source ID left after adj
 (up to 1.0) were all about normal-play IDs. llama3.1:8b and the random baselines rarely complete
 a recipe, so adjustment barely changes them. These are v2.0 numbers, superseded for reports and
 reproduction by v2.1 (next entry).
+
+## 2026-10-26: v2.0 → v2.1
+
+**What changed.** Only the agent-visible text changed. Settings, system prompts, the
+Action reader (`2.1-floor-tolerant`), tasks, seeds and budgets are identical to v2.0.
+- Translator v2.1 (entry above): player-view event text, legend names only, held items without
+  coordinates, the station-letter legend note, history labels with episode-step ranges, and
+  reset/reproduction markers that say the kitchen was reset.
+- New add-only event-record fields: `held_before`, `held_after`, `tile`, `tile_before`,
+  `tile_after`.
+- Prompt size: about +6% (react) and +8% (react-raw) input tokens per call.
+
+**Configs.**
+- `configs/frozen/baseline_v2_1.yaml`: new prompt and renderer hashes. The prompt hash now also
+  covers the episode-reset marker.
+- `configs/grids/baseline_v2_1.yaml`: the full grid.
+- `configs/grids/baseline_v2_1_progress.yaml`: the same 33 combinations as the v2.0 progress
+  grid. Both write to `runs/grids/baseline_v2_1/`.
+- The v2.0 files (`configs/frozen/baseline_v2.yaml`, `configs/grids/baseline_v2*.yaml`) stay as
+  the record of `runs/grids/baseline_v2/`, marked superseded. They no longer pass the frozen check,
+  by design.
+
+**Normal-play sets.** These are the planner unions from the order-independent normal-play entry
+above, used by `unique_bugs_excluding_normal_play` (new runs) and by the `*_adj` metrics:
+
+| task | set |
+|---|---|
+| tomato | 5 |
+| tomato + steak | 1, 3, 4, 5, 6, 21, 68, 78, 127 |
+| salad | 1, 2, 3, 4, 5, 7, 66, 67, 70, 71, 73, 74, 85, 86, 87, 88, 102, 103, 105, 107, 109, 133, 134, 135, 146, 147, 148 |
+
+`ignore_bug_ids` stays `[5]`. The oracle is unchanged.
+
+**v2.0 results** (`runs/grids/baseline_v2/`, 33 runs) are kept and not re-run. Raw bug counts,
+deliveries, calls and cost stay valid as v2.0 measurements, and `summary_rescored.json` adds the
+adjusted metrics. The v2.0 results are **superseded for bug reports and reproduction metrics**:
+about 73% of Haiku's reports were about our text interface, and its reproduction attempts
+targeted normal-play IDs. Report-based comparisons should use v2.1 runs.

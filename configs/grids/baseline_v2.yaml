@@ -1,3 +1,5 @@
+# SUPERSEDED by configs/grids/baseline_v2_1*.yaml (2026-10-26, translator v2.1). Kept as the record of the
+# v2.0 runs in runs/grids/baseline_v2/; its frozen check now fails by design (see EXPERIMENT_LOG).
 # Baseline v2 full-run grid. Run with:
 #   python -m react_baseline.grid configs/grids/baseline_v2.yaml --dry-run
 #   python -m react_baseline.grid configs/grids/baseline_v2.yaml --only react/llama3.1-8b

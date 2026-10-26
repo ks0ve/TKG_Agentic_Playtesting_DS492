@@ -463,20 +463,22 @@ transitions and bug_reports. Summary: `{steps,llm_calls,tokens,usd}_{explore,rep
 
 ## Grid, frozen config and bundles
 
-- **Grid** `configs/grids/baseline_v2.yaml`: tasks 01 tomato, 07 tomato + steak, 11 tomato +
-  lettuce + onion; 1,000 steps; history 10; temperature 0.7 where supported; $1 per paid run;
-  repro on. Rows: `react` × haiku-5.5 (5 seeds), `react` and `react-raw` × llama3.1-8b (3 seeds),
-  `random` and `random-intent` (3 seeds).
-- `python -m react_baseline.grid configs/grids/baseline_v2.yaml [--only react/llama3.1-8b]
+- **Grid** `configs/grids/baseline_v2_1.yaml` (v2.1; `baseline_v2.yaml` is the superseded v2.0
+  record): tasks 01 tomato, 07 tomato + steak, 11 tomato + lettuce + onion; 1,000 steps; history
+  10; temperature 0.7 where supported; $1 per paid run; repro on. Rows: `react` × haiku-5.5
+  (5 seeds), `react` × llama3.1-8b (3 seeds), `react-raw` × haiku-5.5 on tomato (3 seeds),
+  `random` and `random-intent` (3 seeds). `baseline_v2_1_progress.yaml` is a 33-run subset.
+- `python -m react_baseline.grid configs/grids/baseline_v2_1.yaml [--only react/llama3.1-8b]
   [--dry-run] [--allow-paid] [--allow-unfrozen]`. Sequential and resumable: a combination is done
-  when `runs/grids/baseline_v2/<agent>_<profile>_<task>_seed<N>/summary.json` has stop_reason
+  when `runs/grids/baseline_v2_1/<agent>_<profile>_<task>_seed<N>/summary.json` has stop_reason
   `max_env_steps` and the same config hash; anything else is re-run (the old dir is kept as
   `*_stale<timestamp>`). Paid combinations go through every guardrail above. `--dry-run` shows
   status and estimated wall time / $ per combination.
-- **Frozen config** `configs/frozen/baseline_v2.yaml` records everything that defines the
-  baseline (prompt hash, Action-reader version, agent / repro / budget settings, tasks, profiles,
-  `ignore_bug_ids`). The grid refuses to run if the code's prompt hash or reader version no longer
-  match (`python -m react_baseline.frozen --check configs/frozen/baseline_v2.yaml`).
+- **Frozen config** `configs/frozen/baseline_v2_1.yaml` records everything that defines the
+  baseline (prompt hash, renderer hash, Action-reader version, agent / repro / budget settings,
+  tasks, profiles, `ignore_bug_ids`). The grid refuses to run if the code no longer matches
+  (`python -m react_baseline.frozen --check configs/frozen/baseline_v2_1.yaml`).
+  `baseline_v2.yaml` is kept as the v2.0 record and no longer matches the code.
 - **Bundle** `python -m react_baseline.bundle <run_dir> ... -o out.zip`: per-run logs plus a fresh
   `pilot_check.txt`, the ledger, the spend report, git HEAD / status and the grid dry run, in one
   zip for analysis elsewhere.

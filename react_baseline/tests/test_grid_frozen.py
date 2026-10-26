@@ -70,6 +70,27 @@ def test_progress_grid_is_a_subset_with_identical_hashes():
     assert {c.task for c in prog if c.profile == "llama3.1-8b"} == {"V2_task_01_tomato"}
 
 
+def test_v2_1_grids_mirror_v2_with_new_frozen_config_and_out_dir():
+    """Same combinations and run arguments as v2.0; only the frozen file and output folder change."""
+    for new, old in (("baseline_v2_1.yaml", "baseline_v2.yaml"),
+                     ("baseline_v2_1_progress.yaml", "baseline_v2_progress.yaml")):
+        g_new, g_old = (grid.load_grid(REPO / "configs" / "grids" / f) for f in (new, old))
+        assert g_new["frozen"] == "configs/frozen/baseline_v2_1.yaml"
+        assert g_new["out_dir"] == "runs/grids/baseline_v2_1"
+        assert {k: v for k, v in g_new.items() if k not in ("name", "frozen", "out_dir", "base")} == \
+            {k: v for k, v in g_old.items() if k not in ("name", "frozen", "out_dir", "base")}
+        c_new, c_old = grid.combos(g_new), grid.combos(g_old)
+        assert [(c.label, c.argv) for c in c_new] == [(c.label, c.argv) for c in c_old]
+        assert all(c.run_dir.parent.name == "baseline_v2_1" for c in c_new)
+    main = {c.label: c for c in grid.combos(grid.load_grid(REPO / "configs/grids/baseline_v2_1.yaml"))}
+    prog = grid.combos(grid.load_grid(REPO / "configs/grids/baseline_v2_1_progress.yaml"))
+    assert len(prog) == 33
+    for c in prog:
+        assert (c.run_dir, c.config_hash, c.argv) == (main[c.label].run_dir, main[c.label].config_hash,
+                                                      main[c.label].argv)
+    assert frozen.check(REPO / grid.load_grid(REPO / "configs/grids/baseline_v2_1.yaml")["frozen"]) == []
+
+
 def test_only_accepts_comma_list():
     g = grid.load_grid(REPO / "configs/grids/baseline_v2_progress.yaml")
     cs = grid.combos(g, "react/haiku-5.5,react-raw/haiku-5.5")

@@ -1,14 +1,15 @@
 """Pack run directories into one zip for offline analysis elsewhere.
 
     python -m react_baseline.bundle --latest-pilots -o pilots.zip
-    python -m react_baseline.bundle --grid configs/grids/baseline_v2_progress.yaml -o progress.zip
+    python -m react_baseline.bundle --grid configs/grids/baseline_v2_1_progress.yaml -o progress.zip
     python -m react_baseline.bundle <run_dir> [<run_dir> ...] -o some_runs.zip
 
 --latest-pilots picks the newest runs/pilot/* dir for each (agent, model); --grid packs every
 finished run of that grid (and uses it for the dry run). They combine with explicit run dirs.
 
 Per run: config.json, summary.json, steps.jsonl, llm_calls.jsonl, bug_reports.jsonl,
-repro_attempts.jsonl, transitions.jsonl, episodes.jsonl (those that exist) and a fresh
+repro_attempts.jsonl, transitions.jsonl, episodes.jsonl, summary_rescored.json (those that
+exist) and a fresh
 pilot_check.txt. Once per bundle: spend/ledger.jsonl, the spend report, git HEAD +
 status, and the grid --dry-run output. Works on Windows (zipfile, posix arcnames).
 """
@@ -25,8 +26,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RUN_FILES = ["config.json", "summary.json", "steps.jsonl", "llm_calls.jsonl", "bug_reports.jsonl",
-             "repro_attempts.jsonl", "transitions.jsonl", "episodes.jsonl"]
-DEFAULT_GRID = REPO_ROOT / "configs" / "grids" / "baseline_v2.yaml"
+             "repro_attempts.jsonl", "transitions.jsonl", "episodes.jsonl", "summary_rescored.json"]
+DEFAULT_GRID = REPO_ROOT / "configs" / "grids" / "baseline_v2_1.yaml"
 PILOT_ROOT = REPO_ROOT / "runs" / "pilot"
 
 

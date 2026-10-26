@@ -1,3 +1,4 @@
+# SUPERSEDED by configs/frozen/baseline_v2_1.yaml (2026-10-26). Kept as the record of the v2.0 runs.
 # Frozen baseline v2 configuration (2026-10-21, updated for the display-name renderer fix).
 # Everything that defines the baseline. The grid driver refuses to run if the code's prompt
 # hash, renderer hash or Action-reader version no longer match (override: --allow-unfrozen). Check: python -m react_baseline.frozen --check <this file>

@@ -1,7 +1,7 @@
 """Lightweight, resumable grid driver.
 
-    python -m react_baseline.grid configs/grids/baseline_v2.yaml --dry-run
-    python -m react_baseline.grid configs/grids/baseline_v2.yaml [--only react/llama3.1-8b] [--allow-paid]
+    python -m react_baseline.grid configs/grids/baseline_v2_1.yaml --dry-run
+    python -m react_baseline.grid configs/grids/baseline_v2_1.yaml [--only react/llama3.1-8b] [--allow-paid]
 
 Runs agent x profile x task x seed combinations sequentially through the normal CLI
 (so every guardrail applies). A combination is done when its run dir holds a

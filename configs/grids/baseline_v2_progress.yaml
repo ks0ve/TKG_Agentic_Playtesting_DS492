@@ -1,3 +1,5 @@
+# SUPERSEDED by configs/grids/baseline_v2_1*.yaml (2026-10-26, translator v2.1). Kept as the record of the
+# v2.0 runs in runs/grids/baseline_v2/; its frozen check now fails by design (see EXPERIMENT_LOG).
 # Progress subset of the baseline v2 grid. Inherits every setting (tasks, steps, history,
 # temperature, repro, out_dir, frozen) from baseline_v2.yaml and only replaces the rows, so
 # each run here has the same run dir and config hash as in the main grid and is never rerun.
