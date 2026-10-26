@@ -398,3 +398,36 @@ The 12 skipped tasks need cheese or dough, which the planner does not handle. On
 + rice), 240 of 726 variants fail once fish and rice merge into sushi: later additions to that
 plate are refused. The file therefore keeps 78's scripted-solution set, and only the three grid
 tasks are written.
+
+## 2026-10-26: Adjusted metrics against the normal-play sets (v2.0 grid rescored)
+
+`python -m react_baseline.rescore <run_dir|grid_dir>` writes `summary_rescored.json` next to each
+`summary.json`, which is never modified. The file holds the original summary plus added fields,
+with the task's normal-play IDs removed:
+- `unique_bugs_excluding_normal_play` (new sets)
+- `reports_strict_match_adj`, `unique_bugs_reported_strict_adj`
+- per repro attempt: `source_bug_ids_strict_adj`, `oracle_reproduced_adj`
+- `repro_success_rate_adj`, over attempts whose source report still has an ID
+- `bugs_by_proposed_class_adj`
+
+Nothing is re-run, and the oracle and `ignore_bug_ids` are unchanged.
+
+v2.0 progress grid, means over 3 seeds (`runs/grids/baseline_v2/`):
+
+| arm | task | bugs raw | bugs adj | deliveries | LLM calls | $ | reports strict adj | repro success adj |
+|---|---|---|---|---|---|---|---|---|
+| react / haiku-5.5 | 01 tomato | 1.0 | 1.0 | 55.3 | 879 | 0.492 | 0 | - |
+| react / haiku-5.5 | 07 tomato+steak | 8.7 | 1.0 | 25.0 | 896 | 0.521 | 0.3 | - |
+| react / haiku-5.5 | 11 salad | 16.0 | 2.7 | 19.7 | 800 | 0.462 | 0.3 | - |
+| react-raw / haiku-5.5 | 01 tomato | 0.3 | 0.3 | 57.7 | 1000 | 0.513 | 0 | - |
+| react / llama3.1-8b | 01 tomato | 10.7 | 10.7 | 1.0 | 757 | 0 | 11.3 | 0.75 |
+| random | 01 / 07 / 11 | 8.3 / 10.3 / 9.0 | 8.3 / 9.7 / 9.0 | 0 | 0 | 0 | 0 | - |
+| random-intent | 01 / 07 / 11 | 7.3 / 8.0 / 5.3 | 7.3 / 7.3 / 5.3 | 0 | 0 | 0 | 0 | - |
+
+**Reading.** Haiku plays the game: 20–58 accepted deliveries per 1,000 steps. Almost everything
+its runs trigger on the multi-ingredient tasks is normal play: 8.7 → 1.0 bugs on 07 and
+16.0 → 2.7 on 11. Its strict-matching reports drop from 11–22 per run to 0–1. None of the 60
+Haiku reproduction attempts (react and react-raw) had a source ID left after adjustment, so its v2.0 repro success rates
+(up to 1.0) were all about normal-play IDs. llama3.1:8b and the random baselines rarely complete
+a recipe, so adjustment barely changes them. These are v2.0 numbers, superseded for reports and
+reproduction by v2.1 (next entry).

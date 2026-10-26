@@ -457,6 +457,9 @@ transitions and bug_reports. Summary: `{steps,llm_calls,tokens,usd}_{explore,rep
   `python -m react_baseline.normal_play --grid --write`, with a per-variant breakdown. Other tasks
   keep the scripted solution's IDs (`python -m react_baseline.solutions --write`). Used for summary
   `unique_bugs_excluding_normal_play` and the `*_adj` metrics. `ignore_bug_ids` stays `[5]`.
+- **Adjusted metrics**: `python -m react_baseline.rescore <run_dir|grid_dir>` writes `summary_rescored.json` (the summary plus
+  `*_adj` fields with the normal-play IDs removed: reports, reproduction, taxonomy classes) and prints an
+  arm x task table. `summary.json` is never modified.
 
 ## Grid, frozen config and bundles
 
