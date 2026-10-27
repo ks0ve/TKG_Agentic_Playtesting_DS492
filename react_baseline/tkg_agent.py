@@ -89,7 +89,8 @@ class TKGAgent(CheapAgent):
         d = self.trigger.detail
         deviation = {"fire": fire, "reason": reason, "score": round(1.0 - d.get("p_outcome", 0.0), 4),
                      "p_outcome": round(d.get("p_outcome", 0.0), 4), "level": d.get("level"),
-                     "support": d.get("support"), "usual": d.get("usual")}
+                     "support": d.get("support"), "usual": d.get("usual"),
+                     "counted": not self.in_repro}
         if not self.in_repro:
             self.checks += 1
             if fire:

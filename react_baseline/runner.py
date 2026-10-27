@@ -27,6 +27,7 @@ from .repro import ReproConfig, ReproController
 from .solutions import load_normal_play
 from .taxonomy import taxonomy_counts
 from .transitions import VisibleTransition
+from .trigger_metrics import evaluate as evaluate_trigger
 
 BUG_REPORT_WINDOW = 3  # bug_reports.jsonl pairs each report with oracle bugs within ±3 steps
 
@@ -199,6 +200,18 @@ def normal_play_excluded(task: str, found) -> dict:
             "normal_play_bug_ids": sorted(normal)}
 
 
+def trigger_fields(trig_rows, step_rows: list[dict], task: str) -> dict:
+    """trigger_precision_adj / trigger_recall_unique_adj / trigger_recall_events_adj for agents with
+    a memory check (None when no check ran; absent for agents without the hook)."""
+    if trig_rows is None:
+        return {}
+    keys = ("precision_adj", "recall_unique_adj", "recall_events_adj")
+    if not any(t["checked"] for t in trig_rows):
+        return {f"trigger_{k}": None for k in keys}
+    ev = evaluate_trigger(trig_rows, step_rows, load_normal_play().get(task))
+    return {f"trigger_{k}": ev[k] for k in keys}
+
+
 def phase_split(stats: RunStats, step_rows: list[dict]) -> dict:
     out = {}
     for ph in ("explore", "repro"):
@@ -264,6 +277,7 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
     error = None
     ctl = ReproController(repro, budgets.max_env_steps)
     step_rows: list[dict] = []  # kept for bug-report attribution and repro scoring
+    trig_rows: list[dict] | None = [] if hasattr(agent, "on_transition") else None  # memory checks
     t0 = time.perf_counter()
     obs_text = adapter.reset()
     episode_step = 0
@@ -436,6 +450,10 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
                                     "global_step_start": start, "global_step_end": stats.global_step,
                                     "decision_id": decision_id, "intent_id": intent_id,
                                     "phase": phase}) or {}
+                                dev = extra.get("deviation")
+                                counted = bool(dev) and dev.get("counted", True)
+                                trig_rows.append({"start": start, "end": stats.global_step, "checked": counted,
+                                                  "fired": counted and bool(dev.get("fire"))})
                             stats.intent_failures += r.error is not None
                             f_trans.write(json.dumps(VisibleTransition(
                                 prev_state=prev_state, intent=r.intent,
@@ -572,6 +590,8 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         **loop_metrics(decision_keys(step_rows)),
         # post hoc: IDs that also fire during scripted correct play (configs/normal_play_bugs.yaml)
         **normal_play_excluded(task, stats.first_found),
+        # oracle-side evaluation of the memory check (analysis only; see trigger_metrics.py)
+        **trigger_fields(trig_rows, step_rows, task),
     }
     fields = getattr(agent, "summary_fields", None)   # e.g. the TKG arm's escalations, tkg size
     if fields:

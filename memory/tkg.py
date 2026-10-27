@@ -136,7 +136,7 @@ class TKG:
             self.entities[eid] = {"id": eid, "type": "Entity", "state": ent}
         return eid
 
-    def add(self, t: dict, from_state: dict, to_state: dict, assessed_against: str | None = None):
+    def add(self, t: dict, from_state: dict | None, to_state: dict | None, assessed_against: str | None = None):
         """Add one Transition node (a dict with at least id, episode_key, ctx0, ctx1, outcome,
         target, global_step_start/end) and update both expectation tables."""
         t = dict(t, type="Transition")
@@ -146,8 +146,10 @@ class TKG:
             self.edges.append({"type": "NEXT", "source": prev[-1], "target": tid})
         prev.append(tid)
         self.transitions[tid] = t
-        self.edges.append({"type": "FROM", "source": tid, "target": self._add_state(from_state)})
-        self.edges.append({"type": "TO", "source": tid, "target": self._add_state(to_state)})
+        if from_state is not None:   # (shadow replays skip the State nodes)
+            self.edges.append({"type": "FROM", "source": tid, "target": self._add_state(from_state)})
+        if to_state is not None:
+            self.edges.append({"type": "TO", "source": tid, "target": self._add_state(to_state)})
         if t["target"] != "none":
             self.edges.append({"type": "TARGET", "source": tid, "target": self._add_entity(t["target"])})
         if assessed_against:
