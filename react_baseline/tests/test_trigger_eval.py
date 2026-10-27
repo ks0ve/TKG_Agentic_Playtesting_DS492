@@ -40,13 +40,22 @@ def test_runner_adds_trigger_fields_for_memory_agents_only(tmp_path):
 
 def test_shadow_mode_cli(tmp_path, capsys):
     assert trigger_eval.main(["--task", "V2_task_01_tomato", "--seeds", "0,1", "--steps", "300",
-                              "--warmups", "100", "--out-dir", str(tmp_path)]) == 0
+                              "--warmups", "0,100", "--investigate-k", "2", "--out-dir", str(tmp_path)]) == 0
     out = capsys.readouterr().out
     (run_dir,) = list(tmp_path.iterdir())
     data = json.loads((run_dir / "trigger_eval.json").read_text())
-    res = data["tasks"]["V2_task_01_tomato"]["warmup_100"]
-    assert set(res["triggers"]) == {"tkg1", "tkg0", "tkg1c", "random", "every_n"}
-    assert len(res["sweep_tkg1c"]) == 9 and all(len(v) == 2 for v in res["sweep_tkg1c"].values())
-    for s, c, r in zip((0, 1), res["triggers"]["tkg1c"], res["triggers"]["random"]):
-        assert r["p"] == c["fire_rate"]                         # matched fire rate
-    assert "| tkg1c |" in out and (run_dir / "trigger_eval.md").exists()
+    task = data["tasks"]["V2_task_01_tomato"]
+    assert set(task) == {"warmup_0", "warmup_100"}
+    for w, res in task.items():
+        assert set(res["triggers"]) == {"tkg1", "tkg0", "tkg1c", "random", "every_n"}
+        assert len(res["sweep_tkg1c"]) == 18 and all(len(v) == 2 for v in res["sweep_tkg1c"].values())
+        for c, r in zip(res["triggers"]["tkg1c"], res["triggers"]["random"]):
+            assert r["p"] == c["fire_rate"]                     # matched fire rate
+            assert c["llm_calls_projected_per_1k"] == c["fires"] * 2 * 1000 / 300
+            assert len(c["fires_per_100"]) == 3 and sum(c["fires_per_100"]) == c["fires"]
+        k1, k3 = (res["sweep_tkg1c"][f"tau=0.15,min_support=3,k={k}"][0] for k in (1, 3))
+        assert k3["llm_calls_projected_per_1k"] == 3 * k1["llm_calls_projected_per_1k"]
+    # warm-up 0 checks everything from the start; warm-up 100 never fires in the first window
+    assert all(c["fires_per_100"][0] == 0 for c in task["warmup_100"]["triggers"]["tkg1"])
+    assert all(c["fires_per_100"][0] > 0 for c in task["warmup_0"]["triggers"]["tkg1"])
+    assert "| tkg1c |" in out and "fires per 100-step window" in out and (run_dir / "trigger_eval.md").exists()

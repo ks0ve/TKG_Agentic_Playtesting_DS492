@@ -27,6 +27,7 @@ from .cheap_policy import CheapAgent
 
 _RESUME = re.compile(r"^[\s*#>_`-]*action[\s*_`]*[:=：]\s*[*_`]*\s*resume\b", re.IGNORECASE | re.MULTILINE)
 MAX_PATH_LINES = 40
+DEFAULT_INVESTIGATE_K = 3
 
 
 def memory_block(t: dict, detail: dict, k: int) -> str:
@@ -60,7 +61,7 @@ class TKGAgent(CheapAgent):
     action_space = "intent"
 
     def __init__(self, llm, seed: int = 0, trigger: Trigger | None = None, warmup_steps: int = 200,
-                 investigate_k: int = 3, repro_path: bool = True, history: int = 10, min_support: int = 3,
+                 investigate_k: int = DEFAULT_INVESTIGATE_K, repro_path: bool = True, history: int = 10, min_support: int = 3,
                  max_consecutive_llm: int = 6, warn=print):
         super().__init__(seed, min_support=min_support)
         self.react = ReActAgent(llm, history=history, warn=warn, action_space="intent")
