@@ -93,3 +93,31 @@ def test_tkg1c_coarse_fallback():
     assert trig.check(_trc(C0, FAIL), tkg) == (True, "surprising") and trig.detail["level"] == "ctx1"
     assert trig.check(_trc(C0, PUT), tkg) == (False, None)
     assert tkg.expectations["exp:coarse:interact | cutting board"].outcomes == {"putdown | True": 4}
+
+
+BUMP = "none | - | hands:nothing | sink:empty"
+WAITED = "none | - | hands:nothing | none"
+
+
+def test_refusal_is_memoryless():
+    tkg, trig = TKG(), make_trigger("refusal")
+    assert trig.name == "refusal"
+    assert trig.check(_tr(C0, FAIL), tkg) == (True, "refusal")             # success False
+    assert trig.check(_tr(OTHER, BUMP), tkg) == (True, "refusal")          # bumped, nothing happened
+    assert trig.check(_tr("wait | hands:nothing | none", WAITED), tkg) == (False, None)   # waiting is not a bump
+    assert trig.check(_tr("move | hands:nothing | floor", "move | - | hands:nothing | floor"), tkg) == (False, None)
+    assert trig.check(_tr(C0, PUT), tkg) == (False, None)
+    for _ in range(5):                                                     # memory changes nothing
+        tkg.add(_tr(C0, FAIL), STATE, STATE)
+    assert trig.check(_tr(C0, FAIL), tkg) == (True, "refusal")
+
+
+def test_tkg1s_sequence_novelty():
+    tkg, trig = TKG(), make_trigger("tkg1s")
+    assert trig.name == "tkg1s"
+    assert _check_then_add(trig, tkg, _tr(C0, PUT)) == (True, "novel")              # nothing seen
+    assert _check_then_add(trig, tkg, _tr(C0, PUT)) == (False, None)                # START || C0 seen
+    assert _check_then_add(trig, tkg, _tr(C0, FAIL, prev=FAIL)) == (True, "sequence_novel")  # ctx0 seen, ctx1 new
+    assert _check_then_add(trig, tkg, _tr(C0, FAIL, prev=FAIL)) == (False, None)
+    assert TKGTrigger(order=1).check(_tr(C0, PUT, prev=PUT), tkg) == (False, None)  # tkg1: ctx0 known, no fire
+    assert trig.check(_tr(C0, PUT, prev=PUT), tkg) == (True, "sequence_novel")

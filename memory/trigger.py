@@ -10,6 +10,10 @@ logging and the LLM's MEMORY block; it is built only from the TKG.
   TKGTrigger(order=1, coarse=True)  "tkg1c": lookup ctx1 -> ctx0 -> coarse by min_support; novel only
                         when the coarse (intent kind, target kind) was never seen; at the coarse level
                         the (event type, success) outcome is surprising if its share is < tau
+  TKGSequenceTrigger    "tkg1s": sequence novelty, fires when ctx1 (previous outcome + ctx0) was never seen,
+                        even if ctx0 was ("novel" if ctx0 is unseen too, else "sequence_novel")
+  RefusalTrigger        "refusal": memoryless current-state baseline, fires when the intent's last event
+                        failed (success False) or was a bump where nothing happened
   RandomTrigger(p)      fires with probability p (seeded)
   EveryNTrigger(n)      fires on every n-th check
 """
@@ -79,6 +83,28 @@ class TKGTrigger(Trigger):
         return False, None
 
 
+class TKGSequenceTrigger(Trigger):
+    name = "tkg1s"
+
+    def check(self, transition, tkg):
+        self.detail = self._memory_detail(transition, tkg, transition["ctx1"])
+        if tkg.count_ctx1(transition["ctx1"]) > 0:
+            return False, None
+        return True, ("novel" if self.detail["ctx0_support"] == 0 else "sequence_novel")
+
+
+class RefusalTrigger(Trigger):
+    """No memory: the game refused the action, or a bump changed nothing."""
+    name = "refusal"
+
+    def check(self, transition, tkg):
+        self.detail = self._memory_detail(transition, tkg, transition["ctx1"])   # logging only
+        event_type, success = transition["outcome"].split(" | ")[:2]
+        kind = transition["ctx0"].split(" | ")[0]
+        bump = event_type == "none" and kind != "wait" and transition.get("target", "none") not in ("none", "floor")
+        return (True, "refusal") if (success == "False" or bump) else (False, None)
+
+
 class RandomTrigger(Trigger):
     name = "random"
 
@@ -112,6 +138,10 @@ def make_trigger(kind: str, *, p: float = 0.1, n: int = 10, tau: float = 0.15, m
         return TKGTrigger(0, min_support, tau)
     if kind == "tkg1c":
         return TKGTrigger(1, min_support, tau, coarse=True)
+    if kind == "tkg1s":
+        return TKGSequenceTrigger(min_support)
+    if kind == "refusal":
+        return RefusalTrigger(min_support)
     if kind == "random":
         return RandomTrigger(p, seed)
     if kind == "every_n":

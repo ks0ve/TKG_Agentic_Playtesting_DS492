@@ -92,6 +92,10 @@ class TKG:
     def coarse_expectation(self, coarse: str) -> Expectation | None:
         return self._exp("coarse", coarse)
 
+    def count_ctx1(self, ctx1: str) -> int:
+        e = self._exp("ctx1", ctx1)
+        return e.support if e else 0
+
     def count(self, ctx0: str) -> int:
         e = self._exp("ctx0", ctx0)
         return e.support if e else 0

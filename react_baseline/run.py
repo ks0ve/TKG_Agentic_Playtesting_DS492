@@ -93,9 +93,10 @@ def parse_args(argv=None):
     g.add_argument("--repro-dedup-jaccard", type=float, default=ReproConfig.dedup_jaccard,
                    help="skip reports whose token Jaccard with an attempted report is >= this")
     t = p.add_argument_group("TKG arm (--agent tkg)")
-    t.add_argument("--trigger", choices=["tkg1", "tkg0", "tkg1c", "random", "every_n"], default="tkg1",
+    t.add_argument("--trigger", choices=["tkg1", "tkg0", "tkg1c", "tkg1s", "refusal", "random", "every_n"], default="tkg1",
                    help="memory check: tkg1 (temporal context, backoff), tkg0 (current situation only), "
-                        "tkg1c (tkg1 with a coarse (intent, target kind) fallback), "
+                        "tkg1c (tkg1 with a coarse (intent, target kind) fallback), tkg1s (sequence "
+                        "novelty: ctx1 unseen), refusal (memoryless: failed event or empty bump), "
                         "random (p), every_n (n)")
     t.add_argument("--trigger-p", type=float, default=0.1, help="random trigger probability")
     t.add_argument("--trigger-n", type=int, default=10, help="every_n trigger period")

@@ -206,3 +206,14 @@ def test_investigate_k_defaults_to_one():
     assert args.investigate_k == 1 and args.max_consecutive_llm == 6 and args.warmup_steps == 0
     assert args.trigger == "tkg1" and args.tau == 0.15 and args.min_support == 3
     assert TKGAgent(MockLLM()).warmup_steps == 0
+
+
+@pytest.mark.parametrize("trigger,reasons", [("refusal", {"refusal"}), ("tkg1s", {"novel", "sequence_novel"})])
+def test_new_triggers_run_live(tmp_path, trigger, reasons):
+    rd = tmp_path / trigger
+    assert run_cli.main(["--agent", "tkg", "--llm", "mock", "--trigger", trigger, "--max-env-steps", "300",
+                         "--run-dir", str(rd), "--quiet"]) == 0
+    s = json.loads((rd / "summary.json").read_text())
+    assert s["trigger"] == trigger and s["trigger_fires"] > 0 and set(s["deviation_reasons"]) <= reasons
+    calls = _rows(rd / "llm_calls.jsonl")
+    assert {c["trigger_reason"] for c in calls} <= reasons | {"investigate"}
