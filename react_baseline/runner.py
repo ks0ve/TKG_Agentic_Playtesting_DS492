@@ -225,6 +225,28 @@ def trigger_fields(trig_rows, step_rows: list[dict], task: str) -> dict:
     return {f"trigger_{k}": ev[k] for k in keys}
 
 
+def actor_fields(trig_rows, step_rows: list[dict], task: str) -> dict:
+    """bugs_triggered_by_llm_adj / bugs_triggered_by_cheap_adj: unique adjusted bugs whose first
+    occurrence came from an intent chosen by the LLM / by the cheap policy (memory agents only)."""
+    if trig_rows is None:
+        return {}
+    normal = load_normal_play().get(task)
+    if normal is None:
+        return {"bugs_triggered_by_llm_adj": None, "bugs_triggered_by_cheap_adj": None}
+    actor_at = {g: t.get("actor") for t in trig_rows for g in range(t["start"], t["end"] + 1)}
+    first = {}
+    for r in step_rows:
+        for b in r["bug_ids_triggered"]:
+            if b not in normal:
+                first.setdefault(b, r["global_step"])
+    by = {"llm": [], "cheap": []}
+    for b, g in sorted(first.items()):
+        if actor_at.get(g) in by:
+            by[actor_at[g]].append(b)
+    return {"bugs_triggered_by_llm_adj": len(by["llm"]), "bugs_triggered_by_cheap_adj": len(by["cheap"]),
+            "bug_ids_triggered_by_llm_adj": by["llm"], "bug_ids_triggered_by_cheap_adj": by["cheap"]}
+
+
 def phase_split(stats: RunStats, step_rows: list[dict]) -> dict:
     out = {}
     for ph in ("explore", "repro"):
@@ -466,7 +488,8 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
                                 dev = extra.get("deviation")
                                 counted = bool(dev) and dev.get("counted", True)
                                 trig_rows.append({"start": start, "end": stats.global_step, "checked": counted,
-                                                  "fired": counted and bool(dev.get("fire"))})
+                                                  "fired": counted and bool(dev.get("fire")),
+                                                  "actor": extra.get("actor")})
                             stats.intent_failures += r.error is not None
                             f_trans.write(json.dumps(VisibleTransition(
                                 prev_state=prev_state, intent=r.intent,
@@ -606,6 +629,7 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         **discovered_fields(task, stats.first_found, strict_ids),
         # oracle-side evaluation of the memory check (analysis only; see trigger_metrics.py)
         **trigger_fields(trig_rows, step_rows, task),
+        **actor_fields(trig_rows, step_rows, task),
     }
     fields = getattr(agent, "summary_fields", None)   # e.g. the TKG arm's escalations, tkg size
     if fields:

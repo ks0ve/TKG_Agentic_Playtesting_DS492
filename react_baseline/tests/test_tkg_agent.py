@@ -230,3 +230,17 @@ def test_new_triggers_run_live(tmp_path, trigger, reasons):
     assert s["trigger"] == trigger and s["trigger_fires"] > 0 and set(s["deviation_reasons"]) <= reasons
     calls = _rows(rd / "llm_calls.jsonl")
     assert {c["trigger_reason"] for c in calls} <= reasons | {"investigate"}
+
+
+def test_bugs_triggered_by_actor(tmp_path):
+    s = run(TKGAgent(MockIntentLLM(seed=5), seed=5), "V2_task_11_tomato_lettuce_onion", 5,
+            Budgets(max_env_steps=600), tmp_path / "t", CFG)
+    llm_ids, cheap_ids = s["bug_ids_triggered_by_llm_adj"], s["bug_ids_triggered_by_cheap_adj"]
+    assert s["bugs_triggered_by_llm_adj"] == len(llm_ids) and s["bugs_triggered_by_cheap_adj"] == len(cheap_ids)
+    assert not set(llm_ids) & set(cheap_ids)
+    assert len(llm_ids) + len(cheap_ids) == s["unique_bugs_excluding_normal_play"]   # every step has an actor
+    assert llm_ids and cheap_ids                                                     # both contribute here
+    from react_baseline.cheap_policy import CheapAgent
+    s2 = run(CheapAgent(0), TASK, 0, Budgets(max_env_steps=200), tmp_path / "c", {"backend": None, "model": None})
+    assert s2["bugs_triggered_by_llm_adj"] == 0
+    assert s2["bugs_triggered_by_cheap_adj"] == s2["unique_bugs_excluding_normal_play"]
