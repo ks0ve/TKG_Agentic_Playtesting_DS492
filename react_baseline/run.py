@@ -1,4 +1,4 @@
-"""CLI: python -m react_baseline.run --agent {react,react-raw,random,random-intent} --task <id> ..."""
+"""CLI: python -m react_baseline.run --agent {react,react-raw,random,random-intent,cheap} --task <id> ..."""
 from __future__ import annotations
 
 import argparse
@@ -9,6 +9,7 @@ from pathlib import Path
 from . import pilot_check, spend
 from .action_reader import DEFAULT_MAX_MACRO_LEN, ActionReader
 from .agents import ContextOverflowError, RandomAgent, RandomIntentAgent, ReActAgent
+from .cheap_policy import CheapAgent
 from .repro import ReproConfig
 from .env_adapter import list_tasks
 from .llm import BACKENDS, MODELS_YAML, LLMSetupError, make_llm_from_profile, resolve_profile
@@ -19,6 +20,7 @@ AGENTS = {
     "react-raw": "ReAct, raw moves 0-4 (MVP ablation)",
     "random": "uniform over the 5 raw actions",
     "random-intent": "uniform over currently valid intents",
+    "cheap": "no-LLM TKG novelty policy (intents; RQ1 reference)",
 }
 LLM_AGENTS = ("react", "react-raw")
 PILOT_STEPS = 50
@@ -143,6 +145,8 @@ def make_agent(args, seed: int):
         return RandomAgent(seed=seed), None, None
     if args.agent == "random-intent":
         return RandomIntentAgent(seed=seed), None, None
+    if args.agent == "cheap":
+        return CheapAgent(seed=seed), None, None
     intent = args.agent == "react"
     llm = make_llm_from_profile(args.profile, seed, intent_mock=intent)
     agent = ReActAgent(llm, history=args.history, actions_per_call=args.actions_per_call,
