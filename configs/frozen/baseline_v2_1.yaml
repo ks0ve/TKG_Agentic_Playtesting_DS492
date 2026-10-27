@@ -33,7 +33,7 @@ tasks:
   - V2_task_07_tomato_steak
   - V2_task_11_tomato_lettuce_onion
 profiles:
-  headline: haiku-5.5        # claude-haiku-5-5, thinking off, max_output_tokens 384
+  headline: haiku-5.5        # claude-haiku-5-5, thinking off, max_output_tokens 512 (384 until 2026-10-26)
   replication: llama3.1-8b
   ablation: react-raw on haiku-5.5, V2_task_01_tomato only
 seeds:

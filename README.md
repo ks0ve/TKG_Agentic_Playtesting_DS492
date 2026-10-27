@@ -411,7 +411,7 @@ warning and `taxonomy_warnings` records it. The CSV's classifications are not ed
 - `haiku-4.5` is `disabled: true` (10× the price); only editing `models.yaml` re-enables it.
 - **Haiku 5.5** (`claude-haiku-5-5`, $0.10 / $0.50 per MTok for prompts ≤ 100k tokens; verified
   2026-10-21): thinking disabled (it bills as output), no temperature sent (the API rejects
-  sampling parameters), `max_output_tokens: 384`, and a hard abort if a prompt is estimated above
+  sampling parameters), `max_output_tokens: 512` (384 until 2026-10-26), and a hard abort if a prompt is estimated above
   90k tokens (above 100k the whole request is billed 5×).
 - **Errors**: SDK retries are off; 429 / 5xx / connection errors are retried with backoff; any
   other API error (e.g. a 400 validation error) stops the run with a clear message; 5 consecutive

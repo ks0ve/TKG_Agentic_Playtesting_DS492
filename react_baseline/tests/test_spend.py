@@ -141,7 +141,7 @@ def test_cli_paid_run_end_to_end_and_blocked(paid_env, capsys):
 def test_shipped_profiles_guardrails():
     assert resolve_profile("haiku-4.5").disabled is True
     h = resolve_profile("haiku-5.5")
-    assert h.is_paid and not h.disabled and h.max_output_tokens == 384
+    assert h.is_paid and not h.disabled and h.max_output_tokens == 512
     assert h.options["max_prompt_tokens"] == 90000 and h.options["send_temperature"] is False
     assert h.options["extra_body"]["thinking"] == {"type": "disabled"}
     assert h.pricing_date == "2026-10-21" and "claude-haiku-5-5" in h.pricing_source
@@ -186,7 +186,7 @@ def test_anthropic_retries_429_5xx_and_connection_then_succeeds():
     r = m.complete("SYS", "USER")
     assert (r.input_tokens, r.output_tokens) == (100, 7) and len(calls) == 4
     assert m.consecutive_errors == 0
-    assert calls[0]["max_tokens"] == 384 and "temperature" not in calls[0].get("extra_body", {})
+    assert calls[0]["max_tokens"] == 512 and "temperature" not in calls[0].get("extra_body", {})
 
 
 def test_anthropic_never_retries_validation_errors():

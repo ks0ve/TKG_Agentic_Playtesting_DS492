@@ -537,3 +537,10 @@ removed):
   cheap policy acts in that same decision.
 - **Pilot config.** There is no YAML pilot config: grid files are out of scope, and the grid
   driver does not know the TKG flags. The pilot command is in RUN_COMMANDS.
+
+**2026-10-26, haiku-5.5 `max_output_tokens` 384 → 512** (all agents: react, react-raw, tkg). The
+Haiku TKG pilot (`runs/pilot/20261026-225747_tkg_V2_task_11_…`) had 2 parse errors from replies
+cut off before the Action line. The output cap only costs when it is used ($0.50/MTok), so 128
+more tokens add at most $0.000064 per call. The v2.1 frozen config's profile note is updated; the
+frozen hashes are unchanged, since the profile is not part of them. v2.1 runs made before this
+date used 384.

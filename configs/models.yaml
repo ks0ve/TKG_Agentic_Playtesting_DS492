@@ -108,7 +108,7 @@ profiles:
     backend: anthropic
     model: claude-haiku-5-5
     context_window: 1000000
-    max_output_tokens: 384
+    max_output_tokens: 512   # was 384: the 2026-10-26 TKG pilot had 2 replies cut off before the Action line
     temperature: 1.0   # not sent: Haiku 5.5 rejects non-default sampling values (HTTP 400)
     price_in_per_mtok: 0.10
     price_out_per_mtok: 0.50
