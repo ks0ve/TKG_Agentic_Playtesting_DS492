@@ -485,3 +485,55 @@ confirmed here." Two changes:
   `bug_report_discarded` and counted in summary `bug_reports_discarded`.
 
 Prompt hash updated in `configs/frozen/baseline_v2_1.yaml`; the react-raw snapshot was regenerated.
+
+## 2026-10-26: TKG arm v1 (branch `tkg-arm`; offline, mock LLM only)
+
+Built on baseline-v2, porting the ideas of Tom's `origin/cheap-agent-baseline` (observed graph,
+novelty agent) without merging it. The changes from his draft:
+- **Structured data, not text.** The graph is built from `visible_state` and the event records,
+  not observation text.
+- **One transition per executed intent**, not per button press.
+- **Abstract expectation keys.** Expectations are keyed on coordinate-free ctx0 / ctx1
+  abstractions; exact-state hashes are kept only as the State node ids.
+- **Intents.** The cheap policy emits intents through the shared Action reader, with novelty
+  counts from the TKG.
+- **No observation text in steps.jsonl.** transitions.jsonl already holds the structured states.
+
+Modules: `memory/abstraction.py`, `memory/tkg.py`, `memory/trigger.py`,
+`react_baseline/cheap_policy.py`, `react_baseline/tkg_agent.py`, plus add-only runner hooks.
+See the README section "TKG arm".
+
+**Mock measurements** (1,000 steps, seeds 0–2, tkg1 defaults: warm-up 200, k 3, tau 0.15,
+min_support 3; mock LLM = seeded random intents):
+
+| task | trigger fire rate (phase 2) | escalations / 1,000 post-warm-up steps | LLM calls / env step | fire reasons |
+|---|---|---|---|---|
+| 01 tomato | 0.256–0.324 (mean 0.29) | 70–81 (mean 77) | 0.23–0.28 | novel 349, surprising 2 |
+| 11 salad | 0.290–0.305 (mean 0.30) | 69–78 (mean 74) | 0.23–0.25 | novel 343 |
+
+**Cheap alone** (no LLM; 1,000 steps × 3 seeds), adjusted unique bugs per run (normal-play IDs
+removed):
+
+| task | cheap | random-intent (v2.0) | random (v2.0) |
+|---|---|---|---|
+| 01 tomato | 15.0 | 7.3 | 8.3 |
+| 07 tomato + steak | 16.0 | 7.3 | 9.7 |
+| 11 salad | 16.0 | 5.3 | 9.0 |
+
+**Design points that did not work as written, or needed a decision:**
+- **Novelty search drives the novelty trigger.** Almost every fire is "novel" (692 of 694). The
+  cheap policy deliberately seeks situations with the lowest TKG count, often zero, so its own
+  successes trip the novelty check. The mock LLM's random intents add more. "Surprising" almost
+  never fires on mock runs. I kept the design and am flagging it; it is the first thing to look at
+  in the Haiku pilot.
+- **"≤ k decisions" is per fire.** A new fire during an investigation refreshes k without counting
+  a new escalation, so the LLM keeps control while each of its own transitions deviates.
+- **Memory check during reproduction.** It is still run and logged (`deviation`), but it is not
+  counted in the fire rate and never escalates, since the LLM is already in control.
+- **Warm-up boundary.** The check starts with the first intent that begins after 200 env steps;
+  an intent straddling step 200 counts as warm-up.
+- **Where "resume" is explained.** The system prompt is unchanged, so the "reply Action: resume"
+  instruction lives in the MEMORY block. A resume reply is still an accounted LLM call, and the
+  cheap policy acts in that same decision.
+- **Pilot config.** There is no YAML pilot config: grid files are out of scope, and the grid
+  driver does not know the TKG flags. The pilot command is in RUN_COMMANDS.

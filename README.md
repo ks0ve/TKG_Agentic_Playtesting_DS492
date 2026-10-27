@@ -488,6 +488,50 @@ transitions and bug_reports. Summary: `{steps,llm_calls,tokens,usd}_{explore,rep
   `pilot_check.txt`, the ledger, the spend report, git HEAD / status and the grid dry run, in one
   zip for analysis elsewhere.
 
+## TKG arm (`--agent tkg`) and the cheap agent (`--agent cheap`)
+
+The TKG arm keeps everything in memory (plain Python) and writes `tkg.json` into the run dir. There
+is no graph database, no new dependency, and no LLM-drafted reference graph yet.
+
+- **Abstraction** (`memory/abstraction.py`). Keys are built from structured agent-visible data
+  (`visible_state` and the event records' `held_before`, `held_after`, `tile`, `tile_before`,
+  `tile_after`), never from observation text.
+  - Entity strings: `plate:clean:[chopped tomato]`, `cutting board:holding:unchopped onion`,
+    `counter:empty`, `floor`, `hands:nothing`.
+  - `ctx0` = (intent kind, hands before, target before)
+  - `ctx1` = (previous outcome in the episode or START, ctx0)
+  - outcome = (event type, success, hands after, target after)
+  - None of these keys contain coordinates.
+- **TKG** (`memory/tkg.py`). Transition-centric:
+  - Transition -NEXT-> Transition
+  - Transition -FROM / TO-> State
+  - Transition -TARGET-> Entity
+  - Transition -ASSESSED_AGAINST-> Expectation
+  - State -HAS_ENTITY_STATE-> Entity
+
+  One transition is one executed intent. State ids are exact visible-state hashes. Expectations,
+  one per ctx1 key and one per ctx0 key, hold outcome counts. `expect()` backs off from ctx1 to
+  ctx0 below `--min-support`.
+- **Memory check** (`memory/trigger.py`). It runs before the transition is added.
+  - `tkg1`: novel (ctx0 never seen) or surprising (P(outcome) < `--tau` at `--min-support` or more).
+  - `tkg0`: ctx0 only.
+  - `random` (`--trigger-p`) and `every_n` (`--trigger-n`) for RQ2.
+- **Cheap policy** (`react_baseline/cheap_policy.py`). Candidates are interact on every reachable
+  non-floor tile, `wait(3)`, and goto to 3 random floor tiles. Each scores
+  1 / (1 + TKG count of its ctx0); ε = 0.2 picks a random candidate instead. `--agent cheap` runs
+  it alone (no LLM).
+- **TKG agent** (`react_baseline/tkg_agent.py`).
+  - The first `--warmup-steps` (200) env steps are cheap-only.
+  - After that, a fire hands the next decision(s) to the LLM, up to `--investigate-k` (3), or
+    until it replies `Action: resume`.
+  - The LLM gets the vanilla ReAct prompt, a history in which cheap turns are marked `[auto]`, and
+    a MEMORY block built from the TKG.
+  - Reproduction uses the runner's protocol. `--repro-path` (default on) adds the recorded path of
+    the reported episode.
+  - New log fields: llm_calls `trigger_reason` and `resumed`; transitions `actor` and `deviation`;
+    summary `escalations`, `warmup_steps`, `tkg_nodes`, `tkg_edges`, `trigger_fire_rate`,
+    `deviation_reasons`.
+
 ## Investigation: bug IDs 5 and 20 on V2_task_01_tomato
 
 The task brief said that bugs 5 and 20 fired exactly once per episode in random play. I checked

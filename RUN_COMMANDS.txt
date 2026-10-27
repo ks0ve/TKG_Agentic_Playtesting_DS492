@@ -90,6 +90,20 @@ v2.0 configs (configs\grids\baseline_v2*.yaml, configs\frozen\baseline_v2.yaml) 
 record of runs\grids\baseline_v2\ and no longer pass the frozen check.
 
 
+--- TKG ARM (branch tkg-arm) ---
+
+.venv\Scripts\python.exe -m react_baseline.run --agent cheap --task V2_task_11_tomato_lettuce_onion --seeds 0,1,2 --max-env-steps 1000
+   cheap policy alone (no LLM, free, ~1 s per run); writes tkg.json
+.venv\Scripts\python.exe -m react_baseline.run --agent tkg --llm mock --task V2_task_11_tomato_lettuce_onion --max-env-steps 1000 --repro
+   offline TKG-arm check (mock LLM)
+
+PAID - DO NOT RUN UNTIL APPROVED:
+.venv\Scripts\python.exe -m react_baseline.run --agent tkg --trigger tkg1 --model-profile haiku-5.5 --task V2_task_11_tomato_lettuce_onion --seed 0 --max-env-steps 300 --repro --repro-steps 30 --out-dir runs\pilot --allow-paid --max-usd 0.25
+   Haiku TKG pilot: 200 warm-up steps (no LLM) + 100 steps with escalation; hard cap $0.25
+.venv\Scripts\python.exe -m react_baseline.bundle --latest-pilots -o pilots_tkg.zip
+   bundle it (newest pilot per agent/model, incl. tkg.json)
+
+
 --- OTHER ---
 
 .venv\Scripts\python.exe -m react_baseline.solutions
