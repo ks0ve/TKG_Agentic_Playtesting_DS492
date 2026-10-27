@@ -41,6 +41,7 @@ def test_adjusted_fields(tmp_path):
     assert out["unique_bugs_excluding_normal_play"] == 1           # only 20 is outside the set
     assert out["unique_bug_ids_excluding_normal_play"] == [20]
     assert out["reports_strict_match_adj"] == 1 and out["unique_bugs_reported_strict_adj"] == 1
+    assert out["unique_bugs_discovered_adj"] == 1          # 20: triggered and reported, outside the set
     adj = {a["attempt_id"]: a for a in out["repro_attempts_adj"]}
     assert adj[0]["source_bug_ids_strict_adj"] == [] and adj[0]["oracle_reproduced_adj"] is None
     assert adj[1]["source_bug_ids_strict_adj"] == [20] and adj[1]["oracle_reproduced_adj"] is False

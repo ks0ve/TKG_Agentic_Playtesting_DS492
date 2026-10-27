@@ -200,6 +200,19 @@ def normal_play_excluded(task: str, found) -> dict:
             "normal_play_bug_ids": sorted(normal)}
 
 
+def discovered_fields(task: str, found, strict_ids) -> dict:
+    """Reported (strict) and discovered (= triggered AND reported strict) unique bugs, adjusted for
+    the task's normal-play set. Reporting only; n_unique_bugs is unchanged."""
+    normal = load_normal_play().get(task)
+    if normal is None:
+        return {"unique_bugs_reported_strict_adj": None, "unique_bugs_discovered_adj": None,
+                "unique_bug_ids_discovered_adj": None}
+    strict_adj = set(strict_ids) - set(normal)
+    discovered = (set(found) - set(normal)) & strict_adj
+    return {"unique_bugs_reported_strict_adj": len(strict_adj), "unique_bugs_discovered_adj": len(discovered),
+            "unique_bug_ids_discovered_adj": sorted(discovered)}
+
+
 def trigger_fields(trig_rows, step_rows: list[dict], task: str) -> dict:
     """trigger_precision_adj / trigger_recall_unique_adj / trigger_recall_events_adj for agents with
     a memory check (None when no check ran; absent for agents without the hook)."""
@@ -590,6 +603,7 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         **loop_metrics(decision_keys(step_rows)),
         # post hoc: IDs that also fire during scripted correct play (configs/normal_play_bugs.yaml)
         **normal_play_excluded(task, stats.first_found),
+        **discovered_fields(task, stats.first_found, strict_ids),
         # oracle-side evaluation of the memory check (analysis only; see trigger_metrics.py)
         **trigger_fields(trig_rows, step_rows, task),
     }
