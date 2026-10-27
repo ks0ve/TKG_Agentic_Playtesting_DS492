@@ -100,7 +100,8 @@ def parse_args(argv=None):
     t.add_argument("--trigger-p", type=float, default=0.1, help="random trigger probability")
     t.add_argument("--trigger-n", type=int, default=10, help="every_n trigger period")
     t.add_argument("--warmup-steps", type=int, default=200,
-                   help="env steps of cheap-only memory building first (count in the budget)")
+                   help="env steps of cheap-only memory building first (count in the budget); 0 = "
+                        "memory starts empty and a novel situation escalates on first sight")
     t.add_argument("--investigate-k", type=int, default=3, help="LLM decisions per escalation")
     t.add_argument("--max-consecutive-llm", type=int, default=6,
                    help="cap on LLM decisions in a row, across fires that restart k (then cap_release)")
@@ -117,6 +118,10 @@ def parse_args(argv=None):
         p.error(f"unknown task {args.task!r}; see external/SAGE/scenarios/overcooked_plus/tasks.json")
     if args.actions_per_call < 1 or args.intents_per_call < 1:
         p.error("--actions-per-call and --intents-per-call must be >= 1")
+    if args.warmup_steps < 0:
+        p.error("--warmup-steps must be >= 0 (0 = memory building and testing interleave from step 1)")
+    if args.investigate_k < 1 or args.max_consecutive_llm < 1 or args.min_support < 1:
+        p.error("--investigate-k, --max-consecutive-llm and --min-support must be >= 1")
     if args.pilot:
         args.max_env_steps = PILOT_STEPS
         if args.out_dir == "runs":

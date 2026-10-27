@@ -1,7 +1,8 @@
 """TKG arm: cheap policy by default, the LLM only when memory says something deviated.
 
 Phase 1 (the first ``warmup_steps`` env steps): the cheap policy acts and fills the TKG; no memory
-check, no LLM. Phase 2, after every executed intent: memory check (``memory.trigger``) against the
+check, no LLM. With ``warmup_steps=0`` there is no phase 1: memory starts empty, building and testing
+interleave from step 1, and a novel situation escalates on first sight. Phase 2, after every executed intent: memory check (``memory.trigger``) against the
 TKG, then the transition is added. When the check fires, the next decision goes to the LLM, which
 keeps control for up to ``investigate_k`` decisions (refreshed if it fires again, but never more than
 ``max_consecutive_llm`` in a row: then control returns, logged as trigger_reason "cap_release") or

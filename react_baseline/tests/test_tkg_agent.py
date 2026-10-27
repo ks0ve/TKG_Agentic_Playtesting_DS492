@@ -180,3 +180,20 @@ def test_consecutive_llm_cap_across_restarts(tmp_path):
     assert released and all(t["actor"] == "cheap" for t in released) and s["cap_releases"] == len(released)
     assert {t["trigger_reason"] for t in trans if t["actor"] == "llm"} <= {"every_n", "investigate"}
     assert s["max_consecutive_llm"] == 6
+
+
+def test_warmup_zero_interleaves_from_step_one(tmp_path):
+    llm = MockLLM(script=["Thought: look\nAction: resume"])
+    s = run(TKGAgent(llm, warmup_steps=0, investigate_k=1), TASK, 0, Budgets(max_env_steps=80), tmp_path, CFG)
+    trans = _rows(tmp_path / "transitions.jsonl")
+    assert trans[0]["deviation"]["reason"] == "novel"          # empty memory: the first situation is novel
+    assert all(t["deviation"] is not None for t in trans)      # every transition is checked
+    calls = _rows(tmp_path / "llm_calls.jsonl")
+    assert calls[0]["decision_id"] == 1 and calls[0]["trigger_reason"] == "novel"
+    assert s["warmup_steps"] == 0 and s["trigger_checks"] == len(trans) and s["escalations"] >= 1
+    rd = tmp_path / "cli"
+    assert run_cli.main(["--agent", "tkg", "--llm", "mock", "--warmup-steps", "0", "--max-env-steps", "40",
+                         "--run-dir", str(rd), "--quiet"]) == 0
+    assert json.loads((rd / "summary.json").read_text())["warmup_steps"] == 0
+    with pytest.raises(SystemExit):
+        run_cli.parse_args(["--agent", "tkg", "--llm", "mock", "--warmup-steps", "-1"])
