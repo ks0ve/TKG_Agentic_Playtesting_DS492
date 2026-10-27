@@ -137,7 +137,7 @@ def test_mock_end_to_end_cli_and_bundle(tmp_path):
     for k in ("escalations", "llm_calls_per_env_step", "warmup_steps", "tkg_nodes", "tkg_edges",
               "trigger_fire_rate", "deviation_reasons"):
         assert k in s, k
-    assert s["total_env_steps"] == 1000 and s["warmup_steps"] == 200 and s["trigger"] == "tkg1"
+    assert s["total_env_steps"] == 1000 and s["warmup_steps"] == 0 and s["trigger"] == "tkg1"
     calls = _rows(rd / "llm_calls.jsonl")
     assert calls and all(c["trigger_reason"] in ("novel", "surprising", "investigate", "repro") for c in calls)
     trans = _rows(rd / "transitions.jsonl")
@@ -203,4 +203,6 @@ def test_investigate_k_defaults_to_one():
     from react_baseline.tkg_agent import DEFAULT_INVESTIGATE_K
     assert DEFAULT_INVESTIGATE_K == 1 and TKGAgent(MockLLM()).investigate_k == 1
     args = run_cli.parse_args(["--agent", "tkg", "--llm", "mock"])
-    assert args.investigate_k == 1 and args.max_consecutive_llm == 6 and args.warmup_steps == 200
+    assert args.investigate_k == 1 and args.max_consecutive_llm == 6 and args.warmup_steps == 0
+    assert args.trigger == "tkg1" and args.tau == 0.15 and args.min_support == 3
+    assert TKGAgent(MockLLM()).warmup_steps == 0

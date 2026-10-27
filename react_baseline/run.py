@@ -99,7 +99,7 @@ def parse_args(argv=None):
                         "random (p), every_n (n)")
     t.add_argument("--trigger-p", type=float, default=0.1, help="random trigger probability")
     t.add_argument("--trigger-n", type=int, default=10, help="every_n trigger period")
-    t.add_argument("--warmup-steps", type=int, default=200,
+    t.add_argument("--warmup-steps", type=int, default=0,
                    help="env steps of cheap-only memory building first (count in the budget); 0 = "
                         "memory starts empty and a novel situation escalates on first sight")
     t.add_argument("--investigate-k", type=int, default=DEFAULT_INVESTIGATE_K,

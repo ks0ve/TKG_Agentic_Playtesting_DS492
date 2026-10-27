@@ -600,3 +600,19 @@ k = 1; k = 3 triples the calls):
 - Caveat: these are cheap-only trajectories. With the LLM in control the path changes, and a fire
   during an investigation restarts k instead of adding k, so real call rates should be at or below
   the projection.
+
+## 2026-10-27: TKG-arm defaults: tkg1, warm-up 0, k 1
+
+New defaults: `--trigger tkg1` (tau 0.15, min_support 3), `--warmup-steps 0`,
+`--investigate-k 1`, with `--max-consecutive-llm 6` unchanged. The evidence is the shadow-mode run
+`runs/trigger_eval/20261026-232752` (entry above).
+- **Warm-up 0 roughly doubles first-occurrence recall.** For tkg1, recall_unique_adj goes from
+  0.42 / 0.54 / 0.48 to 1.00 / 1.00 / 1.00 on tomato / tomato+steak / salad. In a deterministic
+  game, an observed-memory trigger gets one chance per bug, at its first occurrence, and an
+  LLM-free warm-up spends those chances.
+- **tkg1 catches every first occurrence** (recall 1.00) at a fire rate of about 0.40, which is
+  about 0.15 projected LLM calls per step at k = 1.
+- **Memory triggers get 3–4x the recall of random / every_n at a matched rate.** For tkg1c at
+  warm-up 0: 0.45–0.62 vs 0.12–0.19.
+- **tkg1 == tkg0 exactly.** In a deterministic game whose bugs are state-local, the previous
+  outcome adds no detection power.

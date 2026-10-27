@@ -60,7 +60,7 @@ class TKGAgent(CheapAgent):
     name = "tkg"
     action_space = "intent"
 
-    def __init__(self, llm, seed: int = 0, trigger: Trigger | None = None, warmup_steps: int = 200,
+    def __init__(self, llm, seed: int = 0, trigger: Trigger | None = None, warmup_steps: int = 0,
                  investigate_k: int = DEFAULT_INVESTIGATE_K, repro_path: bool = True, history: int = 10, min_support: int = 3,
                  max_consecutive_llm: int = 6, warn=print):
         super().__init__(seed, min_support=min_support)

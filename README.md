@@ -521,7 +521,8 @@ is no graph database, no new dependency, and no LLM-drafted reference graph yet.
   1 / (1 + TKG count of its ctx0); ε = 0.2 picks a random candidate instead. `--agent cheap` runs
   it alone (no LLM).
 - **TKG agent** (`react_baseline/tkg_agent.py`).
-  - The first `--warmup-steps` (200) env steps are cheap-only.
+  - Defaults: `--trigger tkg1` (tau 0.15, min_support 3), `--warmup-steps 0` (memory starts empty and
+    is checked from step 1; a warm-up of N env steps is cheap-only), `--investigate-k 1`.
   - After that, a fire hands the next decision(s) to the LLM, up to `--investigate-k` (default 1; never more than
     `--max-consecutive-llm` (6) in a row, even when fires restart k), or
     until it replies `Action: resume`.
