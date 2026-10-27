@@ -198,6 +198,7 @@ class ReActAgent:
         self._turn_index = 0
         self.repro_report: str | None = None    # set during an agent-driven reproduction attempt
         self.repro_steps_left = 0
+        self.extra_block: str | None = None     # TKG arm: MEMORY / recorded-path block (None for ReAct)
 
     # -- history -------------------------------------------------------------
     def _window(self, n_turns: int) -> list[str]:
@@ -268,13 +269,24 @@ class ReActAgent:
         if len(self.entries) > 4 * max(self.history, 1) + 8:
             self.entries = self._window(self.history)
 
+    def observe_auto(self, executed: list[int], summary: str, results=None):
+        """History line for a decision made without the LLM (TKG arm's cheap policy): '[auto] ...'."""
+        self._turn_index += 1
+        intents = "; ".join(r.intent for r in results or []) or "(none)"
+        trace = " / ".join(r.trace for r in results or [])
+        self.entries.append(f"[auto] {self._turn_label(executed, results)} Action: {intents} | "
+                            f"Executor: {trace} | Result: {summary}")
+        if len(self.entries) > 4 * max(self.history, 1) + 8:
+            self.entries = self._window(self.history)
+
     # -- acting --------------------------------------------------------------
     def build_prompt(self, obs_text: str) -> tuple[str, int]:
         """Return (user_prompt, n_history_turns_used), applying the context guard."""
         n = self.history
         while True:
-            block = (task_block(self.repro_report, self.repro_steps_left)
-                     if self.repro_report is not None else None)
+            blocks = [task_block(self.repro_report, self.repro_steps_left)
+                      if self.repro_report is not None else None, self.extra_block]
+            block = "\n\n".join(b for b in blocks if b) or None
             user = prompts.turn_prompt("\n".join(self._window(n)), obs_text, self.episode,
                                        self.per_call, self.remind_format, self.action_space,
                                        task_block=block)

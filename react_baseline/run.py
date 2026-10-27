@@ -1,4 +1,4 @@
-"""CLI: python -m react_baseline.run --agent {react,react-raw,random,random-intent,cheap} --task <id> ..."""
+"""CLI: python -m react_baseline.run --agent {react,react-raw,random,random-intent,cheap,tkg} --task <id> ..."""
 from __future__ import annotations
 
 import argparse
@@ -10,7 +10,9 @@ from . import pilot_check, spend
 from .action_reader import DEFAULT_MAX_MACRO_LEN, ActionReader
 from .agents import ContextOverflowError, RandomAgent, RandomIntentAgent, ReActAgent
 from .cheap_policy import CheapAgent
+from .tkg_agent import TKGAgent
 from .repro import ReproConfig
+from memory.trigger import make_trigger
 from .env_adapter import list_tasks
 from .llm import BACKENDS, MODELS_YAML, LLMSetupError, make_llm_from_profile, resolve_profile
 from .runner import Budgets, make_run_dir, run
@@ -21,8 +23,9 @@ AGENTS = {
     "random": "uniform over the 5 raw actions",
     "random-intent": "uniform over currently valid intents",
     "cheap": "no-LLM TKG novelty policy (intents; RQ1 reference)",
+    "tkg": "TKG arm: cheap policy + memory check; the LLM investigates deviations",
 }
-LLM_AGENTS = ("react", "react-raw")
+LLM_AGENTS = ("react", "react-raw", "tkg")
 PILOT_STEPS = 50
 PAID_MAX_USD_CEILING = 2.0
 
@@ -89,6 +92,20 @@ def parse_args(argv=None):
                    help="max share of --max-env-steps spent on attempts")
     g.add_argument("--repro-dedup-jaccard", type=float, default=ReproConfig.dedup_jaccard,
                    help="skip reports whose token Jaccard with an attempted report is >= this")
+    t = p.add_argument_group("TKG arm (--agent tkg)")
+    t.add_argument("--trigger", choices=["tkg1", "tkg0", "random", "every_n"], default="tkg1",
+                   help="memory check: tkg1 (temporal context, backoff), tkg0 (current situation only), "
+                        "random (p), every_n (n)")
+    t.add_argument("--trigger-p", type=float, default=0.1, help="random trigger probability")
+    t.add_argument("--trigger-n", type=int, default=10, help="every_n trigger period")
+    t.add_argument("--warmup-steps", type=int, default=200,
+                   help="env steps of cheap-only memory building first (count in the budget)")
+    t.add_argument("--investigate-k", type=int, default=3, help="LLM decisions per escalation")
+    t.add_argument("--tau", type=float, default=0.15, help="surprise threshold P(outcome) < tau")
+    t.add_argument("--min-support", type=int, default=3,
+                   help="observations needed before a context is judged (ctx1 backs off below it)")
+    t.add_argument("--repro-path", action=argparse.BooleanOptionalAction, default=True,
+                   help="add the recorded path from the TKG to reproduction prompts")
     p.add_argument("--quiet", action="store_true")
     args = p.parse_args(argv)
     args.repro_config = ReproConfig(args.repro, args.repro_steps, args.max_repro_attempts,
@@ -147,8 +164,16 @@ def make_agent(args, seed: int):
         return RandomIntentAgent(seed=seed), None, None
     if args.agent == "cheap":
         return CheapAgent(seed=seed), None, None
-    intent = args.agent == "react"
+    intent = args.agent in ("react", "tkg")
     llm = make_llm_from_profile(args.profile, seed, intent_mock=intent)
+    if args.agent == "tkg":
+        trig = make_trigger(args.trigger, p=args.trigger_p, n=args.trigger_n, tau=args.tau,
+                            min_support=args.min_support, seed=seed)
+        agent = TKGAgent(llm, seed=seed, trigger=trig, warmup_steps=args.warmup_steps,
+                         investigate_k=args.investigate_k, repro_path=args.repro_path,
+                         history=args.history, min_support=args.min_support,
+                         warn=lambda m: print(m, file=sys.stderr))
+        return agent, args.profile.backend, args.profile.model
     agent = ReActAgent(llm, history=args.history, actions_per_call=args.actions_per_call,
                        warn=lambda m: print(m, file=sys.stderr),
                        action_space="intent" if intent else "primitive",
