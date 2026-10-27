@@ -428,6 +428,14 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
                             obs_text, state, obs_summary = r.final.obs_text, r.final.state, r.final.summary
                         if r.n_steps:
                             stats.intents_executed += 1
+                            extra = {}
+                            hook = getattr(agent, "on_transition", None)
+                            if hook:   # agent-visible data only (memory agents build their TKG here)
+                                extra = hook(r, prev_state, state, {
+                                    "run": f"{task}/seed{seed}", "episode": stats.episodes,
+                                    "global_step_start": start, "global_step_end": stats.global_step,
+                                    "decision_id": decision_id, "intent_id": intent_id,
+                                    "phase": phase}) or {}
                             stats.intent_failures += r.error is not None
                             f_trans.write(json.dumps(VisibleTransition(
                                 prev_state=prev_state, intent=r.intent,
@@ -438,7 +446,8 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
                                 event_records=r.event_records, stop_reason=r.stop_reason,
                                 error=r.error, note=r.note, episode_ended=r.done,
                                 coerced=r.coerced, phase=phase,
-                                repro_attempt_id=ctl.attempt_id).to_row()) + "\n")
+                                repro_attempt_id=ctl.attempt_id, actor=extra.get("actor"),
+                                deviation=extra.get("deviation")).to_row()) + "\n")
                             stats.intents_coerced += r.coerced is not None
                         if r.done:
                             done = True
@@ -563,6 +572,12 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         # post hoc: IDs that also fire during scripted correct play (configs/normal_play_bugs.yaml)
         **normal_play_excluded(task, stats.first_found),
     }
+    fields = getattr(agent, "summary_fields", None)   # e.g. the TKG arm's escalations, tkg size
+    if fields:
+        summary.update({k: v for k, v in fields().items() if k not in summary})
+    artifacts = getattr(agent, "write_artifacts", None)   # e.g. tkg.json
+    if artifacts:
+        artifacts(run_dir)
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     if ledger is not None:
         status = ("error" if stats.stop_reason.startswith("error") else

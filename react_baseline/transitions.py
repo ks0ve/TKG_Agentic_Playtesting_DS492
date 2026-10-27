@@ -31,6 +31,9 @@ class VisibleTransition:
     coerced: str | None = None
     phase: str = "explore"
     repro_attempt_id: int | None = None
+    # set by memory agents (cheap / tkg) through the runner's on_transition hook
+    actor: str | None = None          # cheap | llm
+    deviation: dict | None = None     # memory check: {fire, reason, score, ...}
 
     def to_row(self) -> dict:
         return asdict(self)
