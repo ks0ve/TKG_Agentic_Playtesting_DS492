@@ -40,6 +40,9 @@ def test_pilot_reports_2_and_3_are_discarded_report_1_counts(parse):
 
 @pytest.mark.parametrize("text,discarded", [
     ("No defect observed this turn.", True), ("no bug here", True), ("Nothing unusual.", True),
+    ("Nothing inconsistent in the plate contents.", True), ("Nothing to report.", True),
+    ("nothing wrong with the delivery", True),
+    ("Nothing happened when I put the plate in the sink", False),   # a real report
     ("Not a bug: the plate was dirty after delivery.", True), ("**Unconfirmed** plate issue", True),
     ("The steak burned, but no bug is found in the timing.", True),
     ("No clear bug observed.", True), ("None", False),          # "None" stays a plain absence

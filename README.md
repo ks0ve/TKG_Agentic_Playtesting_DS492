@@ -300,7 +300,8 @@ case differences, markdown bold, backticks, brackets, a trailing `(left)`, and a
 such as `left`. A reply with no parseable action runs **action 4 (wait)**, logs a
 `parse_error`, and adds a format reminder to the next turn. `Bug report: None`-style lines
 are not counted as reports. Neither are non-reports (v2.1): a line starting with "unconfirmed",
-"no defect", "no bug", "nothing" or "not a bug", or containing "no (clear) defect/bug (is)
+"no defect", "no bug", "not a bug", "nothing unusual", "nothing inconsistent", "nothing to
+report" or "nothing wrong" ("Nothing happened when ..." still counts), or containing "no (clear) defect/bug (is)
 confirmed/found/observed". These are logged in llm_calls `bug_report_discarded` and counted in
 summary `bug_reports_discarded`.
 

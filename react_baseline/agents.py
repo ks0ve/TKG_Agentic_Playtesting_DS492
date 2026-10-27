@@ -60,7 +60,9 @@ _NAME_LIST = re.compile(r"^((?:right|down|left|up|wait|stay)(?:\s*[,;]\s*(?:righ
                         re.IGNORECASE)
 _NONE_REPORT = {"", "none", "n/a", "na", "no", "nothing", "-", "null", "none."}
 # "Bug report:" lines that say there is no (confirmed) defect: logged, never counted as reports
-_NON_REPORT_START = ("unconfirmed", "no defect", "no bug", "nothing", "not a bug")
+_NON_REPORT_START = ("unconfirmed", "no defect", "no bug", "not a bug", "nothing unusual",
+                     "nothing inconsistent", "nothing to report", "nothing wrong")
+# (a bare "nothing" is in _NONE_REPORT; "Nothing happened when ..." is a real report)
 _NON_REPORT_ANY = re.compile(r"\bno (?:clear )?(?:defect|bug) (?:is )?(?:confirmed|found|observed)\b",
                              re.IGNORECASE)
 
