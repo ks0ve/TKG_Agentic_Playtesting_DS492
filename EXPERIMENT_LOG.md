@@ -616,3 +616,33 @@ New defaults: `--trigger tkg1` (tau 0.15, min_support 3), `--warmup-steps 0`,
   warm-up 0: 0.45–0.62 vs 0.12–0.19.
 - **tkg1 == tkg0 exactly.** In a deterministic game whose bugs are state-local, the previous
   outcome adds no detection power.
+
+## 2026-10-27: Trigger evaluation v2: refusal, tkg1s, matched baselines, A/B split (`runs/trigger_eval/20261027-005617`)
+
+**Setup.** Shadow mode, warm-up 0, cheap-agent trajectories, 3 grid tasks × seeds 0–2 × 1,000
+steps. random / every_n are matched to each of tkg1's and tkg1c's fire rates. The A/B split uses
+the draft taxonomy's `proposed_rq3_class`: A = transition anomaly, B = no transition anomaly.
+Adjusted bugs per run: 13–18, of which A 9–14 and B 4–6. Each cell lists tomato / tomato+steak /
+salad; projected calls are per 1,000 steps at k = 1.
+
+| trigger | fire rate | precision_adj | recall_unique_adj | recall A | recall B | projected calls / 1k |
+|---|---|---|---|---|---|---|
+| tkg1 | .40/.46/.41 | .15/.13/.15 | **1.00/1.00/1.00** | 1.00/1.00/1.00 | **1.00/1.00/1.00** | 142/163/149 |
+| tkg0 | identical to tkg1 | | | | | |
+| tkg1c | .16/.18/.17 | .24/.24/.29 | .45/.59/.62 | .56/.70/.80 | .21/.25/.22 | 56/65/63 |
+| tkg1s | .85/.90/.87 | .17/.17/.18 | 1.00/1.00/1.00 | 1.00/1.00/1.00 | 1.00/1.00/1.00 | 305/323/319 |
+| refusal | .45/.48/.46 | **.30/.27/.31** | .67/.74/.71 | **1.00/1.00/1.00** | **0.00/0.00/0.00** | 160/172/168 |
+| random@tkg1 | .39/.45/.40 | .20/.18/.20 | .30/.35/.42 | .30/.32/.33 | .33/.42/.67 | 138/161/146 |
+| every_n@tkg1 | .39/.50/.39 | .18/.17/.19 | .41/.38/.39 | .41/.41/.40 | .41/.25/.35 | 139/179/142 |
+| random@tkg1c | .15/.18/.17 | .18/.15/.19 | .17/.12/.16 | .23/.14/.11 | .06/.08/.30 | 55/65/63 |
+| every_n@tkg1c | .15/.19/.17 | .17/.17/.15 | .19/.19/.12 | .22/.26/.17 | .11/.00/.00 | 54/67/64 |
+
+**Reading.**
+- **tkg1 is the only trigger with full recall on both classes at a moderate rate.** At a matched
+  rate, random and every_n get 0.30–0.42.
+- **The memoryless refusal baseline splits cleanly by class.** It catches every A bug (the game
+  visibly refuses or does nothing) and no B bug (bugs with no visible anomaly). It has the best
+  precision, but only memory finds the B class.
+- **tkg1s matches tkg1's recall but fires on ~0.87 of transitions,** so the sequence context only
+  adds cost.
+- **tkg1c trades B recall away first** (B 0.21–0.25 vs A 0.56–0.80).

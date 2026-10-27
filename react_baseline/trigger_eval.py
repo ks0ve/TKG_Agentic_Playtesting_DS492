@@ -5,9 +5,11 @@
 
 Runs the cheap agent once per task and seed, then replays every trigger on that same trajectory
 (a fresh TKG per replay, checked before each transition is added, exactly like the TKG agent):
-tkg1, tkg0 and tkg1c at default parameters, random with p = tkg1c's fire rate on that trajectory
-and every_n with n = round(1 / that rate), so the baselines fire about as often. Fires count only
-once the memory check runs (after the warm-up); recall counts every first occurrence in the run.
+tkg1, tkg0, tkg1c and tkg1s at default parameters, the memoryless refusal trigger, and random /
+every_n matched to EACH of tkg1's and tkg1c's fire rates on that trajectory (p = rate,
+n = round(1 / rate); "random@tkg1" etc.). Fires count only once the memory check runs (after the
+warm-up; warm-up 0 by default); recall counts every first occurrence in the run, overall and split
+by the draft taxonomy's proposed RQ3 class (A_transition_anomaly / B_no_transition_anomaly).
 Every trigger is evaluated with warm-up 0 and 200 (``--warmups``). recall_unique_adj is over the
 whole run: a first occurrence during the warm-up counts as missed. llm_calls_projected = fires x
 investigate_k, per 1,000 env steps (an upper bound: in the real agent a fire during an investigation
@@ -28,7 +30,7 @@ from pathlib import Path
 
 from memory.abstraction import abstract
 from memory.tkg import TKG
-from memory.trigger import EveryNTrigger, RandomTrigger, TKGTrigger
+from memory.trigger import EveryNTrigger, RandomTrigger, TKGTrigger, make_trigger
 
 from .cheap_policy import CheapAgent
 from .env_adapter import REPO_ROOT
@@ -36,12 +38,15 @@ from .normal_play import GRID_TASKS
 from .runner import Budgets, run
 from .tkg_agent import DEFAULT_INVESTIGATE_K
 from .solutions import load_normal_play
+from .taxonomy import load_taxonomy
 from .trigger_metrics import evaluate
 
-METRICS = ("fire_rate", "precision_adj", "recall_unique_adj", "recall_events_adj", "llm_calls_projected_per_1k")
+METRICS = ("fire_rate", "precision_adj", "recall_unique_adj", "recall_unique_adj_A", "recall_unique_adj_B",
+           "recall_events_adj", "llm_calls_projected_per_1k")
 SWEEP_TAU = (0.05, 0.15, 0.3)
 SWEEP_MIN_SUPPORT = (2, 3, 5)
 SWEEP_K = (1, 3)
+_CLASSES: dict[int, str] = {}
 WINDOW = 100
 
 
@@ -77,8 +82,12 @@ def replay(trans: list[dict], trigger, warmup: int) -> list[dict]:
     return out
 
 
+def _classes() -> dict[int, str]:
+    return {b: r["proposed_rq3_class"] for b, r in load_taxonomy().items()}
+
+
 def score(rows: list[dict], step_rows: list[dict], normal, k: int = DEFAULT_INVESTIGATE_K) -> dict:
-    ev = evaluate(rows, step_rows, normal)
+    ev = evaluate(rows, step_rows, normal, _CLASSES)
     ev["fire_rate"] = (ev["fires"] / ev["checks"]) if ev["checks"] else None
     steps = len(step_rows) or 1
     ev["investigate_k"] = k
@@ -93,12 +102,14 @@ def score(rows: list[dict], step_rows: list[dict], normal, k: int = DEFAULT_INVE
 
 def eval_trajectory(trans, step_rows, normal, warmup: int, seed: int, k: int = DEFAULT_INVESTIGATE_K) -> dict:
     out = {}
-    for name, trig in (("tkg1", TKGTrigger(1)), ("tkg0", TKGTrigger(0)), ("tkg1c", TKGTrigger(1, coarse=True))):
-        out[name] = score(replay(trans, trig, warmup), step_rows, normal, k)
-    rate = out["tkg1c"]["fire_rate"] or 0.0
-    out["random"] = {**score(replay(trans, RandomTrigger(rate, seed), warmup), step_rows, normal, k), "p": rate}
-    n = max(round(1 / rate), 1) if rate else 10 ** 9
-    out["every_n"] = {**score(replay(trans, EveryNTrigger(n), warmup), step_rows, normal, k), "n": n}
+    for name in ("tkg1", "tkg0", "tkg1c", "tkg1s", "refusal"):
+        out[name] = score(replay(trans, make_trigger(name, seed=seed), warmup), step_rows, normal, k)
+    for ref in ("tkg1", "tkg1c"):        # baselines matched to each memory trigger's fire rate
+        rate = out[ref]["fire_rate"] or 0.0
+        out[f"random@{ref}"] = {**score(replay(trans, RandomTrigger(rate, seed), warmup), step_rows, normal, k),
+                                "p": rate}
+        n = max(round(1 / rate), 1) if rate else 10 ** 9
+        out[f"every_n@{ref}"] = {**score(replay(trans, EveryNTrigger(n), warmup), step_rows, normal, k), "n": n}
     return out
 
 
@@ -147,7 +158,7 @@ def main(argv=None):
     g.add_argument("--grid-tasks", action="store_true", help="the 3 grid tasks")
     p.add_argument("--seeds", default="0,1,2")
     p.add_argument("--steps", type=int, default=1000)
-    p.add_argument("--warmups", default="0,200", help="comma-separated warm-up lengths (env steps)")
+    p.add_argument("--warmups", default="0", help="comma-separated warm-up lengths (env steps; default 0)")
     p.add_argument("--investigate-k", type=int, default=DEFAULT_INVESTIGATE_K,
                    help="LLM decisions per fire for llm_calls_projected (the sweep uses 1 and 3)")
     p.add_argument("--out-dir", default=str(REPO_ROOT / "runs" / "trigger_eval"))
@@ -158,6 +169,7 @@ def main(argv=None):
     out = Path(a.out_dir) / datetime.now().strftime("%Y%m%d-%H%M%S")
     out.mkdir(parents=True, exist_ok=True)
     normal_play = load_normal_play()
+    _CLASSES.update(_classes())
     result = {"steps": a.steps, "seeds": seeds, "warmups": warmups, "tasks": {}}
     md = [f"# Trigger evaluation (shadow mode, cheap-agent trajectories, {a.steps} steps, seeds {seeds})", ""]
     for task in tasks:

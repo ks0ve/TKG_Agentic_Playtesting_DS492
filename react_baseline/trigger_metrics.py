@@ -8,12 +8,16 @@ whether the memory check ran and fired) and steps.jsonl rows:
   recall_unique_adj   share of unique adjusted bugs whose first-occurrence transition had a fire
   recall_events_adj   share of all adjusted bug occurrences inside fired transitions
 
-First occurrences before the memory check runs (warm-up) count as missed.
+First occurrences before the memory check runs (warm-up) count as missed. With ``classes`` (bug ID ->
+proposed RQ3 class from the draft taxonomy) recall_unique_adj is also split into
+recall_unique_adj_A (A_transition_anomaly) and recall_unique_adj_B (B_no_transition_anomaly).
 """
 from __future__ import annotations
 
+CLASS_A, CLASS_B = "A_transition_anomaly", "B_no_transition_anomaly"
 
-def evaluate(transitions: list[dict], step_rows: list[dict], normal) -> dict:
+
+def evaluate(transitions: list[dict], step_rows: list[dict], normal, classes: dict | None = None) -> dict:
     """``transitions``: dicts with start, end (global steps, inclusive), checked, fired.
     ``normal``: the task's normal-play IDs (None: unknown task -> all fields None)."""
     keys = ("precision_adj", "recall_unique_adj", "recall_events_adj")
@@ -35,9 +39,17 @@ def evaluate(transitions: list[dict], step_rows: list[dict], normal) -> dict:
     checks = sum(1 for t in transitions if t["checked"])
     hit_unique = sum(1 for b, g in first.items() if owner.get(g) in fired)
     hit_events = sum(1 for g, b in occ if owner.get(g) in fired)
+    split = {}
+    if classes is not None:
+        for tag, cls in (("A", CLASS_A), ("B", CLASS_B)):
+            ids = [b for b in first if classes.get(b) == cls]
+            hits = sum(1 for b in ids if owner.get(first[b]) in fired)
+            split[f"recall_unique_adj_{tag}"] = (hits / len(ids)) if ids else None
+            split[f"adjusted_bugs_{tag}"] = len(ids)
     return {
         "precision_adj": (sum(1 for i in fired if by_t.get(i)) / len(fired)) if fired else None,
         "recall_unique_adj": (hit_unique / len(first)) if first else None,
         "recall_events_adj": (hit_events / len(occ)) if occ else None,
         "fires": len(fired), "checks": checks, "adjusted_bugs": len(first),
+        **split,
     }
