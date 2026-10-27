@@ -544,3 +544,59 @@ cut off before the Action line. The output cap only costs when it is used ($0.50
 more tokens add at most $0.000064 per call. The v2.1 frozen config's profile note is updated; the
 frozen hashes are unchanged, since the profile is not part of them. v2.1 runs made before this
 date used 384.
+
+## 2026-10-26: Trigger evaluation in shadow mode (no LLM; `runs/trigger_eval/20261026-232752/`)
+
+**Setup.** Cheap-agent trajectories on the 3 grid tasks, 1,000 steps, seeds 0–2. Every trigger
+was replayed on the same trajectory with a fresh memory. Metrics are adjusted (normal-play IDs
+removed):
+- recall_unique_adj is over the whole run; first occurrences during the warm-up count as missed.
+- Projected LLM calls = fires × k (here k = 1), an upper bound.
+- random and every_n are matched to tkg1c's fire rate.
+
+Each cell lists tomato / tomato+steak / salad.
+
+| warm-up | trigger | fire rate | precision_adj | recall_unique_adj | projected calls per step |
+|---|---|---|---|---|---|
+| 0 | tkg1 | 0.40 / 0.46 / 0.41 | 0.15 / 0.13 / 0.15 | **1.00 / 1.00 / 1.00** | 0.14 / 0.16 / 0.15 |
+| 0 | tkg0 | identical to tkg1 | | | |
+| 0 | tkg1c | 0.16 / 0.18 / 0.17 | 0.24 / 0.24 / 0.29 | 0.45 / 0.59 / 0.62 | 0.06 / 0.07 / 0.06 |
+| 0 | random (matched) | 0.15 / 0.18 / 0.17 | 0.18 / 0.15 / 0.19 | 0.17 / 0.12 / 0.16 | 0.06 |
+| 0 | every_n (matched) | 0.15 / 0.19 / 0.17 | 0.17 / 0.17 / 0.15 | 0.19 / 0.19 / 0.12 | 0.06 |
+| 200 | tkg1 | 0.32 / 0.38 / 0.31 | 0.14 / 0.14 / 0.16 | 0.42 / 0.54 / 0.48 | 0.09 / 0.11 / 0.09 |
+| 200 | tkg1c | 0.10 / 0.14 / 0.11 | 0.22 / 0.21 / 0.31 | 0.17 / 0.21 / 0.27 | 0.03 / 0.04 / 0.03 |
+| 200 | random (matched) | 0.12 / 0.14 / 0.12 | | 0.07 / 0.08 / 0.06 | 0.03 |
+| 200 | every_n (matched) | 0.10 / 0.14 / 0.11 | | 0.02 / 0.11 / 0.02 | 0.03 |
+
+tkg1c sweep, means over the 3 tasks (fire rate / recall_unique_adj / projected calls per step at
+k = 1; k = 3 triples the calls):
+
+| warm-up | tau | min_support 2, 3, 5 |
+|---|---|---|
+| 0 | 0.05 | 0.086 / 0.40 / 0.031, with min_support making no difference |
+| 0 | 0.15 | 0.16–0.18 / 0.55 / 0.06 |
+| 0 | 0.3 | 0.36–0.43 / 0.84 / 0.13–0.15 |
+| 200 | 0.05 | 0.03 / 0.12 / 0.01 |
+| 200 | 0.15 | 0.11–0.12 / 0.22 / 0.03 |
+| 200 | 0.3 | 0.31–0.39 / 0.41 / 0.09–0.11 |
+
+**Reading.**
+- **The warm-up is what lost the bugs.** With warm-up 200, every trigger misses roughly half or
+  more of the first occurrences. This matches the Haiku pilot.
+- **Fires saturate as memory fills.** With warm-up 0, tkg1 fires about 30 times per 100 steps at
+  first and 5–7 per 100 by steps 700–1,000.
+- **Temporal context adds nothing here.** tkg0 equals tkg1 on these trajectories: almost every
+  fire is "novel".
+- **tkg1c trades recall for rate.** It cuts fires by 2.5x but loses 40–55% of recall. It still
+  beats matched random and every_n by about 3x on recall.
+
+**Recommendation** (recall_unique_adj first, then projected calls, at most about 0.25 per step):
+`--trigger tkg1 --warmup-steps 0 --investigate-k 1 --max-consecutive-llm 6`. That gives recall
+1.00 on all three tasks at about 0.15 projected calls per step.
+- With the stricter "fire rate ≤ 0.10" rule, the best is tkg1c tau 0.05 / min_support 2 /
+  warm-up 0: recall 0.40.
+- The best tkg1c overall is tau 0.3 / min_support 2 / warm-up 0: recall 0.84 at 0.13 calls per
+  step.
+- Caveat: these are cheap-only trajectories. With the LLM in control the path changes, and a fire
+  during an investigation restarts k instead of adding k, so real call rates should be at or below
+  the projection.
