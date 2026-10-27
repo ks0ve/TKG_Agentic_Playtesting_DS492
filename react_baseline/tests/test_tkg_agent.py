@@ -160,3 +160,23 @@ def test_tkg1c_memory_blocks_are_clean(tmp_path, monkeypatch):
     assert blocks and any("In similar situations" in b for b in blocks)
     for b in blocks:
         assert _leaks(b) == [] and "bug" not in b.lower() and not _raw_hits(b), b
+
+
+def test_consecutive_llm_cap_across_restarts(tmp_path):
+    # every check fires, so each LLM transition restarts k = 3; the cap of 6 still hands control back
+    llm = MockLLM(script=["Thought: look\nAction: wait"])
+    agent = TKGAgent(llm, warmup_steps=0, investigate_k=3, trigger=EveryNTrigger(1), max_consecutive_llm=6)
+    s = run(agent, TASK, 0, Budgets(max_env_steps=60), tmp_path, CFG)
+    trans = _rows(tmp_path / "transitions.jsonl")
+    runs, cur = [], 0
+    for t in trans:
+        if t["actor"] == "llm":
+            cur += 1
+        else:
+            runs.append(cur)
+            cur = 0
+    assert max(runs + [cur]) == 6
+    released = [t for t in trans if t["trigger_reason"] == "cap_release"]
+    assert released and all(t["actor"] == "cheap" for t in released) and s["cap_releases"] == len(released)
+    assert {t["trigger_reason"] for t in trans if t["actor"] == "llm"} <= {"every_n", "investigate"}
+    assert s["max_consecutive_llm"] == 6

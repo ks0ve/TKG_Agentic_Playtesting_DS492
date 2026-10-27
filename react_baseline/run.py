@@ -102,6 +102,8 @@ def parse_args(argv=None):
     t.add_argument("--warmup-steps", type=int, default=200,
                    help="env steps of cheap-only memory building first (count in the budget)")
     t.add_argument("--investigate-k", type=int, default=3, help="LLM decisions per escalation")
+    t.add_argument("--max-consecutive-llm", type=int, default=6,
+                   help="cap on LLM decisions in a row, across fires that restart k (then cap_release)")
     t.add_argument("--tau", type=float, default=0.15, help="surprise threshold P(outcome) < tau")
     t.add_argument("--min-support", type=int, default=3,
                    help="observations needed before a context is judged (ctx1 backs off below it)")
@@ -173,6 +175,7 @@ def make_agent(args, seed: int):
         agent = TKGAgent(llm, seed=seed, trigger=trig, warmup_steps=args.warmup_steps,
                          investigate_k=args.investigate_k, repro_path=args.repro_path,
                          history=args.history, min_support=args.min_support,
+                         max_consecutive_llm=args.max_consecutive_llm,
                          warn=lambda m: print(m, file=sys.stderr))
         return agent, args.profile.backend, args.profile.model
     agent = ReActAgent(llm, history=args.history, actions_per_call=args.actions_per_call,

@@ -3,8 +3,9 @@
 Phase 1 (the first ``warmup_steps`` env steps): the cheap policy acts and fills the TKG; no memory
 check, no LLM. Phase 2, after every executed intent: memory check (``memory.trigger``) against the
 TKG, then the transition is added. When the check fires, the next decision goes to the LLM, which
-keeps control for up to ``investigate_k`` decisions (refreshed if it fires again) or hands back
-early with ``Action: resume``; otherwise the cheap policy acts.
+keeps control for up to ``investigate_k`` decisions (refreshed if it fires again, but never more than
+``max_consecutive_llm`` in a row: then control returns, logged as trigger_reason "cap_release") or
+hands back early with ``Action: resume``; otherwise the cheap policy acts.
 
 The LLM call is a vanilla ReAct turn (same system prompt, same turn template; the history is the
 last 10 transitions, cheap ones marked ``[auto]``) plus one MEMORY block built only from the TKG.
@@ -59,7 +60,7 @@ class TKGAgent(CheapAgent):
 
     def __init__(self, llm, seed: int = 0, trigger: Trigger | None = None, warmup_steps: int = 200,
                  investigate_k: int = 3, repro_path: bool = True, history: int = 10, min_support: int = 3,
-                 warn=print):
+                 max_consecutive_llm: int = 6, warn=print):
         super().__init__(seed, min_support=min_support)
         self.react = ReActAgent(llm, history=history, warn=warn, action_space="intent")
         self.system = self.react.system
@@ -71,6 +72,10 @@ class TKGAgent(CheapAgent):
         self.repro_block: str | None = None
         self.escalations = self.checks = self.fires = self.llm_decisions = self.resumes = 0
         self.reasons: Counter = Counter()
+        self.max_consecutive_llm = max_consecutive_llm
+        self.consecutive_llm = 0                 # investigation decisions in a row (across refreshes)
+        self.cap_releases = 0
+        self._decision_reason: str | None = None  # trigger_reason of the decision being executed
 
     @property
     def in_repro(self) -> bool:
@@ -102,12 +107,24 @@ class TKGAgent(CheapAgent):
     def act(self, obs_text: str, state: dict | None = None) -> Decision:
         if self.in_repro:
             reason, block = "repro", self.repro_block
+        elif self.investigate_left > 0 and self.consecutive_llm >= self.max_consecutive_llm:
+            # cap: hand control back however often the trigger restarted k
+            self.investigate_left, self.memory, self.pending_reason = 0, None, None
+            self.cap_releases += 1
+            self.consecutive_llm = 0
+            d = super().act(obs_text, state)
+            self._decision_reason = "cap_release"
+            return d
         elif self.investigate_left > 0:
             reason, block = self.pending_reason or "investigate", self.memory
             self.pending_reason = None
             self.investigate_left -= 1
+            self.consecutive_llm += 1
         else:
+            self.consecutive_llm = 0
+            self._decision_reason = None
             return super().act(obs_text, state)
+        self._decision_reason = reason
         self.react.extra_block = block
         d = self.react.act(obs_text, state)
         self.react.extra_block = None
@@ -119,12 +136,17 @@ class TKGAgent(CheapAgent):
             rec.update(resumed=True, parse_error=None, parse_note="resume: control back to the cheap policy")
             self.react.remind_format = False
             self.investigate_left, self.memory, self.resumes = 0, None, self.resumes + 1
-            self._actor = "cheap"
+            self.consecutive_llm = 0
+            self._actor, self._decision_reason = "cheap", None
             return Decision(llm_call=rec, intents=[self.policy.choose(state, self.tkg)])
         if self.investigate_left == 0 and reason != "repro":
             self.memory = None
         self._actor = "llm"
         return d
+
+    def on_transition(self, r, prev_state, new_state, info) -> dict:
+        out = super().on_transition(r, prev_state, new_state, info)
+        return {**out, "trigger_reason": self._decision_reason}
 
     def observe(self, executed, summary, results=None):
         if self._actor == "llm":
@@ -141,6 +163,7 @@ class TKGAgent(CheapAgent):
         path = self.tkg.episode_path(last["episode_key"], upto=last["id"]) if last else []
         self.repro_block = path_block(path) if self.repro_path else None
         self.investigate_left, self.memory, self.pending_reason = 0, None, None
+        self.consecutive_llm = 0
         self.react.on_repro_start(report, steps)
 
     def on_repro_tick(self, steps_left: int):
@@ -155,6 +178,7 @@ class TKGAgent(CheapAgent):
                 "warmup_steps": self.warmup_steps, "trigger": self.trigger.name,
                 "investigate_k": self.investigate_k, "repro_path": self.repro_path,
                 "escalations": self.escalations, "llm_decisions": self.llm_decisions,
-                "llm_resumes": self.resumes, "trigger_checks": self.checks, "trigger_fires": self.fires,
+                "llm_resumes": self.resumes, "max_consecutive_llm": self.max_consecutive_llm,
+                "cap_releases": self.cap_releases, "trigger_checks": self.checks, "trigger_fires": self.fires,
                 "trigger_fire_rate": (self.fires / self.checks) if self.checks else None,
                 "deviation_reasons": dict(sorted(self.reasons.items()))}
