@@ -522,7 +522,8 @@ is no graph database, no new dependency, and no LLM-drafted reference graph yet.
   it alone (no LLM).
 - **TKG agent** (`react_baseline/tkg_agent.py`).
   - The first `--warmup-steps` (200) env steps are cheap-only.
-  - After that, a fire hands the next decision(s) to the LLM, up to `--investigate-k` (3), or
+  - After that, a fire hands the next decision(s) to the LLM, up to `--investigate-k` (default 1; never more than
+    `--max-consecutive-llm` (6) in a row, even when fires restart k), or
     until it replies `Action: resume`.
   - The LLM gets the vanilla ReAct prompt, a history in which cheap turns are marked `[auto]`, and
     a MEMORY block built from the TKG.

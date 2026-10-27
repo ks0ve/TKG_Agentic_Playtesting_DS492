@@ -27,7 +27,7 @@ from .cheap_policy import CheapAgent
 
 _RESUME = re.compile(r"^[\s*#>_`-]*action[\s*_`]*[:=：]\s*[*_`]*\s*resume\b", re.IGNORECASE | re.MULTILINE)
 MAX_PATH_LINES = 40
-DEFAULT_INVESTIGATE_K = 3
+DEFAULT_INVESTIGATE_K = 1   # was 3 in v1; 1 keeps projected LLM calls low (trigger_eval)
 
 
 def memory_block(t: dict, detail: dict, k: int) -> str:

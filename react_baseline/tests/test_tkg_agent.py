@@ -197,3 +197,10 @@ def test_warmup_zero_interleaves_from_step_one(tmp_path):
     assert json.loads((rd / "summary.json").read_text())["warmup_steps"] == 0
     with pytest.raises(SystemExit):
         run_cli.parse_args(["--agent", "tkg", "--llm", "mock", "--warmup-steps", "-1"])
+
+
+def test_investigate_k_defaults_to_one():
+    from react_baseline.tkg_agent import DEFAULT_INVESTIGATE_K
+    assert DEFAULT_INVESTIGATE_K == 1 and TKGAgent(MockLLM()).investigate_k == 1
+    args = run_cli.parse_args(["--agent", "tkg", "--llm", "mock"])
+    assert args.investigate_k == 1 and args.max_consecutive_llm == 6 and args.warmup_steps == 200

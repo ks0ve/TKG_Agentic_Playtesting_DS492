@@ -10,7 +10,7 @@ from . import pilot_check, spend
 from .action_reader import DEFAULT_MAX_MACRO_LEN, ActionReader
 from .agents import ContextOverflowError, RandomAgent, RandomIntentAgent, ReActAgent
 from .cheap_policy import CheapAgent
-from .tkg_agent import TKGAgent
+from .tkg_agent import DEFAULT_INVESTIGATE_K, TKGAgent
 from .repro import ReproConfig
 from memory.trigger import make_trigger
 from .env_adapter import list_tasks
@@ -102,7 +102,8 @@ def parse_args(argv=None):
     t.add_argument("--warmup-steps", type=int, default=200,
                    help="env steps of cheap-only memory building first (count in the budget); 0 = "
                         "memory starts empty and a novel situation escalates on first sight")
-    t.add_argument("--investigate-k", type=int, default=3, help="LLM decisions per escalation")
+    t.add_argument("--investigate-k", type=int, default=DEFAULT_INVESTIGATE_K,
+                   help=f"LLM decisions per escalation (default {DEFAULT_INVESTIGATE_K})")
     t.add_argument("--max-consecutive-llm", type=int, default=6,
                    help="cap on LLM decisions in a row, across fires that restart k (then cap_release)")
     t.add_argument("--tau", type=float, default=0.15, help="surprise threshold P(outcome) < tau")
