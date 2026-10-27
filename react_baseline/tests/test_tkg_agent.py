@@ -32,6 +32,17 @@ class OnceTrigger(Trigger):
         return (True, "novel") if self.n == 1 else (False, None)
 
 
+def _check_memory_block(b: str):
+    """MEMORY = one TKG-derived line (who acted, intent -> event text) + the fixed instruction. The
+    instruction is ours (it says "Report a bug only if ..."); the TKG part must be oracle-free."""
+    from react_baseline.tkg_agent import INVESTIGATE
+    head, instruction = b.split("\n", 1)
+    assert instruction == INVESTIGATE
+    assert head.startswith(("MEMORY: The automatic explorer (not you) just did: ", "MEMORY: You just did: "))
+    assert " -> " in head and _leaks(head) == [] and "bug" not in head.lower() and not _raw_hits(head), head
+    assert _leaks(instruction) == [] and not _raw_hits(instruction)
+
+
 def _rows(path):
     return [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines()] if path.exists() else []
 
@@ -68,7 +79,7 @@ def test_escalation_gives_llm_at_most_k_decisions_and_resume(tmp_path, reply, n_
         assert len(llm_trans) == 3 and all(t["intent"] == "wait" for t in llm_trans)
     later = [t for t in trans if t["decision_id"] > decisions[-1]]
     assert later and all(t["actor"] == "cheap" for t in later)
-    assert "[auto] [turn" in llm.calls[0][1]             # cheap turns are shown as [auto] in the history
+    assert "[auto-explorer] [turn" in llm.calls[0][1]    # cheap turns are marked in the history
     assert "MEMORY: " in llm.calls[0][1] and 'Action: resume' in llm.calls[0][1]
 
 
@@ -93,7 +104,9 @@ def test_memory_block_and_recorded_path_have_no_oracle_data(tmp_path, monkeypatc
     mem = [b for b in blocks if b.startswith("MEMORY:")]
     path = [b for b in blocks if b.startswith("RECORDED PATH")]
     assert mem and path
-    for b in mem + path:
+    for b in mem:
+        _check_memory_block(b)
+    for b in path:
         assert _leaks(b) == [] and "bug" not in b.lower(), b[:300]
         assert not _raw_hits(b), (_raw_hits(b), b[:300])
     for _, user in llm.calls:
@@ -157,9 +170,9 @@ def test_tkg1c_memory_blocks_are_clean(tmp_path, monkeypatch):
     agent = TKGAgent(llm, warmup_steps=0, trigger=make_trigger("tkg1c"))
     run(agent, "V2_task_11_tomato_lettuce_onion", 0, Budgets(max_env_steps=400), tmp_path, CFG)
     blocks = [u[u.index("MEMORY:"):].split("\n\n")[0] for _, u in llm.calls if "MEMORY:" in u]
-    assert blocks and any("In similar situations" in b for b in blocks)
+    assert blocks
     for b in blocks:
-        assert _leaks(b) == [] and "bug" not in b.lower() and not _raw_hits(b), b
+        _check_memory_block(b)
 
 
 def test_consecutive_llm_cap_across_restarts(tmp_path):

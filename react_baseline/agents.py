@@ -270,11 +270,11 @@ class ReActAgent:
             self.entries = self._window(self.history)
 
     def observe_auto(self, executed: list[int], summary: str, results=None):
-        """History line for a decision made without the LLM (TKG arm's cheap policy): '[auto] ...'."""
+        """History line for a decision made without the LLM (TKG arm's cheap policy): '[auto-explorer] ...'."""
         self._turn_index += 1
         intents = "; ".join(r.intent for r in results or []) or "(none)"
         trace = " / ".join(r.trace for r in results or [])
-        self.entries.append(f"[auto] {self._turn_label(executed, results)} Action: {intents} | "
+        self.entries.append(f"[auto-explorer] {self._turn_label(executed, results)} Action: {intents} | "
                             f"Executor: {trace} | Result: {summary}")
         if len(self.entries) > 4 * max(self.history, 1) + 8:
             self.entries = self._window(self.history)

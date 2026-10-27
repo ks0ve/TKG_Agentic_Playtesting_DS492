@@ -9,7 +9,8 @@ keeps control for up to ``investigate_k`` decisions (refreshed if it fires again
 hands back early with ``Action: resume``; otherwise the cheap policy acts.
 
 The LLM call is a vanilla ReAct turn (same system prompt, same turn template; the history is the
-last 10 transitions, cheap ones marked ``[auto]``) plus one MEMORY block built only from the TKG.
+last 10 transitions, cheap ones marked ``[auto-explorer]``) plus one MEMORY block built only from the
+TKG: what the automatic explorer just did, and an instruction to investigate variations.
 Bug reports go through the runner's reproduction protocol unchanged; reproduction decisions are the
 LLM's, and with ``repro_path`` the prompt adds the recorded path: the reported episode's transitions
 from the reset up to the report, from the TKG. Nothing here sees the oracle.
@@ -19,7 +20,6 @@ from __future__ import annotations
 import re
 from collections import Counter
 
-from memory.abstraction import outcome_text, situation_text
 from memory.trigger import TKGTrigger, Trigger
 
 from .agents import Decision, ReActAgent
@@ -30,21 +30,17 @@ MAX_PATH_LINES = 40
 DEFAULT_INVESTIGATE_K = 1   # was 3 in v1; 1 keeps projected LLM calls low (trigger_eval)
 
 
-def memory_block(t: dict, detail: dict, k: int) -> str:
-    """MEMORY block for the LLM, from the TKG only (situation, usual outcome, this outcome)."""
-    now = outcome_text(t["outcome"])
-    situation = situation_text(t["ctx0"])
-    if detail.get("level") == "coarse" and detail.get("usual_text"):
-        head = (f'MEMORY: This exact situation ({situation}) is new. In similar situations '
-                f'({detail["situation_text"]}) the usual outcome was "{detail["usual_text"]}" '
-                f'(seen {detail["usual_count"]} times). This time: "{now}".')
-    elif detail.get("usual_text") and detail.get("ctx0_support"):
-        head = (f'MEMORY: In this situation ({situation}) the usual outcome was "{detail["usual_text"]}" '
-                f'(seen {detail["usual_count"]} times). This time: "{now}".')
-    else:
-        head = f'MEMORY: This situation ({situation}) had not been seen before. This time: "{now}".'
-    return (head + f"\nYou have control for up to {k} decisions. Reply with \"Action: resume\" to hand "
-            "control back to the automatic explorer.")
+INVESTIGATE = ("This situation is new or unusual for the memory. Investigate it: try related variations "
+               "(other items, stations, or item states) to probe whether the game handles them correctly. "
+               "Report a bug only if behaviour looks wrong. Reply 'Action: resume' when done.")
+
+
+def memory_block(t: dict) -> str:
+    """MEMORY block for the LLM, built only from the TKG transition that deviated: who acted, the
+    intent and its event text, then the fixed investigation instruction."""
+    who = "You just did" if t.get("actor") == "llm" else "The automatic explorer (not you) just did"
+    event = (t.get("event_text") or "nothing happened").rstrip(".")
+    return f"MEMORY: {who}: {t['intent']} -> {event}.\n{INVESTIGATE}"
 
 
 def path_block(path: list[dict]) -> str:
@@ -103,7 +99,7 @@ class TKGAgent(CheapAgent):
                     t["escalated"] = True
                 self.investigate_left = self.investigate_k
                 self.pending_reason = reason
-                self.memory = memory_block(t, d, self.investigate_k)
+                self.memory = memory_block(t)
         return deviation, d.get("expectation")
 
     # -- acting -------------------------------------------------------------------------
