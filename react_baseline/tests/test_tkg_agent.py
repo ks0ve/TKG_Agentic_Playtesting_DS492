@@ -148,3 +148,15 @@ def test_mock_end_to_end_cli_and_bundle(tmp_path):
     assert run_cli.main(["--agent", "cheap", "--max-env-steps", "50", "--run-dir", str(tmp_path / "c"),
                          "--quiet"]) == 0
     assert (tmp_path / "c" / "tkg.json").exists()
+
+
+def test_tkg1c_memory_blocks_are_clean(tmp_path, monkeypatch):
+    from memory.trigger import make_trigger
+    _install_sentinels(monkeypatch)
+    llm = MockIntentLLM(seed=2)
+    agent = TKGAgent(llm, warmup_steps=0, trigger=make_trigger("tkg1c"))
+    run(agent, "V2_task_11_tomato_lettuce_onion", 0, Budgets(max_env_steps=400), tmp_path, CFG)
+    blocks = [u[u.index("MEMORY:"):].split("\n\n")[0] for _, u in llm.calls if "MEMORY:" in u]
+    assert blocks and any("In similar situations" in b for b in blocks)
+    for b in blocks:
+        assert _leaks(b) == [] and "bug" not in b.lower() and not _raw_hits(b), b

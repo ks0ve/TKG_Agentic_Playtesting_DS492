@@ -11,6 +11,8 @@ Entity state strings (kind + visible state, never coordinates):
 ctx0    = (intent kind, hands before, target entity before)      intent kind: move | interact | wait
 ctx1    = (previous outcome in this episode or START, ctx0)
 outcome = (event type, success, hands after, target entity after)
+coarse  = (intent kind, target kind)        target kind = the entity kind without its state
+outcome_coarse = (event type, success)      what coarse-level expectations count
 
 The target is the tile the intent's last step bumped or entered (its event record).
 """
@@ -95,12 +97,29 @@ def outcome_key(event: dict | None) -> str:
                       hands_str(ev.get("held_after")), tile_str(ev.get("tile_after"))))
 
 
+def target_kind(entity: str) -> str:
+    """'cutting board:holding:unchopped onion' -> 'cutting board'; 'floor' -> 'floor'."""
+    return entity.split(":", 1)[0]
+
+
+def coarse_key(kind: str, target: str) -> str:
+    return _SEP.join((intent_kind(kind), target_kind(target)))
+
+
+def outcome_coarse_key(event: dict | None) -> str:
+    ev = event or {}
+    success = ev.get("success")
+    return _SEP.join((str(ev.get("type") or "none"), "-" if success is None else str(success)))
+
+
 def abstract(kind: str, last_event: dict | None, prev_outcome: str | None) -> dict:
-    """ctx0 / ctx1 / outcome / target of one executed intent (from its last event record)."""
+    """ctx0 / ctx1 / coarse / outcome / outcome_coarse / target of one executed intent (from its
+    last event record)."""
     ev = last_event or {}
     target = tile_str(ev.get("tile_before"))
     c0 = ctx0_key(kind, ev.get("held_before"), target)
-    return {"ctx0": c0, "ctx1": ctx1_key(prev_outcome, c0), "outcome": outcome_key(ev), "target": target}
+    return {"ctx0": c0, "ctx1": ctx1_key(prev_outcome, c0), "coarse": coarse_key(kind, target),
+            "outcome": outcome_key(ev), "outcome_coarse": outcome_coarse_key(ev), "target": target}
 
 
 def predicted_ctx0(intent, state: dict) -> str:
@@ -152,6 +171,20 @@ def outcome_text(outcome: str) -> str:
     if target != "none":
         tail += f"; target now: {entity_text(target)}"
     return verb + tail
+
+
+def outcome_coarse_text(outcome_coarse: str) -> str:
+    et, success = outcome_coarse.split(_SEP)
+    if et == "deliver":
+        return "delivered: order ACCEPTED" if success == "True" else "delivered: order REJECTED"
+    if success == "False":
+        return _FAILED.get(et, "tried something: refused")
+    return _VERBS.get(et, "something happened")
+
+
+def coarse_text(coarse: str) -> str:
+    kind, tkind = coarse.split(_SEP)
+    return f"{kind} with a {tkind}" if tkind != "none" else kind
 
 
 def situation_text(ctx0: str) -> str:

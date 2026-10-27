@@ -60,3 +60,36 @@ def test_random_and_every_n_rates():
     assert len(hits) == 10 and hits[0] == 6 and e.check(_tr(C0, PUT), tkg)[1] is None
     assert make_trigger("tkg0").order == 0 and make_trigger("every_n", n=4).n == 4
     assert make_trigger("random", p=0.5).p == 0.5 and make_trigger("tkg1", tau=0.3).tau == 0.3
+
+
+def _trc(ctx0, outcome, prev=None):
+    """A transition with the coarse fields, as memory.abstraction.abstract builds them."""
+    kind, _, target = ctx0.split(" | ")
+    t = _tr(ctx0, outcome, prev)
+    t["coarse"] = f"{kind} | {target.split(':', 1)[0]}"
+    t["outcome_coarse"] = " | ".join(outcome.split(" | ")[:2])
+    return t
+
+
+ONION_C0 = "interact | hands:unchopped onion | cutting board:empty"
+PUT_ONION = "putdown | True | hands:nothing | cutting board:holding:unchopped onion"
+FAIL_ONION = "putdown | False | hands:unchopped onion | cutting board:empty"
+
+
+def test_tkg1c_coarse_fallback():
+    tkg, trig = TKG(), make_trigger("tkg1c")
+    assert trig.name == "tkg1c" and trig.coarse
+    assert _check_then_add(trig, tkg, _trc(C0, PUT)) == (True, "novel")       # coarse unseen
+    for _ in range(3):
+        _check_then_add(trig, tkg, _trc(C0, PUT))
+    # a new ctx0 (onion instead of tomato) on a known coarse (interact | cutting board)
+    assert trig.check(_trc(ONION_C0, PUT_ONION), tkg) == (False, None)       # "putdown | True" seen: expected
+    assert trig.detail["level"] == "coarse" and trig.detail["usual_text"] == "put something down"
+    assert trig.check(_trc(ONION_C0, FAIL_ONION), tkg) == (True, "surprising")  # refused: P = 0 at coarse
+    assert trig.detail["level"] == "coarse"
+    # tkg1 would call the same new ctx0 novel
+    assert TKGTrigger(order=1).check(_trc(ONION_C0, PUT_ONION), tkg) == (True, "novel")
+    # with ctx0 support >= min_support, tkg1c judges at ctx1/ctx0 like tkg1
+    assert trig.check(_trc(C0, FAIL), tkg) == (True, "surprising") and trig.detail["level"] == "ctx1"
+    assert trig.check(_trc(C0, PUT), tkg) == (False, None)
+    assert tkg.expectations["exp:coarse:interact | cutting board"].outcomes == {"putdown | True": 4}

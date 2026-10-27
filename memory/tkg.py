@@ -10,8 +10,9 @@ Transition-centric schema:
 
 One transition = one executed intent. State ids hash the visible state without episode_step and
 last_event. Entities are coordinate-free entity-state strings, shared between states.
-Expectations are keyed on the abstraction (ctx1 and ctx0, see memory.abstraction), never on exact
-states, so they generalise: each holds an outcome -> count table. Only the observed source exists
+Expectations are keyed on the abstraction (ctx1, ctx0 and the coarse (intent kind, target kind)
+level, see memory.abstraction), never on exact states, so they generalise: each holds an outcome ->
+count table (coarse expectations count (event type, success)). Only the observed source exists
 for now (an LLM-drafted reference source comes later).
 """
 from __future__ import annotations
@@ -88,6 +89,9 @@ class TKG:
             self.expectations[eid] = Expectation(level, key)
         return self.expectations.get(eid)
 
+    def coarse_expectation(self, coarse: str) -> Expectation | None:
+        return self._exp("coarse", coarse)
+
     def count(self, ctx0: str) -> int:
         e = self._exp("ctx0", ctx0)
         return e.support if e else 0
@@ -148,9 +152,12 @@ class TKG:
             self.edges.append({"type": "TARGET", "source": tid, "target": self._add_entity(t["target"])})
         if assessed_against:
             self.edges.append({"type": "ASSESSED_AGAINST", "source": tid, "target": assessed_against})
-        for level in ("ctx1", "ctx0"):
-            e = self._exp(level, t[level], create=True)
-            e.outcomes[t["outcome"]] += 1
+        levels = [("ctx1", t["ctx1"], t["outcome"]), ("ctx0", t["ctx0"], t["outcome"])]
+        if t.get("coarse"):
+            levels.append(("coarse", t["coarse"], t["outcome_coarse"]))
+        for level, key, outcome in levels:
+            e = self._exp(level, key, create=True)
+            e.outcomes[outcome] += 1
             step = t["global_step_end"]
             e.first_seen_step = step if e.first_seen_step is None else e.first_seen_step
             e.last_seen_step = step

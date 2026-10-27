@@ -31,8 +31,12 @@ def memory_block(t: dict, detail: dict, k: int) -> str:
     """MEMORY block for the LLM, from the TKG only (situation, usual outcome, this outcome)."""
     now = outcome_text(t["outcome"])
     situation = situation_text(t["ctx0"])
-    if detail.get("usual") and detail.get("ctx0_support"):
-        head = (f'MEMORY: In this situation ({situation}) the usual outcome was "{outcome_text(detail["usual"])}" '
+    if detail.get("level") == "coarse" and detail.get("usual_text"):
+        head = (f'MEMORY: This exact situation ({situation}) is new. In similar situations '
+                f'({detail["situation_text"]}) the usual outcome was "{detail["usual_text"]}" '
+                f'(seen {detail["usual_count"]} times). This time: "{now}".')
+    elif detail.get("usual_text") and detail.get("ctx0_support"):
+        head = (f'MEMORY: In this situation ({situation}) the usual outcome was "{detail["usual_text"]}" '
                 f'(seen {detail["usual_count"]} times). This time: "{now}".')
     else:
         head = f'MEMORY: This situation ({situation}) had not been seen before. This time: "{now}".'
