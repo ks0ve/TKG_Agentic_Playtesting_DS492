@@ -38,7 +38,7 @@ def test_summary_report_counts(tmp_path):
     # walk right into the sink from (3,3) with empty hands: bug 20 (USE_SINK_WITHOUT_PLATE)
     script = ["Thought: go\nAction: interact(4,3)",
               "Thought: odd\nAction: wait\nBug report: the sink reacted to empty hands",
-              "Thought: x\nAction: wait\nBug report: nothing happened"]
+              "Thought: x\nAction: wait\nBug report: the sink did not react this time"]
     s = run(ReActAgent(MockLLM(script=script), action_space="intent"), "V2_task_01_tomato", 0,
             Budgets(max_env_steps=7, max_llm_calls=3), tmp_path, {"backend": "mock", "model": "mock"})
     reps = [json.loads(line) for line in (tmp_path / "bug_reports.jsonl").read_text().splitlines()]

@@ -469,3 +469,17 @@ deliveries, calls and cost stay valid as v2.0 measurements, and `summary_rescore
 adjusted metrics. The v2.0 results are **superseded for bug reports and reproduction metrics**:
 about 73% of Haiku's reports were about our text interface, and its reproduction attempts
 targeted normal-play IDs. Report-based comparisons should use v2.1 runs.
+
+**2026-10-26, v2.1 addendum (before re-freezing).** The v2.1 Haiku salad pilot
+(`runs/pilot/20261026-201139_react_V2_task_11_…`) cut false reports by roughly 4–5x compared with
+v2.0. Some remaining "reports" were non-reports: "Unconfirmed. …", or "… so no clear defect is
+confirmed here." Two changes:
+- OUTPUT FORMAT now says: "Only add a Bug report line when you believe you observed a defect.
+  Never use it to say that no defect was found or that an earlier report is uncertain." This is
+  format wording only, with no defect hints.
+- Non-reports are filtered. A line starting with "unconfirmed", "no defect", "no bug", "nothing"
+  or "not a bug", or containing "no (clear) defect/bug (is) confirmed/found/observed", is not
+  counted as a report and never starts a reproduction attempt. It is logged in llm_calls
+  `bug_report_discarded` and counted in summary `bug_reports_discarded`.
+
+Prompt hash updated in `configs/frozen/baseline_v2_1.yaml`; the react-raw snapshot was regenerated.

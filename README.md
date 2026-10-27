@@ -299,9 +299,13 @@ Reply format: `Thought: …` / `Action: <0-4>[,…]` / optional `Bug report: …
 case differences, markdown bold, backticks, brackets, a trailing `(left)`, and action names
 such as `left`. A reply with no parseable action runs **action 4 (wait)**, logs a
 `parse_error`, and adds a format reminder to the next turn. `Bug report: None`-style lines
-are not counted as reports.
+are not counted as reports. Neither are non-reports (v2.1): a line starting with "unconfirmed",
+"no defect", "no bug", "nothing" or "not a bug", or containing "no (clear) defect/bug (is)
+confirmed/found/observed". These are logged in llm_calls `bug_report_discarded` and counted in
+summary `bug_reports_discarded`.
 
-`react-raw` uses exactly the MVP system prompt; its observations and history come from the shared
+`react-raw` uses the MVP system prompt, except that v2.1 replaced the optional-line sentence of
+OUTPUT FORMAT ("Only add a Bug report line when you believe you observed a defect. ..."); its observations and history come from the shared
 translator (snapshot `tests/snapshots/mvp_prompts.json`, regenerated for the v2.1 wording). `react` changes only the actions bullet of the system prompt
 (it describes the intent grammar) and the `Action:` spec in the output format and the format
 reminder. Its history entries add the executor trace:
@@ -631,7 +635,7 @@ error policy with a fake client), `test_repro.py`, `test_metrics.py`, `test_solu
    interact; name resolution; invalid intents run one wait with an error; the no-op goto; the
    length cap; budget and unexpected-bump stops; episode end; a hand-written intent sequence
    that completes each verified-demonstration task; transitions.jsonl consistency.
-6. `test_agents_v2.py`: `react-raw` prompts match the MVP snapshot byte-for-byte; intent mode
+6. `test_agents_v2.py`: `react-raw` prompts match the snapshot byte-for-byte; intent mode
    changes only the action section; intent-response parsing; intent ReAct logs, history and
    fallbacks; determinism of mock `react` and `random-intent`; the CLI agents and `--pilot`;
    the intent pilot gate.

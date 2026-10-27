@@ -19,8 +19,8 @@ def _read(path):
 
 # ---------------------------------------------------------------- MVP snapshot
 def test_primitive_prompts_match_mvp_snapshot(tmp_path):
-    """react-raw sends the MVP system prompt byte-for-byte; its turn prompts use the shared
-    translator, so this snapshot was regenerated for the v2.1 event wording (EXPERIMENT_LOG)."""
+    """react-raw prompts byte-for-byte: the MVP system prompt with the v2.1 Bug-report sentence,
+    and turn prompts from the shared translator (snapshot regenerated for v2.1, EXPERIMENT_LOG)."""
     assert prompts.system_prompt(1) == SNAP["system_k1"]
     assert prompts.system_prompt(3) == SNAP["system_k3"]
     llm = MockLLM(script=["Thought: a\nAction: 0", "garbage",

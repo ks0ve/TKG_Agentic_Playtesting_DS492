@@ -52,6 +52,7 @@ class RunStats:
     input_tokens: int = 0
     output_tokens: int = 0
     parse_errors: int = 0
+    bug_reports_discarded: int = 0
     deliveries_success: int = 0
     delivery_attempts: int = 0
     first_found: dict = field(default_factory=dict)      # bug_id -> first global_step
@@ -398,6 +399,8 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
                     stats.latencies.append(rec["latency_s"])
                     if rec["parse_error"]:
                         stats.parse_errors += 1
+                    if rec.get("bug_report_discarded"):
+                        stats.bug_reports_discarded += 1
                     call_row = {"llm_call_id": call_id, **llm_meta,
                                 "global_step": stats.global_step, "episode": stats.episodes, **rec,
                                 "decision_id": decision_id,
@@ -531,6 +534,7 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         "deliveries_success": stats.deliveries_success,
         "delivery_attempts": stats.delivery_attempts,
         "agent_bug_reports": len(stats.bug_reports),
+        "bug_reports_discarded": stats.bug_reports_discarded,   # non-reports ("no defect confirmed"), not counted
         "ignore_bug_ids": sorted(ignore),
         # v2 additions
         "action_space": action_space,

@@ -9,8 +9,8 @@ intent), and ``on_episode_reset()`` when the env resets.
 
 Agents: ``ReActAgent(action_space="intent")`` (CLI ``react``, the headline
 baseline), ``ReActAgent(action_space="primitive")`` (CLI ``react-raw``, the MVP
-ablation; system prompt byte-identical to the MVP, observations and history from the
-shared translator), ``RandomAgent`` (uniform over the
+ablation; MVP system prompt except the v2.1 Bug-report format sentence, observations and
+history from the shared translator), ``RandomAgent`` (uniform over the
 5 raw actions) and ``RandomIntentAgent`` (uniform over currently valid intents).
 """
 from __future__ import annotations
@@ -45,6 +45,7 @@ class ParsedResponse:
     parse_note: str | None = None
     intents: list = field(default_factory=list)   # intent mode only
     reproduced: bool = False                      # reply had 'Reproduced: yes'
+    bug_report_discarded: str | None = None       # a 'Bug report:' line that is not a report
 
 
 _ACTION_LINE = re.compile(r"^[\s*#>_`-]*action[\s*_`]*(?:\(s\))?[\s*_`]*[:=：]\s*(.*)$",
@@ -58,6 +59,15 @@ _NUM_LIST = re.compile(r"^([0-4](?:\s*[,;]?\s+[0-4]|\s*[,;]\s*[0-4])*)(?![0-9])"
 _NAME_LIST = re.compile(r"^((?:right|down|left|up|wait|stay)(?:\s*[,;]\s*(?:right|down|left|up|wait|stay))*)\b",
                         re.IGNORECASE)
 _NONE_REPORT = {"", "none", "n/a", "na", "no", "nothing", "-", "null", "none."}
+# "Bug report:" lines that say there is no (confirmed) defect: logged, never counted as reports
+_NON_REPORT_START = ("unconfirmed", "no defect", "no bug", "nothing", "not a bug")
+_NON_REPORT_ANY = re.compile(r"\bno (?:clear )?(?:defect|bug) (?:is )?(?:confirmed|found|observed)\b",
+                             re.IGNORECASE)
+
+
+def is_non_report(report: str) -> bool:
+    low = report.lower().lstrip("*_`'\" ")
+    return low.startswith(_NON_REPORT_START) or bool(_NON_REPORT_ANY.search(report))
 
 
 def parse_response(text: str, actions_per_call: int = 1) -> ParsedResponse:
@@ -70,7 +80,11 @@ def parse_response(text: str, actions_per_call: int = 1) -> ParsedResponse:
     b = _BUG.search(text or "")
     if b:
         report = b.group(1).strip().strip("*_` ").strip()
-        if report.lower() not in _NONE_REPORT and not report.lower().startswith("none"):
+        if report.lower() in _NONE_REPORT or report.lower().startswith("none"):
+            pass
+        elif is_non_report(report):
+            out.bug_report_discarded = report
+        else:
             out.bug_report = report
 
     a = _ACTION_LINE.search(text or "") or _ACTION_ANYWHERE.search(text or "")
@@ -302,6 +316,7 @@ class ReActAgent:
             "parse_note": parsed.parse_note,
             "history_turns_used": n_used,
             "parsed_reproduced": parsed.reproduced,
+            "bug_report_discarded": parsed.bug_report_discarded,
         }
         if self.action_space == "intent":
             return Decision(llm_call=record, intents=list(parsed.intents))

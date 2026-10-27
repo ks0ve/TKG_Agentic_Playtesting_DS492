@@ -38,7 +38,8 @@ Delivered plates come back dirty and can be washed in the sink.
 OUTPUT FORMAT (strict). Reply with exactly:
 Thought: <your reasoning>
 Action: <{action_spec}>
-Optionally add one more line if you believe you just observed a defect:
+Only add a Bug report line when you believe you observed a defect. Never use it to say that no \
+defect was found or that an earlier report is uncertain.
 Bug report: <one-sentence description of the suspected bug>
 """
 
