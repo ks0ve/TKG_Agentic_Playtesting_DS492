@@ -163,3 +163,37 @@ def test_config_hash_changes_with_settings(mini_grid):
     h1 = grid.combos(g)[0].config_hash
     g["max_env_steps"] = 31
     assert grid.combos(g)[0].config_hash != h1
+
+
+def test_final_grids_and_tkg_freeze(monkeypatch, capsys):
+    gt = grid.load_grid(REPO / "configs/grids/final_tkg.yaml")
+    gr = grid.load_grid(REPO / "configs/grids/final_react.yaml")
+    ct, cr = grid.combos(gt), grid.combos(gr)
+    assert len(ct) == len(cr) == 9 and all(c.paid for c in ct + cr)
+    a = ct[0].argv
+    assert a[a.index("--agent") + 1] == "tkg" and a[a.index("--max-usd") + 1] == "0.40"
+    for flag, val in (("--trigger", "tkg1"), ("--tau", "0.15"), ("--min-support", "3"), ("--warmup-steps", "0"),
+                      ("--investigate-k", "1"), ("--max-consecutive-llm", "6"), ("--repro-steps", "50")):
+        assert a[a.index(flag) + 1] == val, flag
+    assert "--repro-path" in a and "--repro" in a
+    b = cr[0].argv
+    assert b[b.index("--agent") + 1] == "react" and b[b.index("--max-usd") + 1] == "1.00" and "--trigger" not in b
+    assert {c.task for c in ct} == {c.task for c in cr} and {c.seed for c in ct} == {0, 1, 2}
+    # both freezes match the code, and the TKG grid's settings match tkg_v1
+    assert grid.frozen_mismatches(gt) == [] and grid.frozen_mismatches(gr) == []
+    assert frozen.check(REPO / "configs/frozen/tkg_v1.yaml") == []
+    # a grid whose tkg settings drift from the freeze is refused
+    bad = {**gt, "tkg": {**gt["tkg"], "investigate_k": 3}}
+    assert any("investigate_k" in m for m in grid.frozen_mismatches(bad))
+    # changed MEMORY text breaks the TKG freeze
+    from react_baseline import tkg_agent
+    monkeypatch.setattr(tkg_agent, "INVESTIGATE", tkg_agent.INVESTIGATE + " Extra.")
+    assert [m.split(":")[0] for m in frozen.check(REPO / "configs/frozen/tkg_v1.yaml")] == ["memory_text_sha256"]
+
+
+def test_grid_task_and_seed_filters(capsys):
+    assert grid.main([str(REPO / "configs/grids/final_tkg.yaml"), "--dry-run",
+                      "--tasks", "V2_task_11_tomato_lettuce_onion", "--seeds", "0"]) == 0
+    out = capsys.readouterr().out
+    assert "1 combinations, 1 to run" in out and "tkg/haiku-5.5/V2_task_11_tomato_lettuce_onion/seed0" in out
+    assert "frozen check: OK" in out

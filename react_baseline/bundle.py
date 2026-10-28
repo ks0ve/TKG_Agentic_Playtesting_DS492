@@ -1,7 +1,7 @@
 """Pack run directories into one zip for offline analysis elsewhere.
 
     python -m react_baseline.bundle --latest-pilots -o pilots.zip
-    python -m react_baseline.bundle --grid configs/grids/baseline_v2_1_progress.yaml -o progress.zip
+    python -m react_baseline.bundle --grid configs/grids/final_tkg.yaml -o final_tkg.zip
     python -m react_baseline.bundle <run_dir> [<run_dir> ...] -o some_runs.zip
 
 --latest-pilots picks the newest runs/pilot/* dir for each (agent, model); --grid packs every
@@ -27,7 +27,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RUN_FILES = ["config.json", "summary.json", "steps.jsonl", "llm_calls.jsonl", "bug_reports.jsonl",
              "repro_attempts.jsonl", "transitions.jsonl", "episodes.jsonl", "summary_rescored.json", "tkg.json"]
-DEFAULT_GRID = REPO_ROOT / "configs" / "grids" / "baseline_v2_1.yaml"
+DEFAULT_GRID = REPO_ROOT / "configs" / "grids" / "final_tkg.yaml"
 PILOT_ROOT = REPO_ROOT / "runs" / "pilot"
 
 

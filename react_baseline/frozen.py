@@ -98,6 +98,37 @@ def code_identity() -> dict:
             "action_reader_version": ACTION_READER_VERSION, "translator_version": TRANSLATOR_VERSION}
 
 
+TKG_KEYS = ("memory_text_sha256", "reference_rules_sha256", "cheap_policy")
+TKG_SETTINGS = ("trigger", "tau", "min_support", "warmup_steps", "investigate_k", "max_consecutive_llm",
+                "repro_path")
+
+
+def tkg_identity() -> dict:
+    """What defines the TKG arm beyond the harness: the agent-visible MEMORY / recorded-path text
+    (rendered samples + the source of the functions that build it), the game-manual rules file, and
+    the cheap policy's parameters."""
+    import inspect
+    from memory.reference import RULES_YAML, Reference
+    from .agents import ReActAgent
+    from .cheap_policy import CheapPolicy
+    from .tkg_agent import INVESTIGATE, expectation_line, memory_block, path_block
+    ref = Reference()
+    t = {"actor": "cheap", "intent": "interact(0,2)", "event_text": "picked up tomato from the counter at (0,2)",
+         "outcome": "pickup | - | hands:unchopped tomato | counter:empty"}
+    lookups = [{"level": "reference", "hit": ref.lookup("interact | hands:nothing | counter:holding:unchopped tomato"),
+                "dist": {}, "support": None},
+               {"level": "ctx0", "dist": {t["outcome"]: 1.0}, "support": 4, "hit": None},
+               {"level": "unseen", "dist": {}, "support": 0, "hit": None}]
+    text = "\x00".join([INVESTIGATE, path_block([t])] + [memory_block(t, lk) for lk in lookups]
+                        + [inspect.getsource(f) for f in (memory_block, expectation_line, path_block,
+                                                          ReActAgent.observe_auto)])
+    params = inspect.signature(CheapPolicy.__init__).parameters
+    return {"memory_text_sha256": hashlib.sha256(text.encode()).hexdigest(),
+            "reference_rules_sha256": hashlib.sha256(  # line endings normalised (git may check out CRLF)
+                RULES_YAML.read_bytes().replace(b"\r\n", b"\n")).hexdigest(),
+            "cheap_policy": {"epsilon": params["epsilon"].default, "n_goto": params["n_goto"].default}}
+
+
 def load(path: Path | str = FROZEN_DEFAULT) -> dict:
     return yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
 
@@ -107,7 +138,11 @@ def check(path: Path | str = FROZEN_DEFAULT) -> list[str]:
     p = Path(path)
     if not p.exists():
         return [f"frozen config {p} not found"]
-    frozen, code = load(p), code_identity()
+    frozen = load(p)
+    if frozen.get("kind") == "tkg":
+        code = tkg_identity()
+        return [f"{k}: frozen {frozen.get(k)!r} != code {code[k]!r}" for k in TKG_KEYS if frozen.get(k) != code[k]]
+    code = code_identity()
     out = []
     for key in IDENTITY_KEYS:
         if frozen.get(key) != code[key]:
@@ -119,7 +154,11 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Frozen baseline configuration check")
     ap.add_argument("--check", metavar="YAML", default=None)
     ap.add_argument("--print-identity", action="store_true")
+    ap.add_argument("--print-tkg-identity", action="store_true")
     a = ap.parse_args(argv)
+    if a.print_tkg_identity:
+        print(yaml.safe_dump(tkg_identity(), sort_keys=False).strip())
+        return 0
     if a.print_identity or not a.check:
         print(yaml.safe_dump(code_identity(), sort_keys=False).strip())
     if a.check:

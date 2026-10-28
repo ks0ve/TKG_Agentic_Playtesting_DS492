@@ -102,13 +102,20 @@ record of runs\grids\baseline_v2\ and no longer pass the frozen check.
 .venv\Scripts\python.exe -m memory.reference --coverage runs\trigger_eval\20261027-005617\runs
    game-manual rule coverage / match rate / mismatches on stored trajectories
 
-PAID - DO NOT RUN UNTIL APPROVED:
-.venv\Scripts\python.exe -m react_baseline.run --agent tkg --model-profile haiku-5.5 --task V2_task_11_tomato_lettuce_onion --seed 0 --max-env-steps 1000 --repro --repro-steps 50 --out-dir runs\pilot --allow-paid --max-usd 0.40
-   Haiku TKG pilot with the defaults (tkg1, warm-up 0, k 1, cap 6); est. ~$0.10-0.20; hard cap $0.40
-.venv\Scripts\python.exe -m react_baseline.bundle --latest-pilots -o pilots_tkg3.zip
-   bundle it (newest pilot per agent/model, incl. tkg.json)
-Compress-Archive -Path runs\trigger_eval\20261028-104401 -DestinationPath trigger_eval_20261028.zip
-   the shadow-mode trigger evaluation (bundle only packs run folders)
+FINAL PAID GRIDS (harness v2.2 + TKG v1; dry run first: est. TKG $1.36, ReAct $3.43 from the latest pilots)
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_tkg.yaml --dry-run
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_react.yaml --dry-run
+
+(a) PAID - one TKG grid run first (salad, seed 0; ~$0.15, cap $0.40), then bundle it:
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_tkg.yaml --only tkg/haiku-5.5 --tasks V2_task_11_tomato_lettuce_onion --seeds 0 --allow-paid
+.venv\Scripts\python.exe -m react_baseline.bundle --grid configs\grids\final_tkg.yaml -o final_tkg_first.zip
+
+(b) PAID - DO NOT RUN UNTIL APPROVED: the remaining runs of both grids (resumable; finished runs are skipped)
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_tkg.yaml --only tkg/haiku-5.5 --allow-paid
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_react.yaml --only react/haiku-5.5 --allow-paid
+.venv\Scripts\python.exe -m react_baseline.bundle --grid configs\grids\final_tkg.yaml -o final_tkg.zip
+.venv\Scripts\python.exe -m react_baseline.bundle --grid configs\grids\final_react.yaml -o final_react.zip
+   then: python -m react_baseline.rescore runs\grids\final_tkg  and  runs\grids\final_react
 
 
 --- OTHER ---

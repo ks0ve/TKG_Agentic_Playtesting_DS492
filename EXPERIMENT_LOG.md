@@ -783,3 +783,31 @@ Frozen identity:
 - **Reference coverage on the new trajectories:** 54.8%, match 98.3%. All 31 mismatches are now one
   cause: you pick up the item the map shows and the other one stays. The v2.1-era entries "a different
   item is picked up" and "a pickup does nothing" were translator artifacts.
+
+## 2026-10-28: Final paid grids defined (no runs yet)
+
+- **`configs/grids/final_tkg.yaml`:**
+  - tkg on haiku-5.5 with the frozen defaults: tkg1, tau 0.15, min_support 3, warm-up 0, k 1, cap 6,
+    repro path on;
+  - reproduction on (50-step attempts);
+  - 3 grid tasks × seeds 0–2 × 1,000 steps;
+  - $0.40 cap per run.
+- **`configs/grids/final_react.yaml`:** react on haiku-5.5, the same tasks, seeds, steps and
+  reproduction; $1.00 cap per run.
+- **TKG freeze `configs/frozen/tkg_v1.yaml`:**
+  - the MEMORY / recorded-path text hash (rendered samples + the source of the functions that build
+    them);
+  - the reference-rules hash (line endings normalised);
+  - the cheap-policy parameters;
+  - the trigger / agent settings.
+
+  The grid driver checks every listed freeze. It refuses a TKG grid whose `tkg:` settings differ
+  from the freeze, passes them as CLI flags, and gained `--tasks` / `--seeds` filters.
+- **Dry run** (estimates from the latest pilots):
+
+  | grid | runs | est. per run | est. total | wall time | estimate source |
+  |---|---|---|---|---|---|
+  | TKG | 9 | $0.151 | $1.36 | ~1.1 h | the 1,000-step TKG salad pilot |
+  | ReAct | 9 | $0.381 | $3.43 | ~3.3 h | a 50-step salad pilot; the v2.0 grid actually averaged ~$0.49 per run, so expect ~$4.4 |
+
+  The budget left is $12.73.

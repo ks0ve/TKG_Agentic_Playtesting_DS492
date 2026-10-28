@@ -1,7 +1,8 @@
 """Lightweight, resumable grid driver.
 
-    python -m react_baseline.grid configs/grids/baseline_v2_1.yaml --dry-run
-    python -m react_baseline.grid configs/grids/baseline_v2_1.yaml [--only react/llama3.1-8b] [--allow-paid]
+    python -m react_baseline.grid configs/grids/final_tkg.yaml --dry-run
+    python -m react_baseline.grid configs/grids/final_tkg.yaml --tasks V2_task_11_tomato_lettuce_onion --seeds 0 --allow-paid
+    python -m react_baseline.grid <grid.yaml> [--only react/haiku-5.5] [--tasks ...] [--seeds ...] [--allow-paid]
 
 Runs agent x profile x task x seed combinations sequentially through the normal CLI
 (so every guardrail applies). A combination is done when its run dir holds a
@@ -76,6 +77,16 @@ def _base_argv(g: dict, agent: str, prof, task: str, seed: int) -> list[str]:
             argv += ["--temperature", str(g.get("temperature", 0.7))]
         if prof.is_paid:
             argv += ["--allow-paid", "--max-usd", f"{float(g['max_usd_per_paid_run']):.2f}"]
+    if agent == "tkg":   # the TKG arm's settings (frozen in configs/frozen/tkg_v1.yaml)
+        t = g.get("tkg") or {}
+        flag = {"trigger": "--trigger", "tau": "--tau", "min_support": "--min-support",
+                "warmup_steps": "--warmup-steps", "investigate_k": "--investigate-k",
+                "max_consecutive_llm": "--max-consecutive-llm"}
+        for key, opt in flag.items():
+            if key in t:
+                argv += [opt, str(t[key])]
+        if "repro_path" in t:
+            argv.append("--repro-path" if t["repro_path"] else "--no-repro-path")
     r = g.get("repro") or {}
     if r.get("enabled"):
         argv += ["--repro", "--repro-steps", str(r.get("steps", 100)),
@@ -141,12 +152,33 @@ def dry_run(g: dict, cs: list[Combo]) -> str:
     return "\n".join(lines)
 
 
+def frozen_mismatches(g: dict) -> list[str]:
+    """Check every frozen file of the grid (a path or a list: the harness freeze and, for TKG grids,
+    configs/frozen/tkg_v1.yaml). The grid's tkg settings must equal the TKG freeze's."""
+    paths = g.get("frozen")
+    if not paths:
+        return ["grid has no 'frozen' entry"]
+    out = []
+    for rel in ([paths] if isinstance(paths, str) else paths):
+        path = REPO_ROOT / rel
+        out += [f"{rel}: {m}" for m in frozen.check(path)]
+        data = frozen.load(path) if path.exists() else {}
+        if data.get("kind") == "tkg":
+            want = {k: data.get("settings", {}).get(k) for k in frozen.TKG_SETTINGS}
+            have = {k: (g.get("tkg") or {}).get(k) for k in frozen.TKG_SETTINGS}
+            out += [f"{rel}: grid tkg.{k} = {have[k]!r} != frozen {want[k]!r}"
+                    for k in frozen.TKG_SETTINGS if have[k] != want[k]]
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Resumable experiment grid")
     ap.add_argument("grid")
     ap.add_argument("--only", default=None,
                     help="comma-separated agents or agent/profile pairs, e.g. "
                          "react/haiku-5.5,react-raw/haiku-5.5")
+    ap.add_argument("--tasks", default=None, help="comma-separated task ids to keep (default: all)")
+    ap.add_argument("--seeds", default=None, help="comma-separated seeds to keep (default: all)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--allow-paid", action="store_true", help="run paid combinations (guarded)")
     ap.add_argument("--allow-unfrozen", action="store_true",
@@ -154,8 +186,13 @@ def main(argv=None):
     a = ap.parse_args(argv)
     g = load_grid(a.grid)
     cs = combos(g, a.only)
-    frozen_path = REPO_ROOT / g["frozen"] if g.get("frozen") else None
-    mismatch = frozen.check(frozen_path) if frozen_path else ["grid has no 'frozen' entry"]
+    if a.tasks:
+        keep = {t.strip() for t in a.tasks.split(",") if t.strip()}
+        cs = [c for c in cs if c.task in keep]
+    if a.seeds:
+        keep_s = {int(s) for s in a.seeds.split(",") if s.strip()}
+        cs = [c for c in cs if c.seed in keep_s]
+    mismatch = frozen_mismatches(g)
     if a.dry_run:
         print(f"grid {g['name']}: frozen check: {'OK' if not mismatch else 'MISMATCH ' + '; '.join(mismatch)}")
         print(dry_run(g, cs))

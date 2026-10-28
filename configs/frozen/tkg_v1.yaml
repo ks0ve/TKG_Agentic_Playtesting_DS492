@@ -1,0 +1,24 @@
+# Frozen TKG arm v1 (2026-10-28). Used together with the harness freeze configs/frozen/baseline_v2_2.yaml.
+# The grid driver refuses to run a TKG grid when
+#   - the code no longer matches (memory_text_sha256: the MEMORY block / recorded-path text and the
+#     functions that build them; reference_rules_sha256: configs/reference_rules.yaml, line endings
+#     normalised; cheap_policy: the cheap policy's parameters), or
+#   - the grid's `tkg:` settings differ from `settings` below.
+# Check: python -m react_baseline.frozen --check configs/frozen/tkg_v1.yaml
+# Print the code's values: python -m react_baseline.frozen --print-tkg-identity
+kind: tkg
+name: tkg_v1
+baseline: configs/frozen/baseline_v2_2.yaml
+memory_text_sha256: 2abd4c89a99da4e26c642dca6648f67075ec6f1d80cd35d154418bfd3c9c9719
+reference_rules_sha256: 2ab6fb3fe47c4124857083cd8bce24fb9d266c7271a1b5400f379d0665f188fd
+cheap_policy:
+  epsilon: 0.2
+  n_goto: 3
+settings:                    # trigger parameters and agent settings (from the shadow-mode trigger evaluation)
+  trigger: tkg1
+  tau: 0.15
+  min_support: 3
+  warmup_steps: 0
+  investigate_k: 1
+  max_consecutive_llm: 6
+  repro_path: true
