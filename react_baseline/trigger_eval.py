@@ -54,9 +54,12 @@ def _jsonl(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-def cheap_trajectory(task: str, seed: int, steps: int, run_dir: Path):
-    """Run the cheap agent; -> (abstract transitions in order, steps.jsonl rows)."""
-    run(CheapAgent(seed), task, seed, Budgets(max_env_steps=steps), run_dir, {"backend": None, "model": None})
+def cheap_trajectory(task: str, seed: int, steps: int, run_dir: Path, reuse: Path | None = None):
+    """Run the cheap agent (or reuse a stored run dir); -> (abstract transitions in order, steps rows)."""
+    if reuse is not None:
+        run_dir = reuse
+    else:
+        run(CheapAgent(seed), task, seed, Budgets(max_env_steps=steps), run_dir, {"backend": None, "model": None})
     trans, prev = [], {}
     for r in _jsonl(run_dir / "transitions.jsonl"):
         ev = r["event_records"][-1] if r["event_records"] else None
@@ -100,11 +103,16 @@ def score(rows: list[dict], step_rows: list[dict], normal, k: int = DEFAULT_INVE
     return ev
 
 
-def eval_trajectory(trans, step_rows, normal, warmup: int, seed: int, k: int = DEFAULT_INVESTIGATE_K) -> dict:
+TRIGGERS = ("tkg1", "tkg0", "tkg1c", "tkg1s", "refusal", "tkg1r", "tkg1r_strict")
+MATCHED = ("tkg1", "tkg1c")
+
+
+def eval_trajectory(trans, step_rows, normal, warmup: int, seed: int, k: int = DEFAULT_INVESTIGATE_K,
+                    triggers=TRIGGERS, matched=MATCHED) -> dict:
     out = {}
-    for name in ("tkg1", "tkg0", "tkg1c", "tkg1s", "refusal"):
+    for name in triggers:
         out[name] = score(replay(trans, make_trigger(name, seed=seed), warmup), step_rows, normal, k)
-    for ref in ("tkg1", "tkg1c"):        # baselines matched to each memory trigger's fire rate
+    for ref in (m for m in matched if m in out):   # baselines matched to each memory trigger's fire rate
         rate = out[ref]["fire_rate"] or 0.0
         out[f"random@{ref}"] = {**score(replay(trans, RandomTrigger(rate, seed), warmup), step_rows, normal, k),
                                 "p": rate}
@@ -162,7 +170,15 @@ def main(argv=None):
     p.add_argument("--investigate-k", type=int, default=DEFAULT_INVESTIGATE_K,
                    help="LLM decisions per fire for llm_calls_projected (the sweep uses 1 and 3)")
     p.add_argument("--out-dir", default=str(REPO_ROOT / "runs" / "trigger_eval"))
+    p.add_argument("--triggers", default=",".join(TRIGGERS), help="comma-separated triggers to evaluate")
+    p.add_argument("--match", default=",".join(MATCHED),
+                   help="triggers whose fire rate random / every_n are matched to")
+    p.add_argument("--from-runs", default=None,
+                   help="reuse stored cheap trajectories: <dir>/<task>_seed<N>/ (e.g. a previous run's runs/)")
+    p.add_argument("--no-sweep", action="store_true", help="skip the tkg1c parameter sweep")
     a = p.parse_args(argv)
+    triggers = [t for t in a.triggers.split(",") if t.strip()]
+    matched = [t for t in a.match.split(",") if t.strip()]
     tasks = GRID_TASKS if a.grid_tasks else a.task
     seeds = [int(s) for s in a.seeds.split(",") if s.strip()]
     warmups = [int(w) for w in a.warmups.split(",") if w.strip()]
@@ -170,23 +186,29 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
     normal_play = load_normal_play()
     _CLASSES.update(_classes())
-    result = {"steps": a.steps, "seeds": seeds, "warmups": warmups, "tasks": {}}
+    result = {"steps": a.steps, "seeds": seeds, "warmups": warmups, "triggers": triggers, "matched": matched,
+              "from_runs": a.from_runs, "tasks": {}}
     md = [f"# Trigger evaluation (shadow mode, cheap-agent trajectories, {a.steps} steps, seeds {seeds})", ""]
     for task in tasks:
         normal = normal_play.get(task)
         res = result["tasks"][task] = {}
-        trajs = [cheap_trajectory(task, s, a.steps, out / "runs" / f"{task}_seed{s}") for s in seeds]
+        trajs = [cheap_trajectory(task, s, a.steps, out / "runs" / f"{task}_seed{s}",
+                                  Path(a.from_runs) / f"{task}_seed{s}" if a.from_runs else None) for s in seeds]
         for w in warmups:
             per_trig, per_sweep = {}, {}
             for s, (trans, step_rows) in zip(seeds, trajs):
-                for name, m in eval_trajectory(trans, step_rows, normal, w, s, a.investigate_k).items():
+                for name, m in eval_trajectory(trans, step_rows, normal, w, s, a.investigate_k,
+                                               triggers, matched).items():
                     per_trig.setdefault(name, []).append(m)
-                for name, m in sweep_trajectory(trans, step_rows, normal, w).items():
-                    per_sweep.setdefault(name, []).append(m)
+                if not a.no_sweep:
+                    for name, m in sweep_trajectory(trans, step_rows, normal, w).items():
+                        per_sweep.setdefault(name, []).append(m)
             res[f"warmup_{w}"] = {"triggers": per_trig, "sweep_tkg1c": per_sweep}
-            for title, body in ((f"{task}, warm-up {w} (k = {a.investigate_k})", table(per_trig)),
-                                (f"{task}, warm-up {w}: fires per 100-step window", window_table(per_trig)),
-                                (f"{task}, warm-up {w}: tkg1c sweep", table(per_sweep, "tkg1c params"))):
+            sections = [(f"{task}, warm-up {w} (k = {a.investigate_k})", table(per_trig)),
+                        (f"{task}, warm-up {w}: fires per 100-step window", window_table(per_trig))]
+            if per_sweep:
+                sections.append((f"{task}, warm-up {w}: tkg1c sweep", table(per_sweep, "tkg1c params")))
+            for title, body in sections:
                 md += [f"## {title}", "", body, ""]
     (out / "trigger_eval.json").write_text(json.dumps(result, indent=1), encoding="utf-8")
     (out / "trigger_eval.md").write_text("\n".join(md), encoding="utf-8")

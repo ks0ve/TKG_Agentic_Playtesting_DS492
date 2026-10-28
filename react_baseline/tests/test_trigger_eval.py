@@ -56,8 +56,8 @@ def test_shadow_mode_cli(tmp_path, capsys):
     task = data["tasks"]["V2_task_01_tomato"]
     assert set(task) == {"warmup_0"} and data["warmups"] == [0]           # warm-up 0 only by default
     res = task["warmup_0"]
-    assert set(res["triggers"]) == {"tkg1", "tkg0", "tkg1c", "tkg1s", "refusal", "random@tkg1", "every_n@tkg1",
-                                    "random@tkg1c", "every_n@tkg1c"}
+    assert set(res["triggers"]) == {"tkg1", "tkg0", "tkg1c", "tkg1s", "refusal", "tkg1r", "tkg1r_strict",
+                                    "random@tkg1", "every_n@tkg1", "random@tkg1c", "every_n@tkg1c"}
     assert len(res["sweep_tkg1c"]) == 18 and all(len(v) == 2 for v in res["sweep_tkg1c"].values())
     for ref in ("tkg1", "tkg1c"):
         for c, r, e in zip(res["triggers"][ref], res["triggers"][f"random@{ref}"], res["triggers"][f"every_n@{ref}"]):
@@ -70,3 +70,23 @@ def test_shadow_mode_cli(tmp_path, capsys):
     k1, k3 = (res["sweep_tkg1c"][f"tau=0.15,min_support=3,k={k}"][0] for k in (1, 3))
     assert k3["llm_calls_projected_per_1k"] == 3 * k1["llm_calls_projected_per_1k"]
     assert "| refusal |" in out and "recall_unique_adj_A" in out and (run_dir / "trigger_eval.md").exists()
+
+
+def test_reuse_stored_runs_and_match_each(tmp_path, capsys):
+    trigger_eval.main(["--task", "V2_task_01_tomato", "--seeds", "0", "--steps", "200", "--triggers", "tkg1",
+                       "--no-sweep", "--out-dir", str(tmp_path / "a")])
+    (first,) = list((tmp_path / "a").iterdir())
+    assert trigger_eval.main(["--task", "V2_task_01_tomato", "--seeds", "0", "--triggers", "tkg1,tkg1r,tkg1r_strict",
+                              "--match", "tkg1,tkg1r,tkg1r_strict", "--no-sweep", "--from-runs",
+                              str(first / "runs"), "--out-dir", str(tmp_path / "b")]) == 0
+    (second,) = list((tmp_path / "b").iterdir())
+    assert not (second / "runs").exists()                              # nothing re-run
+    data = json.loads((second / "trigger_eval.json").read_text())
+    res = data["tasks"]["V2_task_01_tomato"]["warmup_0"]
+    assert set(res["triggers"]) == {"tkg1", "tkg1r", "tkg1r_strict"} | {
+        f"{b}@{t}" for b in ("random", "every_n") for t in ("tkg1", "tkg1r", "tkg1r_strict")}
+    assert res["sweep_tkg1c"] == {}
+    a = json.loads((first / "trigger_eval.json").read_text())["tasks"]["V2_task_01_tomato"]["warmup_0"]
+    assert a["triggers"]["tkg1"] == res["triggers"]["tkg1"]            # same trajectory, same result
+    r, s_ = res["triggers"]["tkg1r"][0], res["triggers"]["tkg1r_strict"][0]
+    assert s_["fires"] <= r["fires"] <= res["triggers"]["tkg1"][0]["fires"]

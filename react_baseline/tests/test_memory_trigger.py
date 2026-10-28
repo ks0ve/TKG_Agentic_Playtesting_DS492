@@ -121,3 +121,27 @@ def test_tkg1s_sequence_novelty():
     assert _check_then_add(trig, tkg, _tr(C0, FAIL, prev=FAIL)) == (False, None)
     assert TKGTrigger(order=1).check(_tr(C0, PUT, prev=PUT), tkg) == (False, None)  # tkg1: ctx0 known, no fire
     assert trig.check(_tr(C0, PUT, prev=PUT), tkg) == (True, "sequence_novel")
+
+
+def test_tkg1r_uses_the_manual_for_first_time_situations():
+    pick = "interact | hands:nothing | counter:holding:unchopped tomato"
+    picked = "pickup | - | hands:unchopped tomato | counter:empty"
+    odd = "pickup | - | hands:unchopped onion | counter:holding:unchopped tomato"     # not what the manual says
+    wall = "move | hands:nothing | wall"
+    bumped = "none | - | hands:nothing | wall"
+    unknown = "interact | hands:nothing | counter:empty"
+    r, rs, t1 = make_trigger("tkg1r"), make_trigger("tkg1r_strict"), TKGTrigger(1)
+    tkg = TKG()
+    assert r.name == "tkg1r" and rs.name == "tkg1r_strict"
+    assert t1.check(_tr(pick, picked), tkg) == (True, "novel")                 # tkg1 fires on first sight
+    assert r.check(_tr(pick, picked), tkg) == (False, None)                    # the manual predicted it
+    assert r.detail["level"] == "reference" and r.detail["rule"] == "pickup_from_counter"
+    assert r.check(_tr(pick, odd), tkg) == (True, "reference_mismatch")
+    assert r.check(_tr(unknown, "none | - | hands:nothing | counter:empty"), tkg) == (True, "novel")   # no rule
+    assert r.check(_tr(wall, bumped), tkg) == (True, "novel_no_change")        # predicted no change, novel
+    assert rs.check(_tr(wall, bumped), tkg) == (False, None)                   # strict suppresses it
+    assert rs.check(_tr(pick, odd), tkg) == (True, "reference_mismatch")
+    for _ in range(3):                                                         # once observed enough,
+        tkg.add(_tr(pick, odd), STATE, STATE)                                  # observation decides
+    assert r.check(_tr(pick, odd), tkg) == (False, None) and r.detail["level"] == "ctx1"
+    assert r.check(_tr(pick, picked), tkg) == (True, "surprising")

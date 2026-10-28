@@ -14,6 +14,11 @@ logging and the LLM's MEMORY block; it is built only from the TKG.
                         even if ctx0 was ("novel" if ctx0 is unseen too, else "sequence_novel")
   RefusalTrigger        "refusal": memoryless current-state baseline, fires when the intent's last event
                         failed (success False) or was a bump where nothing happened
+  TKGReferenceTrigger   "tkg1r": tkg1 with the game manual (memory.reference) as the next lookup level: a
+                        first-time situation does NOT fire when a manual rule predicted the outcome and
+                        changes_state is true. Fires on a reference mismatch, no rule + novel situation, a
+                        predicted no-change outcome (wait / wall bump) in a novel situation, and surprising
+                        at the observed levels. "tkg1r_strict" also suppresses predicted no-change outcomes.
   RandomTrigger(p)      fires with probability p (seeded)
   EveryNTrigger(n)      fires on every n-th check
 """
@@ -105,6 +110,33 @@ class RefusalTrigger(Trigger):
         return (True, "refusal") if (success == "False" or bump) else (False, None)
 
 
+class TKGReferenceTrigger(Trigger):
+    def __init__(self, min_support: int = 3, tau: float = 0.15, strict: bool = False, reference=None):
+        super().__init__(min_support)
+        from .reference import default_reference
+        self.tau, self.strict = tau, strict
+        self.reference = reference or default_reference()
+        self.name = "tkg1r_strict" if strict else "tkg1r"
+
+    def check(self, transition, tkg):
+        d = self._memory_detail(transition, tkg, transition["ctx1"])   # observed ctx1 -> ctx0
+        self.detail = d
+        if d["support"] >= self.min_support:                           # judged by observation
+            return (True, "surprising") if d["p_outcome"] < self.tau else (False, None)
+        hit = self.reference.lookup(transition["ctx0"])
+        novel = d["ctx0_support"] == 0
+        if hit is None:
+            d["level"] = "unseen" if novel else d["level"]
+            return (True, "novel") if novel else (False, None)
+        d.update(level="reference", expectation=f"exp:reference:{hit.rule.id}", rule=hit.rule.id,
+                 says=hit.rule.says)
+        if not hit.matches(transition["outcome"]):
+            return True, "reference_mismatch"
+        if not hit.rule.changes_state and novel and not self.strict:
+            return True, "novel_no_change"
+        return False, None
+
+
 class RandomTrigger(Trigger):
     name = "random"
 
@@ -138,6 +170,10 @@ def make_trigger(kind: str, *, p: float = 0.1, n: int = 10, tau: float = 0.15, m
         return TKGTrigger(0, min_support, tau)
     if kind == "tkg1c":
         return TKGTrigger(1, min_support, tau, coarse=True)
+    if kind == "tkg1r":
+        return TKGReferenceTrigger(min_support, tau)
+    if kind == "tkg1r_strict":
+        return TKGReferenceTrigger(min_support, tau, strict=True)
     if kind == "tkg1s":
         return TKGSequenceTrigger(min_support)
     if kind == "refusal":
