@@ -97,13 +97,18 @@ record of runs\grids\baseline_v2\ and no longer pass the frozen check.
 .venv\Scripts\python.exe -m react_baseline.run --agent tkg --llm mock --task V2_task_11_tomato_lettuce_onion --max-env-steps 1000 --repro
    offline TKG-arm check (mock LLM)
 .venv\Scripts\python.exe -m react_baseline.trigger_eval --grid-tasks --seeds 0,1,2 --steps 1000
-   shadow-mode trigger evaluation (no LLM, ~30 s) -> runs	rigger_eval\<timestamp>	rigger_eval.md
+   shadow-mode trigger evaluation (no LLM, ~30 s) -> runs\trigger_eval\<timestamp>\trigger_eval.md
+   (--from-runs <dir> reuses stored trajectories; --triggers / --match choose triggers and matched baselines)
+.venv\Scripts\python.exe -m memory.reference --coverage runs\trigger_eval\20261027-005617\runs
+   game-manual rule coverage / match rate / mismatches on stored trajectories
 
 PAID - DO NOT RUN UNTIL APPROVED:
-.venv\Scripts\python.exe -m react_baseline.run --agent tkg --trigger tkg1 --warmup-steps 0 --investigate-k 1 --max-consecutive-llm 6 --model-profile haiku-5.5 --task V2_task_11_tomato_lettuce_onion --seed 0 --max-env-steps 300 --repro --repro-steps 30 --out-dir runs\pilot --allow-paid --max-usd 0.25
-   Haiku TKG pilot with the trigger_eval defaults (no warm-up, k 1): est. ~0.15-0.25 LLM calls/step; hard cap $0.25
-.venv\Scripts\python.exe -m react_baseline.bundle --latest-pilots -o pilots_tkg.zip
+.venv\Scripts\python.exe -m react_baseline.run --agent tkg --model-profile haiku-5.5 --task V2_task_11_tomato_lettuce_onion --seed 0 --max-env-steps 1000 --repro --repro-steps 50 --out-dir runs\pilot --allow-paid --max-usd 0.40
+   Haiku TKG pilot with the defaults (tkg1, warm-up 0, k 1, cap 6); est. ~$0.10-0.20; hard cap $0.40
+.venv\Scripts\python.exe -m react_baseline.bundle --latest-pilots -o pilots_tkg3.zip
    bundle it (newest pilot per agent/model, incl. tkg.json)
+Compress-Archive -Path runs\trigger_eval\20261028-104401 -DestinationPath trigger_eval_20261028.zip
+   the shadow-mode trigger evaluation (bundle only packs run folders)
 
 
 --- OTHER ---

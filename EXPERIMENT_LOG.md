@@ -646,3 +646,83 @@ salad; projected calls are per 1,000 steps at k = 1.
 - **tkg1s matches tkg1's recall but fires on ~0.87 of transitions,** so the sequence context only
   adds cost.
 - **tkg1c trades B recall away first** (B 0.21–0.25 vs A 0.56–0.80).
+
+## 2026-10-28: Game-manual reference in the live TKG (ports Tom's reference_graph / compare_graphs)
+
+**Rules.** `configs/reference_rules.yaml` and `memory/reference.py` hold 19 rules keyed on ctx0. They
+were written only from the system prompt's GAME RULES text plus Tom's floor-movement rule;
+bug_manager.py, the taxonomy and the normal-play sets were not consulted. They cover moves, waits,
+wall bumps, pickups, putdowns (counter, cutting board, pan, rice cooker, sink), chop, wash, plate
+additions, delivery and trash. Unknown situations return None.
+
+Coverage on the 9 stored cheap trajectories (`runs/trigger_eval/20261027-005617/runs`, 3,245
+transitions):
+
+| version | covered | matched (of covered) |
+|---|---|---|
+| first, literal version | 71.9% | 75.5% |
+| final | **54.9%** | **99.2%** (1,765 / 1,780) |
+
+**Rule errors, fixed from manual sentences:**
+- "Prepared ingredients are combined on a clean plate": only prepared items on a clean plate.
+- What each station is for:
+  - "vegetables, fish and steak are chopped on the cutting board"
+  - "Steak must be chopped and then cooked in the pan"
+  - "Rice is cooked in the rice cooker"
+  - "Delivered plates come back dirty and can be washed in the sink"
+- "Pans and rice cookers cook on their own while time passes": the steak may already be cooked on
+  the step it enters the pan.
+
+**Not covered.** The manual says nothing about these, so they remain unknown:
+- empty hands on an empty counter or station
+- unprepared food onto a plate
+- food onto an occupied counter
+- the oven
+
+**manual_mismatch (the game differs from the manual; kept as written; 15 transitions):**
+- Picking up the returned dirty plate reveals a second item under it on the same counter (9).
+- You pick up a different item than the one the counter shows, and the shown item stays (4).
+- Empty hands on an item on a counter does nothing (2).
+
+**Live TKG integration.**
+- Manual rules are Expectation nodes with source "reference", linked by ASSESSED_AGAINST.
+- Lookup order: observed ctx1 → observed ctx0 (each at min_support or more) → reference → unseen.
+- Transitions carry `reference_rule_id` and `reference_verdict`.
+- Summary: `reference_coverage`, `reference_match_rate`, `reference_mismatches`,
+  `manual_mismatches`.
+- The MEMORY block adds "Memory expected: … (from observed, seen n times | the game manual |
+  nothing: first time). This time: …".
+
+**Triggers tkg1r / tkg1r_strict.** Shadow mode, warm-up 0, the same 9 trajectories
+(`runs/trigger_eval/20261028-104401`); random / every_n matched to each trigger. Each cell lists
+tomato / tomato+steak / salad; calls are per 1,000 steps at k = 1.
+
+| trigger | fire rate | precision_adj | recall_unique_adj | recall A | recall B | calls / 1k |
+|---|---|---|---|---|---|---|
+| tkg1 | .40/.46/.41 | .15/.13/.15 | **1.00/1.00/1.00** | 1.00/1.00/1.00 | **1.00/1.00/1.00** | 142/163/149 |
+| tkg1r | .23/.27/.23 | .19/.17/.20 | .56/.62/.63 | .80/.83/.82 | .07/.00/.17 | 82/96/84 |
+| tkg1r_strict | .20/.24/.20 | .22/.19/.23 | .56/.62/.63 | .80/.83/.82 | .07/.00/.17 | 71/85/74 |
+| random@tkg1 | .39/.45/.40 | .20/.18/.20 | .30/.35/.42 | .30/.32/.33 | .33/.42/.67 | 138/161/146 |
+| every_n@tkg1 | .39/.50/.39 | .18/.17/.19 | .41/.38/.39 | .41/.41/.40 | .41/.25/.35 | 139/179/142 |
+| random@tkg1r | .22/.27/.23 | .20/.19/.18 | .22/.25/.24 | .23/.25/.17 | .19/.25/.43 | 79/98/83 |
+| every_n@tkg1r | .23/.25/.22 | .16/.19/.21 | .19/.19/.21 | .15/.19/.23 | .27/.17/.15 | 83/89/79 |
+| random@tkg1r_strict | .19/.23/.20 | .19/.17/.19 | .22/.21/.20 | .23/.20/.14 | .19/.25/.37 | 69/84/73 |
+| every_n@tkg1r_strict | .20/.23/.22 | .15/.19/.21 | .11/.16/.21 | .07/.16/.23 | .19/.17/.15 | 71/83/79 |
+
+Fires per 100-step window: tkg1 goes from ~30 to ~5; tkg1r from ~14 to ~4.
+
+**Reading.**
+- **The manual roughly halves tkg1's fires and LLM calls but costs about 40% of recall.** Almost
+  all of B is lost (0.00–0.17).
+- **Why B is lost.** B-class bugs (no transition anomaly) fire in situations whose visible outcome
+  is exactly what the manual predicts. Silencing manual-predicted first-time situations therefore
+  silences B.
+- **A is mostly kept** (0.80–0.83): the game refuses or misbehaves where the manual says it
+  should work.
+- **Memory + manual still beats matched random / every_n by 2.5–3x.**
+- **tkg1r_strict saves ~12% more calls at the same recall.**
+
+**Recommendation: keep tkg1 as the default** (recall first; ~0.15 calls per step, under the 0.25
+limit). tkg1r is the cheaper option if the budget binds: about 0.09 calls per step, recall 0.6.
+The reference's main live value is the expectation line in the MEMORY block and the
+`manual_mismatches` metric.

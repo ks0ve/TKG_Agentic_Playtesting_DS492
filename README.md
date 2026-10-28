@@ -530,6 +530,10 @@ is no graph database, no new dependency, and no LLM-drafted reference graph yet.
     a MEMORY block built from the TKG.
   - Reproduction uses the runner's protocol. `--repro-path` (default on) adds the recorded path of
     the reported episode.
+  - Game manual (`configs/reference_rules.yaml`, `memory/reference.py`): rules written only from the
+    GAME RULES text predict outcomes; they are Expectation nodes (source "reference") after the
+    observed levels, give transitions `reference_rule_id` / `reference_verdict`, and back the
+    `tkg1r` / `tkg1r_strict` triggers and the MEMORY block's "Memory expected" line.
   - New log fields: llm_calls `trigger_reason` and `resumed`; transitions `actor` and `deviation`;
     summary `escalations`, `warmup_steps`, `tkg_nodes`, `tkg_edges`, `trigger_fire_rate`,
     `deviation_reasons`.
