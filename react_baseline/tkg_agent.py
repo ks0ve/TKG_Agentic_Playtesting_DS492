@@ -20,6 +20,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 
+from memory.abstraction import outcome_text
 from memory.trigger import TKGTrigger, Trigger
 
 from .agents import Decision, ReActAgent
@@ -35,12 +36,29 @@ INVESTIGATE = ("This situation is new or unusual for the memory. Investigate it:
                "Report a bug only if behaviour looks wrong. Reply 'Action: resume' when done.")
 
 
-def memory_block(t: dict) -> str:
-    """MEMORY block for the LLM, built only from the TKG transition that deviated: who acted, the
-    intent and its event text, then the fixed investigation instruction."""
+def expectation_line(t: dict, lookup: dict) -> str:
+    """'Memory expected: <outcome> (from <source>). This time: <outcome>.', from the expectation used
+    (TKG.lookup order: observed ctx1 -> observed ctx0 -> the game manual -> nothing)."""
+    if lookup["level"] == "reference":
+        expected, source = lookup["hit"].rule.says, "the game manual"
+    elif lookup["dist"]:
+        usual = max(sorted(lookup["dist"]), key=lambda o: lookup["dist"][o])
+        n = round(lookup["dist"][usual] * lookup["support"])
+        expected, source = outcome_text(usual), f"observed, seen {n} time{'s' if n != 1 else ''}"
+    else:
+        expected, source = "nothing", "nothing: first time"
+    return f"Memory expected: {expected} (from {source}). This time: {outcome_text(t['outcome'])}."
+
+
+def memory_block(t: dict, lookup: dict | None = None) -> str:
+    """MEMORY block for the LLM, built only from the TKG: who acted (intent -> event text), the
+    expectation that was used, then the fixed investigation instruction."""
     who = "You just did" if t.get("actor") == "llm" else "The automatic explorer (not you) just did"
     event = (t.get("event_text") or "nothing happened").rstrip(".")
-    return f"MEMORY: {who}: {t['intent']} -> {event}.\n{INVESTIGATE}"
+    lines = [f"MEMORY: {who}: {t['intent']} -> {event}."]
+    if lookup is not None:
+        lines.append(expectation_line(t, lookup))
+    return "\n".join(lines + [INVESTIGATE])
 
 
 def path_block(path: list[dict]) -> str:
@@ -83,6 +101,9 @@ class TKGAgent(CheapAgent):
     def assess(self, t: dict):
         if self.env_steps < self.warmup_steps:      # phase 1: fill the TKG only
             return None, None
+        # the expectation in lookup order (observed ctx1 -> ctx0 -> reference -> unseen): ASSESSED_AGAINST
+        # target and the MEMORY block's "Memory expected" line
+        lookup = self.tkg.lookup(t["ctx1"], t["ctx0"], self.trigger.min_support)
         fire, reason = self.trigger.check(t, self.tkg)
         d = self.trigger.detail
         deviation = {"fire": fire, "reason": reason, "score": round(1.0 - d.get("p_outcome", 0.0), 4),
@@ -99,9 +120,8 @@ class TKGAgent(CheapAgent):
                     t["escalated"] = True
                 self.investigate_left = self.investigate_k
                 self.pending_reason = reason
-                self.memory = memory_block(t)
-        # ASSESSED_AGAINST: the expectation in lookup order (observed ctx1 -> ctx0 -> reference -> unseen)
-        return deviation, self.tkg.lookup(t["ctx1"], t["ctx0"], self.trigger.min_support)["id"]
+                self.memory = memory_block(t, lookup)
+        return deviation, lookup["id"]
 
     # -- acting -------------------------------------------------------------------------
     def act(self, obs_text: str, state: dict | None = None) -> Decision:

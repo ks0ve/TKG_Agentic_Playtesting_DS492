@@ -1,6 +1,7 @@
 """TKG agent: warm-up without LLM, escalation for <= k decisions with resume, MEMORY block and
 recorded path free of oracle data, repro path only when enabled, mock end-to-end."""
 import json
+import re
 import zipfile
 
 import pytest
@@ -36,10 +37,13 @@ def _check_memory_block(b: str):
     """MEMORY = one TKG-derived line (who acted, intent -> event text) + the fixed instruction. The
     instruction is ours (it says "Report a bug only if ..."); the TKG part must be oracle-free."""
     from react_baseline.tkg_agent import INVESTIGATE
-    head, instruction = b.split("\n", 1)
+    head, expected, instruction = b.split("\n", 2)
     assert instruction == INVESTIGATE
     assert head.startswith(("MEMORY: The automatic explorer (not you) just did: ", "MEMORY: You just did: "))
-    assert " -> " in head and _leaks(head) == [] and "bug" not in head.lower() and not _raw_hits(head), head
+    assert re.fullmatch(r"Memory expected: .+ \(from (observed, seen \d+ times?|the game manual|nothing: first time)\)\. "
+                        r"This time: .+\.", expected), expected
+    for part in (head, expected):
+        assert " -> " in head and _leaks(part) == [] and "bug" not in part.lower() and not _raw_hits(part), part
     assert _leaks(instruction) == [] and not _raw_hits(instruction)
 
 

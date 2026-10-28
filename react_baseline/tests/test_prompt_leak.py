@@ -177,9 +177,12 @@ def test_tkg_memory_block_has_no_oracle_data(tmp_path, monkeypatch):
     assert {SENTINEL_EMPTY, SENTINEL_COUNTER} & seen     # the oracle did emit sentinels this run
     blocks = [u[u.index("MEMORY:"):u.index(INVESTIGATE) + len(INVESTIGATE)] for _, u in llm.calls if "MEMORY:" in u]
     assert blocks and any("The automatic explorer (not you) just did:" in b for b in blocks)
+    assert any("(from the game manual)" in b for b in blocks) and any("(from observed, seen" in b for b in blocks)
     for b in blocks:
-        head = b.split("\n", 1)[0]
+        head, expected = b.split("\n")[:2]
+        assert expected.startswith("Memory expected: ")
         _assert_clean(head)                       # no bug names, sentinels, oracle markers, or "bug"
+        _assert_clean(expected)                   # the expectation line comes from the TKG / manual only
         assert _leaks(b) == []                    # the instruction's own wording is oracle-free too
     for _, user in llm.calls:
         assert _leaks(user) == []

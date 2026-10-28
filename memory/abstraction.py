@@ -152,7 +152,7 @@ _FAILED = {"putdown": "tried to put something down: refused",
 def entity_text(entity: str) -> str:
     """'cutting board:holding:unchopped onion' -> 'cutting board holding unchopped onion'."""
     if entity.startswith("hands:"):
-        return entity[len("hands:"):]
+        entity = entity[len("hands:"):]
     text = entity.replace(":holding:", " holding ").replace(":empty", " (empty)")
     for state in ("clean", "dirty"):
         text = text.replace(f"plate:{state}:[]", f"{state} empty plate").replace(f"plate:{state}:[",
