@@ -1,6 +1,6 @@
 """Frozen baseline configuration: what defines "baseline v2", and a check against the code.
 
-    python -m react_baseline.frozen --check configs/frozen/baseline_v2_1.yaml
+    python -m react_baseline.frozen --check configs/frozen/baseline_v2_2.yaml
     python -m react_baseline.frozen --print-identity
 
 The grid driver refuses to run when the code's prompt hash or Action-reader version
@@ -18,7 +18,7 @@ from pathlib import Path
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-FROZEN_DEFAULT = REPO_ROOT / "configs" / "frozen" / "baseline_v2_1.yaml"
+FROZEN_DEFAULT = REPO_ROOT / "configs" / "frozen" / "baseline_v2_2.yaml"
 
 
 def prompt_texts() -> dict[str, str]:
@@ -43,6 +43,9 @@ def prompt_hash() -> str:
 
 
 RENDER_PROBE_TASKS = ("V2_task_01_tomato", "V2_task_07_tomato_steak", "V2_task_11_tomato_lettuce_onion")
+# tomato map: the thrown-away steak respawns on its start tile under/over the tomato, then is taken
+RENDER_PROBE_STACK = ("interact(0,1)", "interact(1,0)", "interact(0,2)", "interact(0,1)", "interact(1,0)",
+                      "interact(1,4)", "goto(1,1)", "interact(0,1)", "interact(1,0)", "interact(0,1)")
 
 
 def renderer_hash() -> str:
@@ -73,15 +76,26 @@ def renderer_hash() -> str:
                 state = res.final.state
                 if res.done:
                     break
+            if task == RENDER_PROBE_TASKS[0]:   # translator v2.2: two items on one counter tile
+                adapter.reset()
+                state = adapter.state
+                for intent in RENDER_PROBE_STACK:
+                    res = reader.execute(intent, state, step)
+                    h.update(res.trace.encode())
+                    state = res.final.state
         finally:
             adapter.close()
     return h.hexdigest()
 
 
+IDENTITY_KEYS = ("prompts_sha256", "renderer_sha256", "action_reader_version", "translator_version")
+
+
 def code_identity() -> dict:
     from .action_reader import ACTION_READER_VERSION
+    from .env_adapter import TRANSLATOR_VERSION
     return {"prompts_sha256": prompt_hash(), "renderer_sha256": renderer_hash(),
-            "action_reader_version": ACTION_READER_VERSION}
+            "action_reader_version": ACTION_READER_VERSION, "translator_version": TRANSLATOR_VERSION}
 
 
 def load(path: Path | str = FROZEN_DEFAULT) -> dict:
@@ -95,7 +109,7 @@ def check(path: Path | str = FROZEN_DEFAULT) -> list[str]:
         return [f"frozen config {p} not found"]
     frozen, code = load(p), code_identity()
     out = []
-    for key in ("prompts_sha256", "renderer_sha256", "action_reader_version"):
+    for key in IDENTITY_KEYS:
         if frozen.get(key) != code[key]:
             out.append(f"{key}: frozen {frozen.get(key)!r} != code {code[key]!r}")
     return out

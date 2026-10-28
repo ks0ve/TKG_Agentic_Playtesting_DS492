@@ -48,25 +48,30 @@ _BARE = {"floor", "wall", "edge of the map", "another chef"}
 
 
 def tile_str(tile: dict | None) -> str:
-    """Entity string of an event record's ``tile_before`` / ``tile_after``."""
+    """Entity string of an event record's ``tile_before`` / ``tile_after``. Items lying on the tile
+    besides the one the map shows (translator v2.2 "also") are appended as "+also:<item>"."""
     if tile is None:
         return "none"
     kind = tile.get("kind") or "none"
     if kind in _BARE:
         return kind
     held = tile.get("holding")
-    return f"{kind}:empty" if held is None else f"{kind}:holding:{item_str(held)}"
+    base = f"{kind}:empty" if held is None else f"{kind}:holding:{item_str(held)}"
+    return base + "".join(f"+also:{item_str(i)}" for i in tile.get("also") or [])
 
 
 def tile_from_state(state: dict, x: int, y: int) -> str:
     """The same entity string as ``tile_str``, predicted from a visible state for tile (x, y)."""
+    here = [{k: v for k, v in it.items() if k not in ("pos", "where", "hidden", "stacked")}
+            for it in state.get("items", []) if it.get("where") == "counter" and tuple(it["pos"]) == (x, y)]
+    shown = [h for h, it in zip(here, [it for it in state.get("items", []) if it.get("where") == "counter"
+                                       and tuple(it["pos"]) == (x, y)]) if not it.get("hidden")]
     for st in state.get("stations", []):
         if tuple(st["pos"]) == (x, y):
-            return tile_str({"kind": st["label"], "holding": st.get("holding")})
-    for it in state.get("items", []):
-        if it.get("where") == "counter" and tuple(it["pos"]) == (x, y):
-            rec = {k: v for k, v in it.items() if k not in ("pos", "where")}
-            return tile_str({"kind": "counter", "holding": rec})
+            return tile_str({"kind": st["label"], "holding": st.get("holding"), "also": here})
+    if here:
+        top = shown[0] if shown else None
+        return tile_str({"kind": "counter", "holding": top, "also": [h for h in here if h is not top]})
     rows = state["map"]
     if not (0 <= y < len(rows) and 0 <= x < len(rows[y])):
         return "edge of the map"

@@ -63,7 +63,7 @@ def test_provenance_manual_only():
     src = (Path(__file__).resolve().parents[2] / "memory" / "reference.py").read_text(encoding="utf-8")
     for forbidden in ("bug_manager", "taxonomy", "normal_play"):
         assert forbidden not in src.replace("bug_manager.py, the taxonomy and normal_play_bugs were not consulted", "")
-    assert len(REF.manual_mismatches) == 3
+    assert len(REF.manual_mismatches) == 1 and "+also:" in REF.manual_mismatches[0]["situation"]
 
 
 def test_coverage_report_on_stored_runs(tmp_path):
@@ -116,3 +116,10 @@ def test_live_reference_fields_and_summary(tmp_path):
     graph = _json.loads((tmp_path / "tkg.json").read_text())
     ref_nodes = {n["id"] for n in graph["nodes"] if n["type"] == "Expectation" and n["source"] == "reference"}
     assert ref_nodes and any(e["type"] == "ASSESSED_AGAINST" and e["target"] in ref_nodes for e in graph["edges"])
+
+
+def test_pickup_from_a_stacked_counter_leaves_the_other_item():
+    ctx0 = "interact | hands:nothing | counter:holding:plate:dirty:[]+also:unchopped onion"
+    left = "pickup | - | hands:plate:dirty:[] | counter:empty+also:unchopped onion"
+    assert REF.verdict(ctx0, left) == ("pickup_from_counter", "mismatch")    # manual: counter empty after
+    assert REF.lookup("interact | hands:onion | counter:empty+also:unchopped tomato") is None   # unknown

@@ -726,3 +726,60 @@ Fires per 100-step window: tkg1 goes from ~30 to ~5; tkg1r from ~14 to ~4.
 limit). tkg1r is the cheaper option if the budget binds: about 0.09 calls per step, recall 0.6.
 The reference's main live value is the expectation line in the MEMORY block and the
 `manual_mismatches` metric.
+
+## 2026-10-28: Items sharing a counter tile (the manual_mismatch cases); translator v2.2
+
+**Method.** Deterministic replay of the 9 stored cheap trajectories (`runs/trigger_eval/20261027-005617/runs`):
+the button presses from steps.jsonl were replayed, and the raw `item_manager` contents of the bumped tile and
+its neighbours were dumped before and after each mismatch step. No LLM.
+
+**Findings.**
+- **(i) Yes, two items can occupy one counter tile.**
+  - Delivery (`event_manager.py:316-327`) and the trash can (`event_manager.py:341-376`) both call
+    `ActionWrapper.reset_item` (`action_wrapper.py:96-99`).
+  - That runs `MovableItem.refresh` (`items.py:126-131`, back to the start tile) and then
+    `MapManager.place_item` (`map_manager.py:143-145`), which overwrites the tile's map code.
+  - Neither checks whether another item already lies there.
+  - Putting an item down on a counter that hides an item stacks again.
+  - On the 9 trajectories: 20 stacks (9 trash, 7 delivery, 4 put-down); 6.6% of steps had a stacked tile.
+- **(ii) The game sees only the item that matches the map code** (`event_manager.py:100-110` with
+  `item_manager.py:164-168`).
+  - Picking it up resets the tile to "counter" (`action_wrapper.py:24-35`) even though another item is
+    still there.
+  - Our v2.1 translator listed every item in ITEMS, but nothing said which one the map shows.
+  - ADJACENT and the event `tile_before` / `tile_after` showed one item, picked plates-first. That was
+    sometimes the wrong one: "picked up steak" while the record said a plate was there.
+  - An item under a "counter" map code did not show in ADJACENT or the event records at all.
+- **(iii) "Empty hands on an item on a counter does nothing" (2 cases).**
+  - That item was left behind when the item on top of it was picked up. The map code says "counter",
+    so the game treats the tile as empty: nothing happens, and oracle bug 28
+    PICKUP_FROM_EMPTY_COUNTER fires.
+- **(d) No oracle ID fires because a stack forms.**
+  - 43 COUNTER_OVERWRITE and 49 COUNTER_STACK_MULTIPLE_PLATES check the map code
+    (`bug_manager.py:332-337`), so a counter hiding an item escapes them.
+  - Draft-taxonomy flags were added to rows 28, 43 and 49, with a note in
+    `configs/bug_taxonomy_notes.md`. Oracle semantics are unchanged.
+
+**Fix: translator v2.2, all arms** (`configs/frozen/baseline_v2_2.yaml`; the v2.1 freeze is kept and
+superseded). Every item on a tile is shown:
+- **ITEMS** says "also on this tile: …" or "the map shows … / an empty counter on this tile".
+- **ADJACENT and STATIONS** list all the items.
+- **Legend:** a line appears while any tile holds more than one item.
+- **Event records:** the shown item is `holding`, and the others go in an add-only `also` list.
+- **visible_state items** gain `hidden` / `stacked` flags (present only when true).
+- **The abstraction** appends `+also:<item>` to the entity string.
+
+Frozen identity:
+- A `translator_version` key was added (`2.2-all-items-per-tile`).
+- The renderer hash now also replays a stacking probe. The old probes never built a stack, so the hash
+  alone could not see the change.
+- `tests/test_stacked_items.py` reproduces the respawn stack on the tomato map.
+
+**Reruns (nothing stale):**
+- **Normal-play sets:** unchanged, byte-identical (correct play never stacks).
+- **Cheap-trajectory trigger_eval:** `runs/trigger_eval/20261028-111305`. Conclusions unchanged: tkg1
+  recall 1.00 on A and B at fire rate .39/.45/.43; tkg1r .56–.63 (B .00–.17); refusal A 1.00, B 0.00;
+  tkg1c .52–.66; matched random / every_n .08–.52.
+- **Reference coverage on the new trajectories:** 54.8%, match 98.3%. All 31 mismatches are now one
+  cause: you pick up the item the map shows and the other one stays. The v2.1-era entries "a different
+  item is picked up" and "a pickup does nothing" were translator artifacts.

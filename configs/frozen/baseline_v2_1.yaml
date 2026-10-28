@@ -1,3 +1,5 @@
+# SUPERSEDED by configs/frozen/baseline_v2_2.yaml (2026-10-28, translator v2.2: every item on a tile is
+# shown). Kept as the record of v2.1; it no longer passes the frozen check.
 # Frozen baseline v2.1 configuration (2026-10-26). Supersedes baseline_v2.yaml (kept as the record
 # of the v2.0 runs in runs/grids/baseline_v2/). Same settings as v2.0; only the agent-visible text
 # changed (event wording from the player's view, held items without coordinates, station-letter

@@ -71,7 +71,7 @@ rules:
 
   - id: pickup_from_counter
     manual: "empty hands + item on a counter -> pick it up"
-    when: {intent: [move, interact], held: 'nothing', target: 'counter:holding:(?P<item>.+)'}
+    when: {intent: [move, interact], held: 'nothing', target: 'counter:holding:(?P<item>(?:(?!\+also:).)+)(?:\+also:.+)?'}
     expect: {event: pickup, success: ok, held_after: '{item}', target_after: 'counter:empty'}
     changes_state: true
     says: "you pick the item up; the counter is empty"
@@ -150,17 +150,13 @@ rules:
     says: "you put the dirty plate in the sink; your hands are empty"
 
 manual_mismatches:
-  # Observed on the 9 cheap trajectories of runs/trigger_eval/20261027-005617 (2026-10-28). The rule is
-  # what the manual says; the game did something else. Kept as written (reported as manual_mismatch).
+  # Re-checked 2026-10-28 with translator v2.2 (every item on a tile shown) on the fresh cheap trajectories of
+  # runs/trigger_eval/20261028-111305: one cause, respawn stacking (configs/bug_taxonomy_notes.md). The
+  # v2.1-era entries "a different item is picked up" and "a pickup does nothing" were translator artifacts
+  # (the old tile record showed the plate first / hid the item the map no longer showed).
   - rule: pickup_from_counter
-    situation: "interact | hands:nothing | counter:holding:plate:dirty:[]"
-    observed: "pickup | - | hands:plate:dirty:[] | counter:holding:<another item>"
-    note: "picking up the returned dirty plate reveals a second item on the same counter (9 times)"
-  - rule: pickup_from_counter
-    situation: "interact | hands:nothing | counter:holding:<item A>"
-    observed: "pickup | - | hands:<item B> | counter:holding:<item A>"
-    note: "you pick up a different item than the one shown, and the shown one stays (4 times)"
-  - rule: pickup_from_counter
-    situation: "interact | hands:nothing | counter:holding:unchopped onion"
-    observed: "none | - | hands:nothing | counter:holding:unchopped onion"
-    note: "empty hands + item on a counter, nothing happens (2 times)"
+    situation: "interact | hands:nothing | counter:holding:<item A>+also:<item B>"
+    observed: "pickup | - | hands:<item A> | counter:empty+also:<item B>"
+    note: "two items share the counter (a thrown-away or delivered item respawned onto an occupied start
+      tile); you pick up the one the map shows and the other stays, while the manual's counter holds one
+      item (31 of 1,797 covered transitions)"

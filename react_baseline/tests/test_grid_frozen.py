@@ -11,14 +11,14 @@ REPO = Path(__file__).resolve().parents[2]
 
 
 def test_shipped_frozen_config_matches_code():
-    assert frozen.check(REPO / "configs" / "frozen" / "baseline_v2_1.yaml") == []
-    assert frozen.FROZEN_DEFAULT.name == "baseline_v2_1.yaml"
+    assert frozen.check(REPO / "configs" / "frozen" / "baseline_v2_2.yaml") == []
+    assert frozen.FROZEN_DEFAULT.name == "baseline_v2_2.yaml"
 
 
 def test_v2_0_frozen_config_is_superseded_by_wording_only():
     """baseline_v2.yaml stays as the record of the v2.0 runs; v2.1 changed only agent-visible text."""
     bad = frozen.check(REPO / "configs" / "frozen" / "baseline_v2.yaml")
-    assert [b.split(":")[0] for b in bad] == ["prompts_sha256", "renderer_sha256"]
+    assert [b.split(":")[0] for b in bad] == ["prompts_sha256", "renderer_sha256", "translator_version"]
     v2, v21 = (frozen.load(REPO / "configs" / "frozen" / f) for f in ("baseline_v2.yaml", "baseline_v2_1.yaml"))
     for key in ("action_reader_version", "action_reader", "agent", "repro", "budget", "tasks", "seeds",
                 "ignore_bug_ids"):
@@ -29,7 +29,7 @@ def test_frozen_mismatch_detected(tmp_path):
     f = tmp_path / "frozen.yaml"
     f.write_text("prompts_sha256: deadbeef\naction_reader_version: 0.1\n", encoding="utf-8")
     bad = frozen.check(f)
-    assert len(bad) == 3 and "prompts_sha256" in bad[0] and "renderer_sha256" in bad[1]
+    assert len(bad) == 4 and "prompts_sha256" in bad[0] and "renderer_sha256" in bad[1]
 
 
 def test_renderer_hash_tracks_event_wording(monkeypatch):
@@ -88,7 +88,9 @@ def test_v2_1_grids_mirror_v2_with_new_frozen_config_and_out_dir():
     for c in prog:
         assert (c.run_dir, c.config_hash, c.argv) == (main[c.label].run_dir, main[c.label].config_hash,
                                                       main[c.label].argv)
-    assert frozen.check(REPO / grid.load_grid(REPO / "configs/grids/baseline_v2_1.yaml")["frozen"]) == []
+    # v2.1 is superseded by translator v2.2: only the renderer and the translator version differ
+    bad = frozen.check(REPO / grid.load_grid(REPO / "configs/grids/baseline_v2_1.yaml")["frozen"])
+    assert [b.split(":")[0] for b in bad] == ["renderer_sha256", "translator_version"]
 
 
 def test_only_accepts_comma_list():
