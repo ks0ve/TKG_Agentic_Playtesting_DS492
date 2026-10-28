@@ -1,0 +1,124 @@
+{
+  "agent": "random",
+  "task": "V2_task_01_tomato",
+  "seed": 2,
+  "backend": null,
+  "model": null,
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": null,
+  "parse_errors": 0,
+  "total_env_steps": 1000,
+  "episodes": 5,
+  "llm_calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "total_tokens": 0,
+  "wall_time_s": 1.38,
+  "unique_bug_ids": [
+    15,
+    19,
+    20,
+    28,
+    53,
+    54
+  ],
+  "n_unique_bugs": 6,
+  "first_found_step": {
+    "15": 379,
+    "19": 42,
+    "20": 118,
+    "28": 36,
+    "53": 896,
+    "54": 393
+  },
+  "discovery_curve": [
+    {
+      "global_step": 36,
+      "cumulative_tokens": 0,
+      "unique_bugs": 1
+    },
+    {
+      "global_step": 42,
+      "cumulative_tokens": 0,
+      "unique_bugs": 2
+    },
+    {
+      "global_step": 118,
+      "cumulative_tokens": 0,
+      "unique_bugs": 3
+    },
+    {
+      "global_step": 379,
+      "cumulative_tokens": 0,
+      "unique_bugs": 4
+    },
+    {
+      "global_step": 393,
+      "cumulative_tokens": 0,
+      "unique_bugs": 5
+    },
+    {
+      "global_step": 896,
+      "cumulative_tokens": 0,
+      "unique_bugs": 6
+    },
+    {
+      "global_step": 1000,
+      "cumulative_tokens": 0,
+      "unique_bugs": 6
+    }
+  ],
+  "deliveries_success": 0,
+  "delivery_attempts": 3,
+  "agent_bug_reports": 0,
+  "ignore_bug_ids": [
+    5
+  ],
+  "action_space": "primitive",
+  "usd_cost": 0.0,
+  "decisions": 1000,
+  "llm_calls_per_decision": 0.0,
+  "llm_calls_per_env_step": 0.0,
+  "llm_latency_mean_s": null,
+  "llm_latency_median_s": null,
+  "intents_executed": 1000,
+  "intent_failures": 0,
+  "intent_failure_rate": 0.0,
+  "intents_coerced": 0,
+  "intent_coercion_rate": 0.0,
+  "reports_strict_match": 0,
+  "reports_lenient_match": 0,
+  "unique_bugs_reported_strict": 0,
+  "unique_bug_ids_reported_strict": [],
+  "bugs_by_proposed_class": {
+    "A_transition_anomaly": 6
+  },
+  "bugs_by_family": {
+    "counter_pickup": 1,
+    "delivery": 1,
+    "dirty_plate": 2,
+    "station_misuse": 2
+  },
+  "taxonomy_warnings": [],
+  "steps_explore": 1000,
+  "llm_calls_explore": 0,
+  "tokens_explore": 0,
+  "usd_explore": 0.0,
+  "steps_repro": 0,
+  "llm_calls_repro": 0,
+  "tokens_repro": 0,
+  "usd_repro": 0.0,
+  "n_unique_bugs_explore": 6,
+  "repro_attempts": 0,
+  "repro_skipped": {},
+  "repro_success_rate": null,
+  "unique_bugs_reproduced": 0,
+  "unique_bug_ids_reproduced": [],
+  "agent_claim_accuracy": null,
+  "loop_decision_fraction": 0.121,
+  "cycle2_decision_fraction": 0.083,
+  "unique_bugs_excluding_normal_play": 6,
+  "normal_play_bug_ids": [
+    5
+  ]
+}

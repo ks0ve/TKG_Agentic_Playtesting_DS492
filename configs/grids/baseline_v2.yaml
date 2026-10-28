@@ -1,0 +1,36 @@
+# SUPERSEDED by configs/grids/baseline_v2_1*.yaml (2026-10-26, translator v2.1). Kept as the record of the
+# v2.0 runs in runs/grids/baseline_v2/; its frozen check now fails by design (see EXPERIMENT_LOG).
+# Baseline v2 full-run grid. Run with:
+#   python -m react_baseline.grid configs/grids/baseline_v2.yaml --dry-run
+#   python -m react_baseline.grid configs/grids/baseline_v2.yaml --only react/llama3.1-8b
+#   python -m react_baseline.grid configs/grids/baseline_v2.yaml --only react/haiku-5.5,react-raw/haiku-5.5 --allow-paid   (paid)
+# Rows may override 'tasks'. configs/grids/baseline_v2_progress.yaml is a subset with identical
+# settings (base: this file), so its finished runs count here too.
+# Resumable: a combination is done when its run dir has summary.json with
+# stop_reason max_env_steps and the same config hash; anything else is re-run.
+name: baseline_v2
+frozen: configs/frozen/baseline_v2.yaml
+out_dir: runs/grids/baseline_v2
+tasks:
+  - V2_task_01_tomato                # single ingredient, chop
+  - V2_task_07_tomato_steak          # two ingredients, chop + cook (pan)
+  - V2_task_11_tomato_lettuce_onion  # three vegetables, deep plate-combination rules
+  # alternative third task: V2_task_78_onion_fish_rice (rice cooker + sushi merge; broadest random-play coverage)
+max_env_steps: 1000
+history: 10
+temperature: 0.7          # where the backend supports it (Haiku 5.5 runs at its API default)
+intents_per_call: 1
+max_macro_len: 40
+max_usd_per_paid_run: 1.00
+repro:
+  enabled: true
+  steps: 50              # 5 attempts x 50 = 250 steps <= 30% of 1,000
+  max_attempts: 5
+  max_fraction: 0.3
+  dedup_jaccard: 0.8
+rows:
+  - {agent: react, profile: haiku-5.5, seeds: [0, 1, 2, 3, 4]}     # headline (paid)
+  - {agent: react, profile: llama3.1-8b, seeds: [0, 1, 2]}         # local replication
+  - {agent: react-raw, profile: haiku-5.5, tasks: [V2_task_01_tomato], seeds: [0, 1, 2]}   # ablation (paid, tomato only)
+  - {agent: random, seeds: [0, 1, 2]}
+  - {agent: random-intent, seeds: [0, 1, 2]}

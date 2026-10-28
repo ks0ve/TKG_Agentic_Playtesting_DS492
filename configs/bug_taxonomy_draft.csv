@@ -1,0 +1,166 @@
+bug_id,name,family,reachability,unreachable_reason,random_hits_3.7M_steps,tasks_reached,median_first_step,trigger_signature,signature_share,fires_in_verified_demos,proposed_rq3_class,flags,normal_play_note,status
+1,ADD_WHILE_HOLDING_ONE,plate_composition,fires_under_random_play,,3676,37,1779,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+2,PLATE_KNIFE_WITH_TWO,plate_composition,fires_under_random_play,,81,18,23250,refusal,1.0,,A_transition_anomaly,,,proposed
+3,PLATE_COUNTER_ONE,counter_pickup,fires_under_random_play,,2484,37,1497,silent,1.0,,B_no_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+4,COUNTER_PLATE_ADD_ONE,plate_composition,fires_under_random_play,,2538,36,1772,refusal,0.9,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+5,ALL_CUTBOARD_CHOPPED,station_misuse,fires_under_random_play,,8559,37,328,silent,1.0,yes,EXCLUDED_normal_play,,fires on every completed chop (single cutting board),proposed
+6,DELIVER_TWO,delivery,fires_under_random_play,,180,26,10000,refusal,0.98,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+7,DELIVER_THREE,delivery,fires_under_random_play,,2,2,48582,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+8,TRASH_PLATE_ITEM_NOT_RESET,trash,fires_under_random_play,,444,35,9228,silent,1.0,,B_no_transition_anomaly,,,proposed
+9,CHOPPED_MEAT_IN_PLATE,plate_composition,fires_under_random_play,,157,24,12112,refusal,1.0,,A_transition_anomaly,,,proposed
+10,FOUR_ITEMS_IN_PLATE,plate_composition,fires_under_random_play,,5,2,48577,refusal,1.0,,A_transition_anomaly,,,proposed
+11,RAW_MEAT_ON_NONEMPTY_PLATE,plate_composition,fires_under_random_play,,646,36,6008,refusal,1.0,,A_transition_anomaly,,,proposed
+12,PLATE_KNIFE_WITH_MEAT,plate_composition,fires_under_random_play,,279,26,9302,refusal,1.0,,A_transition_anomaly,,,proposed
+13,DELIVER_DIRTY_PLATE,dirty_plate,fires_under_random_play,,3890,37,1106,refusal,1.0,,A_transition_anomaly,,,proposed
+14,DELIVER_BURNED_FOOD,delivery,unreachable_on_shipped_maps,food never burns on shipped maps (pan burned_able=False; no oven),0,0,,,,,EXCLUDED_unreachable,,,proposed
+15,DELIVER_EMPTY_PLATE,delivery,fires_under_random_play,,10130,37,260,refusal,1.0,,A_transition_anomaly,,,proposed
+16,COUNTER_DIRTY_PLATE,dirty_plate,fires_under_random_play,,5360,37,990,silent,1.0,,B_no_transition_anomaly,,,proposed
+17,TRASH_CLEAN_PLATE,trash,fires_under_random_play,,1421,36,3216,silent,1.0,,B_no_transition_anomaly,,,proposed
+18,CHOP_ALREADY_CHOPPED,station_misuse,unreachable_on_shipped_maps,"cutting board unlocks when chopping finishes, so bumping it picks the item up; the chop check never sees a chopped item",0,0,,,,,EXCLUDED_unreachable,,,proposed
+19,USE_KNIFE_WITHOUT_ITEM,station_misuse,fires_under_random_play,,25757,37,183,idle_bump,1.0,,A_transition_anomaly,trivially_frequent,,proposed
+20,USE_SINK_WITHOUT_PLATE,station_misuse,fires_under_random_play,,36321,37,143,idle_bump,1.0,,A_transition_anomaly,trivially_frequent,,proposed
+21,COOK_AFTER_DONE,cooking_timing,fires_under_random_play,,3798,9,10086,silent,0.59,yes,EXCLUDED_normal_play,mixed_signature,fires every step cooked food stays in the pan,proposed
+22,BURN_FOOD_IGNORED,cooking_timing,unreachable_on_shipped_maps,food never burns on shipped maps (pan burned_able=False; no oven),0,0,,,,,EXCLUDED_unreachable,,,proposed
+23,RECHOP_COOKED_FOOD,station_misuse,unreachable_on_shipped_maps,check sits in a putdown branch that only runs when holding a plate or putting onto a plate,0,0,,,,,EXCLUDED_unreachable,,,proposed
+24,PLATE_BURNED_ITEM,plate_composition,unreachable_on_shipped_maps,food never burns on shipped maps (pan burned_able=False; no oven),0,0,,,,,EXCLUDED_unreachable,,,proposed
+25,ADD_INGREDIENT_AFTER_COOKING,plate_composition,fires_under_random_play,,52,11,26094,refusal,1.0,,A_transition_anomaly,,,proposed
+26,DELIVER_PARTIAL_SUSHI,delivery,not_reached_by_random,,0,0,,,,,PENDING_directed_check,,,proposed
+27,INVALID_DELIVERY_TARGET,delivery,unreachable_on_shipped_maps,check sits in a putdown branch that only runs when holding a plate or putting onto a plate,0,0,,,,,EXCLUDED_unreachable,,,proposed
+28,PICKUP_FROM_EMPTY_COUNTER,counter_pickup,fires_under_random_play,,82799,37,63,idle_bump,1.0,,A_transition_anomaly,trivially_frequent,,proposed
+29,COLLISION_MOVE,other,unreachable_on_shipped_maps,needs a second chef (single-agent maps),0,0,,,,,EXCLUDED_unreachable,,,proposed
+30,PLATE_INTO_OVEN_WRONG_DISH,oven,unreachable_on_shipped_maps,no oven on shipped maps,0,0,,,,,EXCLUDED_unreachable,,,proposed
+31,DELIVER_MORE_THAN_FOUR,delivery,not_reached_by_random,,0,0,,,,,PENDING_directed_check,,,proposed
+32,PICKUP_BURNED_ITEM,counter_pickup,unreachable_on_shipped_maps,food never burns on shipped maps (pan burned_able=False; no oven),0,0,,,,,EXCLUDED_unreachable,,,proposed
+33,PLACE_DIRTY_PLATE_IN_OVEN,oven,unreachable_on_shipped_maps,no oven on shipped maps,0,0,,,,,EXCLUDED_unreachable,,,proposed
+34,PUTDOWN_ON_BLOCK,other,unreachable_on_shipped_maps,no block tile on shipped maps,0,0,,,,,EXCLUDED_unreachable,,,proposed
+35,SWITCH_MAP_WHILE_OCCUPIED,other,unreachable_on_shipped_maps,no call site in the env,0,0,,,,,EXCLUDED_unreachable,,,proposed
+36,PUTDOWN_PLATE_IN_PAN,station_misuse,unreachable_on_shipped_maps,"holding a plate + bumping the pan is routed to pickup-into-plate, not putdown",0,0,,,,,EXCLUDED_unreachable,,,proposed
+37,PUTDOWN_RAW_MEAT_IN_SINK,station_misuse,unreachable_on_shipped_maps,check sits in a putdown branch that only runs when holding a plate or putting onto a plate,0,0,,,,,EXCLUDED_unreachable,,,proposed
+38,CHOP_COOKED_ITEM,station_misuse,unreachable_on_shipped_maps,cutting board never holds cooked food,0,0,,,,,EXCLUDED_unreachable,,,proposed
+39,WASH_BURNT_FOOD,station_misuse,unreachable_on_shipped_maps,food never burns on shipped maps (pan burned_able=False; no oven),0,0,,,,,EXCLUDED_unreachable,,,proposed
+40,PUTDOWN_OWN_TILE,counter_pickup,unreachable_on_shipped_maps,target tile can never be the agent's own tile,0,0,,,,,EXCLUDED_unreachable,,,proposed
+41,PICKUP_OWN_DROPPED_ITEM_IMMEDIATELY,counter_pickup,unreachable_on_shipped_maps,"last_dropped is never assigned, so the 'immediate' flag is never set",0,0,,,,,EXCLUDED_unreachable,,,proposed
+42,DIRTY_PLATE_PICKUP,dirty_plate,fires_under_random_play,,11603,37,395,silent,1.0,,B_no_transition_anomaly,,,proposed
+43,COUNTER_OVERWRITE,counter_pickup,not_reached_by_random,,0,0,,,,,PENDING_directed_check,,,proposed
+44,CHOPPING_BURNED_MEAT,station_misuse,unreachable_on_shipped_maps,food never burns on shipped maps (pan burned_able=False; no oven),0,0,,,,,EXCLUDED_unreachable,,,proposed
+45,TRASH_BURNED_ITEM_NOT_RESET,trash,unreachable_on_shipped_maps,food never burns on shipped maps (pan burned_able=False; no oven),0,0,,,,,EXCLUDED_unreachable,,,proposed
+46,WASH_CLEAN_PLATE,station_misuse,not_reached_by_random,,0,0,,,,,PENDING_directed_check,,,proposed
+47,SINK_HOLD_AFTER_CLEAN,station_misuse,fires_under_random_play,,505,37,7878,silent,1.0,,B_no_transition_anomaly,,,proposed
+48,PLATE_WITH_BURNED_AND_COOKED_ITEMS,plate_composition,unreachable_on_shipped_maps,food never burns on shipped maps (pan burned_able=False; no oven),0,0,,,,,EXCLUDED_unreachable,,,proposed
+49,COUNTER_STACK_MULTIPLE_PLATES,counter_pickup,not_reached_by_random,,0,0,,,,,PENDING_directed_check,,,proposed
+50,PICKUP_WITH_FULL_HANDS,counter_pickup,unreachable_on_shipped_maps,no call site in the env,0,0,,,,,EXCLUDED_unreachable,,,proposed
+51,PUT_TOMATO_ON_DIRTY_PLATE,dirty_plate,fires_under_random_play,,2452,37,2485,refusal,1.0,,A_transition_anomaly,,,proposed
+52,PUT_LETTUCE_ON_DIRTY_PLATE,dirty_plate,fires_under_random_play,,2628,37,2526,refusal,1.0,,A_transition_anomaly,,,proposed
+53,PUT_ONION_ON_DIRTY_PLATE,dirty_plate,fires_under_random_play,,2426,37,2335,refusal,1.0,,A_transition_anomaly,,,proposed
+54,PUT_STEAK_ON_DIRTY_PLATE,dirty_plate,fires_under_random_play,,2916,37,1871,refusal,1.0,,A_transition_anomaly,,,proposed
+55,PUT_FISH_ON_DIRTY_PLATE,dirty_plate,fires_under_random_play,,1879,26,2569,refusal,1.0,,A_transition_anomaly,,,proposed
+56,PUT_TOMATO_IN_SINK,station_misuse,unreachable_on_shipped_maps,check sits in a putdown branch that only runs when holding a plate or putting onto a plate,0,0,,,,,EXCLUDED_unreachable,,,proposed
+57,PUT_LETTUCE_IN_SINK,station_misuse,unreachable_on_shipped_maps,check sits in a putdown branch that only runs when holding a plate or putting onto a plate,0,0,,,,,EXCLUDED_unreachable,,,proposed
+58,PUT_ONION_IN_SINK,station_misuse,unreachable_on_shipped_maps,check sits in a putdown branch that only runs when holding a plate or putting onto a plate,0,0,,,,,EXCLUDED_unreachable,,,proposed
+59,PUT_STEAK_IN_SINK,station_misuse,unreachable_on_shipped_maps,check sits in a putdown branch that only runs when holding a plate or putting onto a plate,0,0,,,,,EXCLUDED_unreachable,,,proposed
+60,PUT_FISH_IN_SINK,station_misuse,unreachable_on_shipped_maps,check sits in a putdown branch that only runs when holding a plate or putting onto a plate,0,0,,,,,EXCLUDED_unreachable,,,proposed
+61,PUT_TOMATO_IN_PAN,station_misuse,unreachable_on_shipped_maps,check sits in a putdown branch that only runs when holding a plate or putting onto a plate,0,0,,,,,EXCLUDED_unreachable,,,proposed
+62,PUT_LETTUCE_IN_PAN,station_misuse,unreachable_on_shipped_maps,check sits in a putdown branch that only runs when holding a plate or putting onto a plate,0,0,,,,,EXCLUDED_unreachable,,,proposed
+63,PUT_ONION_IN_PAN,station_misuse,unreachable_on_shipped_maps,check sits in a putdown branch that only runs when holding a plate or putting onto a plate,0,0,,,,,EXCLUDED_unreachable,,,proposed
+64,PUT_RAW_STEAK_IN_PAN,station_misuse,unreachable_on_shipped_maps,check sits in a putdown branch that only runs when holding a plate or putting onto a plate,0,0,,,,,EXCLUDED_unreachable,,,proposed
+65,PUT_RAW_FISH_IN_PAN,station_misuse,unreachable_on_shipped_maps,check sits in a putdown branch that only runs when holding a plate or putting onto a plate,0,0,,,,,EXCLUDED_unreachable,,,proposed
+66,PLATE_ONE_TOMATO_ADD_LETTUCE,plate_composition,fires_under_random_play,,47,12,21294,refusal,0.98,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+67,PLATE_ONE_TOMATO_ADD_ONION,plate_composition,fires_under_random_play,,30,12,18512,refusal,0.97,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+68,PLATE_ONE_TOMATO_ADD_STEAK,plate_composition,fires_under_random_play,,54,16,19672,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+69,PLATE_ONE_TOMATO_ADD_FISH,plate_composition,fires_under_random_play,,36,9,9559,refusal,0.94,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+70,PLATE_ONE_LETTUCE_ADD_TOMATO,plate_composition,fires_under_random_play,,53,16,31772,refusal,0.98,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+71,PLATE_ONE_LETTUCE_ADD_ONION,plate_composition,fires_under_random_play,,38,11,27439,refusal,0.95,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+72,PLATE_ONE_LETTUCE_ADD_STEAK,plate_composition,fires_under_random_play,,50,12,24924,refusal,0.98,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+73,PLATE_ONE_ONION_ADD_TOMATO,plate_composition,fires_under_random_play,,43,11,30567,refusal,0.93,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+74,PLATE_ONE_ONION_ADD_LETTUCE,plate_composition,fires_under_random_play,,45,16,13691,refusal,0.96,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+75,PLATE_ONE_RICE_ADD_FISH_RAW,plate_composition,fires_under_random_play,,5,3,7841,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+76,PLATE_ONE_RICE_ADD_FISH_CHOPPED,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+77,PLATE_ONE_STEAK_RAW_ADD_TOMATO,plate_composition,unreachable_on_shipped_maps,needs uncooked steak already on a plate; Plate.contain rejects uncooked meat,0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+78,PLATE_ONE_STEAK_CHOPPED_ADD_TOMATO,plate_composition,fires_in_runs,,0,0,,,,,EXCLUDED_normal_play,may_fire_in_correct_play_on_multi_ingredient_tasks,"corrected 2026-10-22: cooked steak also counts as chopped, so a correct steak-then-tomato plate fires it (seen on V2_task_07 in the baseline grid)",proposed
+79,PLATE_ONE_FISH_RAW_ADD_TOMATO,plate_composition,unreachable_on_shipped_maps,"needs raw (unchopped, uncooked) fish already on a plate; Plate.contain rejects it",0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+80,PLATE_ONE_FISH_CHOPPED_ADD_TOMATO,plate_composition,fires_under_random_play,,22,7,37857,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+81,PLATE_ONE_CHOPPED_VEG_ADD_RICE,plate_composition,fires_under_random_play,,62,18,11529,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+82,PLATE_ONE_COOKED_MEAT_ADD_LETTUCE,plate_composition,fires_under_random_play,,1,1,26104,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+83,PLATE_ONE_COOKED_FISH_ADD_ONION,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+84,PLATE_ONE_BURNED_ITEM_ADD_ANY,plate_composition,unreachable_on_shipped_maps,food never burns on shipped maps (pan burned_able=False; no oven),0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+85,PLATE_ONE_ADD_KNIFE_ON_VEG,plate_composition,fires_under_random_play,,163,25,13694,refusal,0.99,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+86,PLATE_TWO_TOMATO_LETTUCE_ADD_ONION,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+87,PLATE_TWO_TOMATO_ONION_ADD_LETTUCE,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+88,PLATE_TWO_LETTUCE_ONION_ADD_TOMATO,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+89,PLATE_TWO_RICE_FISH_RAW_ADD_TOMATO,plate_composition,unreachable_on_shipped_maps,"needs a 2-item plate of rice + fish, which always merges into sushi",0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+90,PLATE_TWO_RICE_FISH_CHOPPED_ADD_LETTUCE,plate_composition,unreachable_on_shipped_maps,"needs a 2-item plate of rice + fish, which always merges into sushi",0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+91,PLATE_TWO_COOKED_EXISTS_ADD_RAW,plate_composition,fires_under_random_play,,5,4,32581,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+92,PLATE_TWO_BURNED_AND_RAW_ADD_COOKED,plate_composition,unreachable_on_shipped_maps,food never burns on shipped maps (pan burned_able=False; no oven),0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+93,PLATE_TWO_DOUBLE_VEG_ADD_SAME,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+94,PLATE_TWO_MEAT_VARIANTS_ADD_ONION,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+95,PLATE_TWO_FISH_VARIANTS_ADD_TOMATO,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+96,PLATE_TWO_DIRTY_ADD_ANY,dirty_plate,not_reached_by_random,,0,0,,,,,PENDING_directed_check,,,proposed
+97,PLATE_TWO_BOTH_CHOPPED_VEG_ADD_RICE,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+98,PLATE_TWO_RICE_STEAK_RAW_ADD_LETTUCE,plate_composition,unreachable_on_shipped_maps,needs uncooked steak already on a plate; Plate.contain rejects uncooked meat,0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+99,PLATE_TWO_RICE_STEAK_COOKED_ADD_TOMATO,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+100,PLATE_TWO_TOMATO_LETTUCE_ADD_STEAK_RAW,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+101,PLATE_TWO_TOMATO_LETTUCE_ADD_FISH_RAW,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+102,PLATE_TWO_ONION_LETTUCE_ADD_TOMATO,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+103,PLATE_TWO_ONION_TOMATO_ADD_LETTUCE,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+104,PLATE_TWO_FISH_COOKED_RICE_ADD_ONION,plate_composition,unreachable_on_shipped_maps,"needs a 2-item plate of rice + fish, which always merges into sushi",0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+105,PLATE_TWO_ADD_KNIFE,plate_composition,fires_under_random_play,,80,18,23250,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+106,PLATE_ONE_TOMATO_ADD_RICE,plate_composition,fires_under_random_play,,20,9,33914,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+107,PLATE_ONE_TOMATO_ADD_CHOPPED_ONION,plate_composition,fires_under_random_play,,1,1,43782,silent,1.0,,B_no_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+108,PLATE_ONE_LETTUCE_ADD_RICE,plate_composition,fires_under_random_play,,16,6,11942,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+109,PLATE_ONE_LETTUCE_ADD_CHOPPED_TOMATO,plate_composition,fires_under_random_play,,1,1,32770,silent,1.0,,B_no_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+110,PLATE_ONE_ONION_ADD_RICE,plate_composition,fires_under_random_play,,26,10,14191,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+111,PLATE_ONE_ONION_ADD_COOKED_STEAK,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+112,PLATE_ONE_ONION_ADD_COOKED_FISH,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+113,PLATE_ONE_RICE_ADD_TOMATO_CHOPPED,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+114,PLATE_ONE_RICE_ADD_LETTUCE_CHOPPED,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+115,PLATE_ONE_RICE_ADD_ONION_CHOPPED,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+116,PLATE_ONE_RICE_ADD_COOKED_STEAK,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+117,PLATE_ONE_RICE_ADD_COOKED_FISH,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+118,PLATE_ONE_STEAK_RAW_ADD_LETTUCE,plate_composition,unreachable_on_shipped_maps,needs uncooked steak already on a plate; Plate.contain rejects uncooked meat,0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+119,PLATE_ONE_STEAK_COOKED_ADD_ONION,plate_composition,fires_under_random_play,,2,1,4991,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+120,PLATE_ONE_BURNED_ITEM_WITH_KNIFE,plate_composition,unreachable_on_shipped_maps,food never burns on shipped maps (pan burned_able=False; no oven),0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+121,PLATE_ONE_FISH_RAW_ADD_RICE,plate_composition,unreachable_on_shipped_maps,"needs raw (unchopped, uncooked) fish already on a plate; Plate.contain rejects it",0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+122,PLATE_ONE_FISH_CHOPPED_ADD_RICE,plate_composition,fires_under_random_play,,17,5,36112,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+123,PLATE_ONE_FISH_COOKED_ADD_RICE,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+124,PLATE_ONE_TOMATO_CHOPPED_ADD_RICE,plate_composition,fires_under_random_play,,20,9,33914,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+125,PLATE_ONE_LETTUCE_CHOPPED_ADD_RICE,plate_composition,fires_under_random_play,,16,6,11942,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+126,PLATE_ONE_ONION_CHOPPED_ADD_RICE,plate_composition,fires_under_random_play,,26,10,14191,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+127,PLATE_ONE_VEG_CHOPPED_ADD_COOKED_MEAT,plate_composition,fires_under_random_play,,1,1,2283,silent,1.0,,B_no_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+128,PLATE_ONE_VEG_CHOPPED_ADD_COOKED_FISH,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+129,PLATE_ONE_COOKED_MEAT_ADD_ONION_CHOPPED,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+130,PLATE_ONE_COOKED_FISH_ADD_TOMATO_CHOPPED,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+131,PLATE_ONE_MEAT_RAW_ADD_ONION_CHOPPED,plate_composition,unreachable_on_shipped_maps,needs uncooked steak already on a plate; Plate.contain rejects uncooked meat,0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+132,PLATE_ONE_FISH_RAW_ADD_ONION_CHOPPED,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+133,PLATE_ONE_TOMATO_ADD_KNIFE,plate_composition,fires_under_random_play,,49,14,21538,refusal,0.96,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+134,PLATE_ONE_LETTUCE_ADD_KNIFE,plate_composition,fires_under_random_play,,51,14,20950,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+135,PLATE_ONE_ONION_ADD_KNIFE,plate_composition,fires_under_random_play,,63,16,18496,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+136,PLATE_TWO_TOMATO_RICE_ADD_LETTUCE_CHOPPED,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+137,PLATE_TWO_LETTUCE_RICE_ADD_TOMATO_CHOPPED,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+138,PLATE_TWO_ONION_RICE_ADD_LETTUCE_CHOPPED,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+139,PLATE_TWO_RICE_STEAK_COOKED_ADD_LETTUCE_CHOPPED,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+140,PLATE_TWO_RICE_FISH_COOKED_ADD_TOMATO_CHOPPED,plate_composition,unreachable_on_shipped_maps,"needs a 2-item plate of rice + fish, which always merges into sushi",0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+141,PLATE_TWO_TOMATO_LETTUCE_ADD_RICE,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+142,PLATE_TWO_TOMATO_ONION_ADD_RICE,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+143,PLATE_TWO_LETTUCE_ONION_ADD_RICE,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+144,PLATE_TWO_BOTH_VEG_CHOPPED_ADD_COOKED_FISH,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+145,PLATE_TWO_BOTH_VEG_CHOPPED_ADD_COOKED_MEAT,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+146,PLATE_TWO_TOMATO_LETTUCE_WITH_KNIFE,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+147,PLATE_TWO_TOMATO_ONION_WITH_KNIFE,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+148,PLATE_TWO_LETTUCE_ONION_WITH_KNIFE,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+149,PLATE_TWO_VEG_WITH_OVEN,plate_composition,unreachable_on_shipped_maps,no oven on shipped maps,0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+150,PLATE_TWO_VEG_WITH_PAN,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+151,PLATE_TWO_VEG_WITH_RICECOOKER,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+152,PLATE_TWO_FISH_RAW_AND_COOKED_ADD_RICE,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+153,PLATE_TWO_MEAT_MIX_ADD_ONION_CHOPPED,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+154,PLATE_TWO_RICE_FISH_RAW_WITH_KNIFE,plate_composition,unreachable_on_shipped_maps,"needs a 2-item plate of rice + fish, which always merges into sushi",0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+155,PLATE_TWO_BURNED_PRESENT_WITH_KNIFE,plate_composition,unreachable_on_shipped_maps,food never burns on shipped maps (pan burned_able=False; no oven),0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+156,PLATE_TWO_BOTH_VEG_CHOPPED_ADD_FISH_RAW,plate_composition,fires_under_random_play,,2,1,45541,refusal,1.0,,A_transition_anomaly,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+157,PLATE_TWO_RICE_TOMATO_ADD_FISH_CHOPPED,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+158,PLATE_TWO_RICE_LETTUCE_ADD_FISH_CHOPPED,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+159,PLATE_TWO_RICE_ONION_ADD_FISH_CHOPPED,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+160,PLATE_TWO_TOMATO_FISH_COOKED_ADD_RICE,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+161,PLATE_TWO_DUP_VEG_ADD_RICE,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+162,PLATE_TWO_STEAK_COOKED_MEAT_RAW_ADD_ONION,plate_composition,unreachable_on_shipped_maps,needs uncooked steak already on a plate; Plate.contain rejects uncooked meat,0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+163,PLATE_TWO_RICE_MEAT_COOKED_ADD_TOMATO_CHOPPED,plate_composition,not_reached_by_random,,0,0,,,,,PENDING_directed_check,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+164,PLATE_TWO_RICE_FISH_COOKED_WITH_OVEN,plate_composition,unreachable_on_shipped_maps,no oven on shipped maps,0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed
+165,PLATE_TWO_RICE_STEAK_RAW_WITH_PAN,plate_composition,unreachable_on_shipped_maps,needs uncooked steak already on a plate; Plate.contain rejects uncooked meat,0,0,,,,,EXCLUDED_unreachable,may_fire_in_correct_play_on_multi_ingredient_tasks,,proposed

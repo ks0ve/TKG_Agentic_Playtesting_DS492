@@ -104,11 +104,12 @@ def test_history_window_and_reset_marker(tmp_path):
     agent = ReActAgent(llm, history=3)
     run(agent, "V2_task_01_tomato", 0, Budgets(max_env_steps=203), tmp_path, CFG)
     last = llm.calls[-1][1]
-    assert "=== EPISODE RESET ===" in last
+    assert ReActAgent.RESET_MARKER in last
+    assert ReActAgent.RESET_MARKER == "=== EPISODE RESET: the kitchen was reset to its starting state ==="
     assert "(episode 2)" in last
     assert last.count("[turn ") == 3
     assert "STEP: 2/200" in last
-    assert "=== EPISODE RESET ===" not in llm.calls[150][1]
+    assert "=== EPISODE RESET" not in llm.calls[150][1]
 
 
 def test_context_guard_drops_history(tmp_path):

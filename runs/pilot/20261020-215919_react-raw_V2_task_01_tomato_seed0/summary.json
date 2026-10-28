@@ -1,0 +1,65 @@
+{
+  "agent": "react-raw",
+  "task": "V2_task_01_tomato",
+  "seed": 0,
+  "backend": "ollama",
+  "model": "mistral-nemo:12b",
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": 0.0,
+  "parse_errors": 0,
+  "total_env_steps": 50,
+  "episodes": 1,
+  "llm_calls": 50,
+  "input_tokens": 93137,
+  "output_tokens": 3483,
+  "total_tokens": 96620,
+  "wall_time_s": 1233.61,
+  "unique_bug_ids": [
+    20
+  ],
+  "n_unique_bugs": 1,
+  "first_found_step": {
+    "20": 32
+  },
+  "discovery_curve": [
+    {
+      "global_step": 32,
+      "cumulative_tokens": 58290,
+      "unique_bugs": 1
+    },
+    {
+      "global_step": 50,
+      "cumulative_tokens": 96620,
+      "unique_bugs": 1
+    }
+  ],
+  "deliveries_success": 0,
+  "delivery_attempts": 0,
+  "agent_bug_reports": 17,
+  "ignore_bug_ids": [
+    5
+  ],
+  "action_space": "primitive",
+  "usd_cost": 0.0,
+  "decisions": 50,
+  "llm_calls_per_decision": 1.0,
+  "llm_calls_per_env_step": 1.0,
+  "llm_latency_mean_s": 24.6672,
+  "llm_latency_median_s": 23.0905,
+  "intents_executed": 50,
+  "intent_failures": 0,
+  "intent_failure_rate": 0.0,
+  "intents_coerced": 0,
+  "intent_coercion_rate": 0.0,
+  "reports_strict_match": 0,
+  "reports_lenient_match": 3,
+  "unique_bugs_reported_strict": 0,
+  "unique_bug_ids_reported_strict": [],
+  "bugs_by_proposed_class": {
+    "A_transition_anomaly": 1
+  },
+  "bugs_by_family": {
+    "station_misuse": 1
+  },
+  "taxonomy_warnings": []
+}

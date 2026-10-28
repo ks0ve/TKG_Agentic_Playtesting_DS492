@@ -5,11 +5,12 @@ MAP (x = column, y = row; (0,0) is top-left; right = x+1, down = y+1)
   2 P . X . O
   3 L . . . T
   4 # # K # #
-Legend: .=floor (walkable), #=empty counter (holds one item), @=you, T=tomato (on a counter), L=lettuce (on a counter), O=onion (on a counter), S=steak (on a counter), P=plate (on a counter), K=cutting board, X=delivery window, N=pan (stove), W=sink, G=trash can
+Legend: .=floor (walkable), #=empty counter (holds one item), @=you, T=tomato (on a counter), L=lettuce (on a counter), O=onion (on a counter), S=steak (on a counter), P=plate (on a counter), K=cutting board, X=delivery window, N=pan, W=sink, G=trash can
+Station letters do not show what the station holds; see STATIONS.
 
 STATIONS
 - (2,4) cutting board: empty
-- (3,0) pan (stove): empty
+- (3,0) pan: empty
 - (0,1) sink: empty
 - (2,2) delivery window
 - (4,1) trash can

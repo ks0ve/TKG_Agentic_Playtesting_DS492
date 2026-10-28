@@ -6,6 +6,7 @@ from react_baseline.runner import Budgets, run
 STEP_KEYS = {"global_step", "episode", "episode_step", "action", "reward", "done",
              "bug_ids_triggered", "new_unique_bug_ids", "bug_ids_raw", "delivery_success",
              "llm_call_id"}
+V2_STEP_KEYS = {"decision_id", "intent_id", "intent", "intent_step_index", "phase", "repro_attempt_id"}
 SUMMARY_KEYS = {"total_env_steps", "episodes", "llm_calls", "input_tokens", "output_tokens",
                 "total_tokens", "wall_time_s", "unique_bug_ids", "first_found_step",
                 "discovery_curve", "deliveries_success", "agent_bug_reports", "parse_error_rate"}
@@ -26,8 +27,11 @@ def test_random_run_writes_documented_schema(tmp_path):
         assert (d / f).exists(), f
     rows = [json.loads(line) for line in (d / "steps.jsonl").read_text().splitlines()]
     assert len(rows) == 500
-    for r in rows:
-        assert set(r) == STEP_KEYS
+    for i, r in enumerate(rows):
+        assert STEP_KEYS <= set(r)          # legacy fields kept (v2 only adds fields)
+        assert set(r) - STEP_KEYS == V2_STEP_KEYS
+        assert r["decision_id"] == i and r["intent_id"] == i and r["intent_step_index"] == 0
+        assert r["intent"] in ("right", "down", "left", "up", "wait")
         assert r["llm_call_id"] is None
         assert 5 not in r["bug_ids_triggered"]  # default ignore list
         assert 0 <= r["action"] <= 4

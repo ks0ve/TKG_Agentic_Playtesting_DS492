@@ -1,0 +1,4 @@
+# Project budget for paid LLM runs (react_baseline.spend).
+# Paid runs refuse to start once spent + open reservations + --max-usd > cap - margin.
+project_cap_usd: 20.00
+safety_margin_usd: 1.00

@@ -1,0 +1,13 @@
+# Progress subset of the baseline v2.1 grid: the same 33 combinations as the v2.0 progress grid
+# (configs/grids/baseline_v2_progress.yaml), written to runs/grids/baseline_v2_1/. Inherits every
+# setting from baseline_v2_1.yaml and only replaces the rows, so each run here has the same run dir
+# and config hash as in the v2.1 main grid and is never rerun there.
+#   python -m react_baseline.grid configs/grids/baseline_v2_1_progress.yaml --dry-run
+base: configs/grids/baseline_v2_1.yaml
+name: baseline_v2_1_progress
+rows:
+  - {agent: react, profile: haiku-5.5, seeds: [0, 1, 2]}                                    # paid
+  - {agent: react-raw, profile: haiku-5.5, tasks: [V2_task_01_tomato], seeds: [0, 1, 2]}    # paid
+  - {agent: random, seeds: [0, 1, 2]}
+  - {agent: random-intent, seeds: [0, 1, 2]}
+  - {agent: react, profile: llama3.1-8b, tasks: [V2_task_01_tomato], seeds: [0, 1, 2]}

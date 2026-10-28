@@ -1,0 +1,1107 @@
+# Oracle bug IDs (unfiltered) that fire during correct play of each task. Post-hoc reporting only:
+# used for summary.unique_bugs_excluding_normal_play and the *_adj metrics (react_baseline.rescore);
+# never changes ignore_bug_ids or what the oracle counts.
+#   bug_ids_raw        the set the metrics use. source: planner = union over every correct-play
+#                      variant (python -m react_baseline.normal_play --grid --write); source:
+#                      scripted_solution = the one scripted path (python -m react_baseline.solutions --write).
+#   always             IDs that fire in every delivered variant
+#   id_variant_counts  in how many delivered variants each ID fires
+#   per_variant        variant -> IDs (failed variants list their error instead)
+#   scripted_solution  the IDs of configs/solutions/<task>.yaml (kept for comparison)
+tasks:
+  V2_task_01_tomato:
+    source: planner
+    bug_ids_raw: [5]
+    ingredients: [tomato]
+    variants: 5
+    variants_delivered: 5
+    always: [5]
+    id_variant_counts:
+      5: 5
+    scripted_solution:
+      bug_ids_raw: [5]
+      steps: 17
+    per_variant:
+      interleaved; plate tomato:scoop: [5]
+      interleaved; plate tomato:carry: [5]
+      interleaved; plate tomato:park_scoop: [5]
+      'prep_first; plate tomato:scoop; prep tomato; plate held: keep': [5]
+      'prep_first; plate tomato:carry; prep tomato; plate held: keep': [5]
+  V2_task_07_tomato_steak:
+    source: planner
+    bug_ids_raw: [1, 3, 4, 5, 6, 21, 68, 78, 127]
+    ingredients: [tomato, steak]
+    variants: 46
+    variants_delivered: 46
+    always: [5, 6]
+    id_variant_counts:
+      1: 30
+      3: 24
+      4: 16
+      5: 46
+      6: 46
+      21: 30
+      68: 23
+      78: 23
+      127: 23
+    scripted_solution:
+      bug_ids_raw: [1, 3, 5, 6, 21, 68, 127]
+      steps: 34
+    per_variant:
+      interleaved; plate tomato:scoop,steak:scoop: [1, 3, 5, 6, 21, 68, 127]
+      interleaved; plate tomato:scoop,steak:carry: [3, 4, 5, 6, 68, 127]
+      interleaved; plate tomato:scoop,steak:park_scoop: [1, 3, 5, 6, 68, 127]
+      interleaved; plate tomato:carry,steak:scoop: [1, 5, 6, 21, 68, 127]
+      interleaved; plate tomato:carry,steak:carry: [4, 5, 6, 68, 127]
+      interleaved; plate tomato:carry,steak:park_scoop: [1, 5, 6, 68, 127]
+      interleaved; plate tomato:park_scoop,steak:scoop: [1, 3, 5, 6, 21, 68, 127]
+      interleaved; plate tomato:park_scoop,steak:carry: [3, 4, 5, 6, 68, 127]
+      interleaved; plate tomato:park_scoop,steak:park_scoop: [1, 3, 5, 6, 68, 127]
+      interleaved; plate steak:scoop,tomato:scoop: [1, 3, 5, 6, 21, 78]
+      interleaved; plate steak:scoop,tomato:carry: [3, 4, 5, 6, 21, 78]
+      interleaved; plate steak:scoop,tomato:park_scoop: [1, 3, 5, 6, 21, 78]
+      interleaved; plate steak:carry,tomato:scoop: [1, 5, 6, 78]
+      interleaved; plate steak:carry,tomato:carry: [4, 5, 6, 78]
+      interleaved; plate steak:carry,tomato:park_scoop: [1, 5, 6, 78]
+      interleaved; plate steak:park_scoop,tomato:scoop: [1, 3, 5, 6, 78]
+      interleaved; plate steak:park_scoop,tomato:carry: [3, 4, 5, 6, 78]
+      interleaved; plate steak:park_scoop,tomato:park_scoop: [1, 3, 5, 6, 78]
+      'prep_first; plate tomato:scoop,steak:scoop; prep tomato>steak; plate held: keep': [1, 5, 6, 21, 68, 127]
+      'prep_first; plate tomato:scoop,steak:scoop; prep tomato>steak; plate held: park': [1, 3, 5, 6, 21, 68, 127]
+      'prep_first; plate tomato:scoop,steak:carry; prep tomato>steak; plate held: keep': [3, 4, 5, 6, 21, 68, 127]
+      'prep_first; plate tomato:scoop,steak:park_scoop; prep tomato>steak; plate held: keep': [1, 3, 5, 6, 21, 68,
+        127]
+      'prep_first; plate tomato:carry,steak:scoop; prep tomato>steak; plate held: keep': [1, 5, 6, 21, 68, 127]
+      'prep_first; plate tomato:carry,steak:carry; prep tomato>steak; plate held: keep': [4, 5, 6, 21, 68, 127]
+      'prep_first; plate tomato:carry,steak:park_scoop; prep tomato>steak; plate held: keep': [1, 5, 6, 21, 68,
+        127]
+      'prep_first; plate steak:scoop,tomato:scoop; prep tomato>steak; plate held: keep': [1, 5, 6, 21, 78]
+      'prep_first; plate steak:scoop,tomato:scoop; prep tomato>steak; plate held: park': [1, 3, 5, 6, 21, 78]
+      'prep_first; plate steak:scoop,tomato:carry; prep tomato>steak; plate held: keep': [3, 4, 5, 6, 21, 78]
+      'prep_first; plate steak:carry,tomato:scoop; prep tomato>steak; plate held: keep': [1, 5, 6, 78]
+      'prep_first; plate steak:carry,tomato:carry; prep tomato>steak; plate held: keep': [4, 5, 6, 78]
+      'prep_first; plate steak:park_scoop,tomato:scoop; prep tomato>steak; plate held: keep': [1, 5, 6, 78]
+      'prep_first; plate steak:park_scoop,tomato:carry; prep tomato>steak; plate held: keep': [3, 4, 5, 6, 78]
+      'prep_first; plate tomato:scoop,steak:scoop; prep steak>tomato; plate held: keep': [1, 5, 6, 21, 68, 127]
+      'prep_first; plate tomato:scoop,steak:scoop; prep steak>tomato; plate held: park': [1, 3, 5, 6, 21, 68, 127]
+      'prep_first; plate tomato:scoop,steak:carry; prep steak>tomato; plate held: keep': [3, 4, 5, 6, 21, 68, 127]
+      'prep_first; plate tomato:scoop,steak:park_scoop; prep steak>tomato; plate held: keep': [1, 3, 5, 6, 21, 68,
+        127]
+      'prep_first; plate tomato:carry,steak:scoop; prep steak>tomato; plate held: keep': [1, 5, 6, 21, 68, 127]
+      'prep_first; plate tomato:carry,steak:carry; prep steak>tomato; plate held: keep': [4, 5, 6, 21, 68, 127]
+      'prep_first; plate tomato:carry,steak:park_scoop; prep steak>tomato; plate held: keep': [1, 5, 6, 21, 68,
+        127]
+      'prep_first; plate steak:scoop,tomato:scoop; prep steak>tomato; plate held: keep': [1, 5, 6, 21, 78]
+      'prep_first; plate steak:scoop,tomato:scoop; prep steak>tomato; plate held: park': [1, 3, 5, 6, 21, 78]
+      'prep_first; plate steak:scoop,tomato:carry; prep steak>tomato; plate held: keep': [3, 4, 5, 6, 21, 78]
+      'prep_first; plate steak:carry,tomato:scoop; prep steak>tomato; plate held: keep': [1, 5, 6, 21, 78]
+      'prep_first; plate steak:carry,tomato:carry; prep steak>tomato; plate held: keep': [4, 5, 6, 21, 78]
+      'prep_first; plate steak:park_scoop,tomato:scoop; prep steak>tomato; plate held: keep': [1, 5, 6, 21, 78]
+      'prep_first; plate steak:park_scoop,tomato:carry; prep steak>tomato; plate held: keep': [3, 4, 5, 6, 21, 78]
+  V2_task_11_tomato_lettuce_onion:
+    source: planner
+    bug_ids_raw: [1, 2, 3, 4, 5, 7, 66, 67, 70, 71, 73, 74, 85, 86, 87, 88, 102, 103, 105, 107, 109, 133, 134, 135,
+      146, 147, 148]
+    ingredients: [tomato, lettuce, onion]
+    variants: 558
+    variants_delivered: 558
+    always: [5, 7]
+    id_variant_counts:
+      1: 360
+      2: 54
+      3: 252
+      4: 198
+      5: 558
+      7: 558
+      66: 93
+      67: 93
+      70: 93
+      71: 93
+      73: 93
+      74: 93
+      85: 54
+      86: 186
+      87: 186
+      88: 186
+      102: 186
+      103: 186
+      105: 54
+      107: 93
+      109: 93
+      133: 18
+      134: 18
+      135: 18
+      146: 18
+      147: 18
+      148: 18
+    scripted_solution:
+      bug_ids_raw: [1, 2, 3, 5, 7, 66, 85, 86, 105, 133, 146]
+      steps: 41
+    per_variant:
+      interleaved; plate tomato:scoop,lettuce:scoop,onion:scoop: [1, 2, 3, 5, 7, 66, 85, 86, 105, 133, 146]
+      interleaved; plate tomato:scoop,lettuce:scoop,onion:carry: [1, 3, 5, 7, 66, 85, 86, 133]
+      interleaved; plate tomato:scoop,lettuce:scoop,onion:park_scoop: [1, 3, 5, 7, 66, 85, 86, 133]
+      interleaved; plate tomato:scoop,lettuce:carry,onion:scoop: [2, 3, 4, 5, 7, 66, 86, 105, 146]
+      interleaved; plate tomato:scoop,lettuce:carry,onion:carry: [3, 4, 5, 7, 66, 86]
+      interleaved; plate tomato:scoop,lettuce:carry,onion:park_scoop: [3, 4, 5, 7, 66, 86]
+      interleaved; plate tomato:scoop,lettuce:park_scoop,onion:scoop: [1, 2, 3, 5, 7, 66, 86, 105, 146]
+      interleaved; plate tomato:scoop,lettuce:park_scoop,onion:carry: [1, 3, 5, 7, 66, 86]
+      interleaved; plate tomato:scoop,lettuce:park_scoop,onion:park_scoop: [1, 3, 5, 7, 66, 86]
+      interleaved; plate tomato:carry,lettuce:scoop,onion:scoop: [1, 2, 5, 7, 66, 85, 86, 105, 133, 146]
+      interleaved; plate tomato:carry,lettuce:scoop,onion:carry: [1, 5, 7, 66, 85, 86, 133]
+      interleaved; plate tomato:carry,lettuce:scoop,onion:park_scoop: [1, 5, 7, 66, 85, 86, 133]
+      interleaved; plate tomato:carry,lettuce:carry,onion:scoop: [2, 4, 5, 7, 66, 86, 105, 146]
+      interleaved; plate tomato:carry,lettuce:carry,onion:carry: [4, 5, 7, 66, 86]
+      interleaved; plate tomato:carry,lettuce:carry,onion:park_scoop: [4, 5, 7, 66, 86]
+      interleaved; plate tomato:carry,lettuce:park_scoop,onion:scoop: [1, 2, 5, 7, 66, 86, 105, 146]
+      interleaved; plate tomato:carry,lettuce:park_scoop,onion:carry: [1, 5, 7, 66, 86]
+      interleaved; plate tomato:carry,lettuce:park_scoop,onion:park_scoop: [1, 5, 7, 66, 86]
+      interleaved; plate tomato:park_scoop,lettuce:scoop,onion:scoop: [1, 2, 3, 5, 7, 66, 85, 86, 105, 133, 146]
+      interleaved; plate tomato:park_scoop,lettuce:scoop,onion:carry: [1, 3, 5, 7, 66, 85, 86, 133]
+      interleaved; plate tomato:park_scoop,lettuce:scoop,onion:park_scoop: [1, 3, 5, 7, 66, 85, 86, 133]
+      interleaved; plate tomato:park_scoop,lettuce:carry,onion:scoop: [2, 3, 4, 5, 7, 66, 86, 105, 146]
+      interleaved; plate tomato:park_scoop,lettuce:carry,onion:carry: [3, 4, 5, 7, 66, 86]
+      interleaved; plate tomato:park_scoop,lettuce:carry,onion:park_scoop: [3, 4, 5, 7, 66, 86]
+      interleaved; plate tomato:park_scoop,lettuce:park_scoop,onion:scoop: [1, 2, 3, 5, 7, 66, 86, 105, 146]
+      interleaved; plate tomato:park_scoop,lettuce:park_scoop,onion:carry: [1, 3, 5, 7, 66, 86]
+      interleaved; plate tomato:park_scoop,lettuce:park_scoop,onion:park_scoop: [1, 3, 5, 7, 66, 86]
+      interleaved; plate tomato:scoop,onion:scoop,lettuce:scoop: [1, 2, 3, 5, 7, 67, 85, 87, 103, 105, 107, 133,
+        147]
+      interleaved; plate tomato:scoop,onion:scoop,lettuce:carry: [1, 3, 5, 7, 67, 85, 87, 103, 107, 133]
+      interleaved; plate tomato:scoop,onion:scoop,lettuce:park_scoop: [1, 3, 5, 7, 67, 85, 87, 103, 107, 133]
+      interleaved; plate tomato:scoop,onion:carry,lettuce:scoop: [2, 3, 4, 5, 7, 67, 87, 103, 105, 107, 147]
+      interleaved; plate tomato:scoop,onion:carry,lettuce:carry: [3, 4, 5, 7, 67, 87, 103, 107]
+      interleaved; plate tomato:scoop,onion:carry,lettuce:park_scoop: [3, 4, 5, 7, 67, 87, 103, 107]
+      interleaved; plate tomato:scoop,onion:park_scoop,lettuce:scoop: [1, 2, 3, 5, 7, 67, 87, 103, 105, 107, 147]
+      interleaved; plate tomato:scoop,onion:park_scoop,lettuce:carry: [1, 3, 5, 7, 67, 87, 103, 107]
+      interleaved; plate tomato:scoop,onion:park_scoop,lettuce:park_scoop: [1, 3, 5, 7, 67, 87, 103, 107]
+      interleaved; plate tomato:carry,onion:scoop,lettuce:scoop: [1, 2, 5, 7, 67, 85, 87, 103, 105, 107, 133, 147]
+      interleaved; plate tomato:carry,onion:scoop,lettuce:carry: [1, 5, 7, 67, 85, 87, 103, 107, 133]
+      interleaved; plate tomato:carry,onion:scoop,lettuce:park_scoop: [1, 5, 7, 67, 85, 87, 103, 107, 133]
+      interleaved; plate tomato:carry,onion:carry,lettuce:scoop: [2, 4, 5, 7, 67, 87, 103, 105, 107, 147]
+      interleaved; plate tomato:carry,onion:carry,lettuce:carry: [4, 5, 7, 67, 87, 103, 107]
+      interleaved; plate tomato:carry,onion:carry,lettuce:park_scoop: [4, 5, 7, 67, 87, 103, 107]
+      interleaved; plate tomato:carry,onion:park_scoop,lettuce:scoop: [1, 2, 5, 7, 67, 87, 103, 105, 107, 147]
+      interleaved; plate tomato:carry,onion:park_scoop,lettuce:carry: [1, 5, 7, 67, 87, 103, 107]
+      interleaved; plate tomato:carry,onion:park_scoop,lettuce:park_scoop: [1, 5, 7, 67, 87, 103, 107]
+      interleaved; plate tomato:park_scoop,onion:scoop,lettuce:scoop: [1, 2, 3, 5, 7, 67, 85, 87, 103, 105, 107,
+        133, 147]
+      interleaved; plate tomato:park_scoop,onion:scoop,lettuce:carry: [1, 3, 5, 7, 67, 85, 87, 103, 107, 133]
+      interleaved; plate tomato:park_scoop,onion:scoop,lettuce:park_scoop: [1, 3, 5, 7, 67, 85, 87, 103, 107, 133]
+      interleaved; plate tomato:park_scoop,onion:carry,lettuce:scoop: [2, 3, 4, 5, 7, 67, 87, 103, 105, 107, 147]
+      interleaved; plate tomato:park_scoop,onion:carry,lettuce:carry: [3, 4, 5, 7, 67, 87, 103, 107]
+      interleaved; plate tomato:park_scoop,onion:carry,lettuce:park_scoop: [3, 4, 5, 7, 67, 87, 103, 107]
+      interleaved; plate tomato:park_scoop,onion:park_scoop,lettuce:scoop: [1, 2, 3, 5, 7, 67, 87, 103, 105, 107,
+        147]
+      interleaved; plate tomato:park_scoop,onion:park_scoop,lettuce:carry: [1, 3, 5, 7, 67, 87, 103, 107]
+      interleaved; plate tomato:park_scoop,onion:park_scoop,lettuce:park_scoop: [1, 3, 5, 7, 67, 87, 103, 107]
+      interleaved; plate lettuce:scoop,tomato:scoop,onion:scoop: [1, 2, 3, 5, 7, 70, 85, 86, 105, 109, 134, 146]
+      interleaved; plate lettuce:scoop,tomato:scoop,onion:carry: [1, 3, 5, 7, 70, 85, 86, 109, 134]
+      interleaved; plate lettuce:scoop,tomato:scoop,onion:park_scoop: [1, 3, 5, 7, 70, 85, 86, 109, 134]
+      interleaved; plate lettuce:scoop,tomato:carry,onion:scoop: [2, 3, 4, 5, 7, 70, 86, 105, 109, 146]
+      interleaved; plate lettuce:scoop,tomato:carry,onion:carry: [3, 4, 5, 7, 70, 86, 109]
+      interleaved; plate lettuce:scoop,tomato:carry,onion:park_scoop: [3, 4, 5, 7, 70, 86, 109]
+      interleaved; plate lettuce:scoop,tomato:park_scoop,onion:scoop: [1, 2, 3, 5, 7, 70, 86, 105, 109, 146]
+      interleaved; plate lettuce:scoop,tomato:park_scoop,onion:carry: [1, 3, 5, 7, 70, 86, 109]
+      interleaved; plate lettuce:scoop,tomato:park_scoop,onion:park_scoop: [1, 3, 5, 7, 70, 86, 109]
+      interleaved; plate lettuce:carry,tomato:scoop,onion:scoop: [1, 2, 5, 7, 70, 85, 86, 105, 109, 134, 146]
+      interleaved; plate lettuce:carry,tomato:scoop,onion:carry: [1, 5, 7, 70, 85, 86, 109, 134]
+      interleaved; plate lettuce:carry,tomato:scoop,onion:park_scoop: [1, 5, 7, 70, 85, 86, 109, 134]
+      interleaved; plate lettuce:carry,tomato:carry,onion:scoop: [2, 4, 5, 7, 70, 86, 105, 109, 146]
+      interleaved; plate lettuce:carry,tomato:carry,onion:carry: [4, 5, 7, 70, 86, 109]
+      interleaved; plate lettuce:carry,tomato:carry,onion:park_scoop: [4, 5, 7, 70, 86, 109]
+      interleaved; plate lettuce:carry,tomato:park_scoop,onion:scoop: [1, 2, 5, 7, 70, 86, 105, 109, 146]
+      interleaved; plate lettuce:carry,tomato:park_scoop,onion:carry: [1, 5, 7, 70, 86, 109]
+      interleaved; plate lettuce:carry,tomato:park_scoop,onion:park_scoop: [1, 5, 7, 70, 86, 109]
+      interleaved; plate lettuce:park_scoop,tomato:scoop,onion:scoop: [1, 2, 3, 5, 7, 70, 85, 86, 105, 109, 134,
+        146]
+      interleaved; plate lettuce:park_scoop,tomato:scoop,onion:carry: [1, 3, 5, 7, 70, 85, 86, 109, 134]
+      interleaved; plate lettuce:park_scoop,tomato:scoop,onion:park_scoop: [1, 3, 5, 7, 70, 85, 86, 109, 134]
+      interleaved; plate lettuce:park_scoop,tomato:carry,onion:scoop: [2, 3, 4, 5, 7, 70, 86, 105, 109, 146]
+      interleaved; plate lettuce:park_scoop,tomato:carry,onion:carry: [3, 4, 5, 7, 70, 86, 109]
+      interleaved; plate lettuce:park_scoop,tomato:carry,onion:park_scoop: [3, 4, 5, 7, 70, 86, 109]
+      interleaved; plate lettuce:park_scoop,tomato:park_scoop,onion:scoop: [1, 2, 3, 5, 7, 70, 86, 105, 109, 146]
+      interleaved; plate lettuce:park_scoop,tomato:park_scoop,onion:carry: [1, 3, 5, 7, 70, 86, 109]
+      interleaved; plate lettuce:park_scoop,tomato:park_scoop,onion:park_scoop: [1, 3, 5, 7, 70, 86, 109]
+      interleaved; plate lettuce:scoop,onion:scoop,tomato:scoop: [1, 2, 3, 5, 7, 71, 85, 88, 102, 105, 134, 148]
+      interleaved; plate lettuce:scoop,onion:scoop,tomato:carry: [1, 3, 5, 7, 71, 85, 88, 102, 134]
+      interleaved; plate lettuce:scoop,onion:scoop,tomato:park_scoop: [1, 3, 5, 7, 71, 85, 88, 102, 134]
+      interleaved; plate lettuce:scoop,onion:carry,tomato:scoop: [2, 3, 4, 5, 7, 71, 88, 102, 105, 148]
+      interleaved; plate lettuce:scoop,onion:carry,tomato:carry: [3, 4, 5, 7, 71, 88, 102]
+      interleaved; plate lettuce:scoop,onion:carry,tomato:park_scoop: [3, 4, 5, 7, 71, 88, 102]
+      interleaved; plate lettuce:scoop,onion:park_scoop,tomato:scoop: [1, 2, 3, 5, 7, 71, 88, 102, 105, 148]
+      interleaved; plate lettuce:scoop,onion:park_scoop,tomato:carry: [1, 3, 5, 7, 71, 88, 102]
+      interleaved; plate lettuce:scoop,onion:park_scoop,tomato:park_scoop: [1, 3, 5, 7, 71, 88, 102]
+      interleaved; plate lettuce:carry,onion:scoop,tomato:scoop: [1, 2, 5, 7, 71, 85, 88, 102, 105, 134, 148]
+      interleaved; plate lettuce:carry,onion:scoop,tomato:carry: [1, 5, 7, 71, 85, 88, 102, 134]
+      interleaved; plate lettuce:carry,onion:scoop,tomato:park_scoop: [1, 5, 7, 71, 85, 88, 102, 134]
+      interleaved; plate lettuce:carry,onion:carry,tomato:scoop: [2, 4, 5, 7, 71, 88, 102, 105, 148]
+      interleaved; plate lettuce:carry,onion:carry,tomato:carry: [4, 5, 7, 71, 88, 102]
+      interleaved; plate lettuce:carry,onion:carry,tomato:park_scoop: [4, 5, 7, 71, 88, 102]
+      interleaved; plate lettuce:carry,onion:park_scoop,tomato:scoop: [1, 2, 5, 7, 71, 88, 102, 105, 148]
+      interleaved; plate lettuce:carry,onion:park_scoop,tomato:carry: [1, 5, 7, 71, 88, 102]
+      interleaved; plate lettuce:carry,onion:park_scoop,tomato:park_scoop: [1, 5, 7, 71, 88, 102]
+      interleaved; plate lettuce:park_scoop,onion:scoop,tomato:scoop: [1, 2, 3, 5, 7, 71, 85, 88, 102, 105, 134,
+        148]
+      interleaved; plate lettuce:park_scoop,onion:scoop,tomato:carry: [1, 3, 5, 7, 71, 85, 88, 102, 134]
+      interleaved; plate lettuce:park_scoop,onion:scoop,tomato:park_scoop: [1, 3, 5, 7, 71, 85, 88, 102, 134]
+      interleaved; plate lettuce:park_scoop,onion:carry,tomato:scoop: [2, 3, 4, 5, 7, 71, 88, 102, 105, 148]
+      interleaved; plate lettuce:park_scoop,onion:carry,tomato:carry: [3, 4, 5, 7, 71, 88, 102]
+      interleaved; plate lettuce:park_scoop,onion:carry,tomato:park_scoop: [3, 4, 5, 7, 71, 88, 102]
+      interleaved; plate lettuce:park_scoop,onion:park_scoop,tomato:scoop: [1, 2, 3, 5, 7, 71, 88, 102, 105, 148]
+      interleaved; plate lettuce:park_scoop,onion:park_scoop,tomato:carry: [1, 3, 5, 7, 71, 88, 102]
+      interleaved; plate lettuce:park_scoop,onion:park_scoop,tomato:park_scoop: [1, 3, 5, 7, 71, 88, 102]
+      interleaved; plate onion:scoop,tomato:scoop,lettuce:scoop: [1, 2, 3, 5, 7, 73, 85, 87, 103, 105, 135, 147]
+      interleaved; plate onion:scoop,tomato:scoop,lettuce:carry: [1, 3, 5, 7, 73, 85, 87, 103, 135]
+      interleaved; plate onion:scoop,tomato:scoop,lettuce:park_scoop: [1, 3, 5, 7, 73, 85, 87, 103, 135]
+      interleaved; plate onion:scoop,tomato:carry,lettuce:scoop: [2, 3, 4, 5, 7, 73, 87, 103, 105, 147]
+      interleaved; plate onion:scoop,tomato:carry,lettuce:carry: [3, 4, 5, 7, 73, 87, 103]
+      interleaved; plate onion:scoop,tomato:carry,lettuce:park_scoop: [3, 4, 5, 7, 73, 87, 103]
+      interleaved; plate onion:scoop,tomato:park_scoop,lettuce:scoop: [1, 2, 3, 5, 7, 73, 87, 103, 105, 147]
+      interleaved; plate onion:scoop,tomato:park_scoop,lettuce:carry: [1, 3, 5, 7, 73, 87, 103]
+      interleaved; plate onion:scoop,tomato:park_scoop,lettuce:park_scoop: [1, 3, 5, 7, 73, 87, 103]
+      interleaved; plate onion:carry,tomato:scoop,lettuce:scoop: [1, 2, 5, 7, 73, 85, 87, 103, 105, 135, 147]
+      interleaved; plate onion:carry,tomato:scoop,lettuce:carry: [1, 5, 7, 73, 85, 87, 103, 135]
+      interleaved; plate onion:carry,tomato:scoop,lettuce:park_scoop: [1, 5, 7, 73, 85, 87, 103, 135]
+      interleaved; plate onion:carry,tomato:carry,lettuce:scoop: [2, 4, 5, 7, 73, 87, 103, 105, 147]
+      interleaved; plate onion:carry,tomato:carry,lettuce:carry: [4, 5, 7, 73, 87, 103]
+      interleaved; plate onion:carry,tomato:carry,lettuce:park_scoop: [4, 5, 7, 73, 87, 103]
+      interleaved; plate onion:carry,tomato:park_scoop,lettuce:scoop: [1, 2, 5, 7, 73, 87, 103, 105, 147]
+      interleaved; plate onion:carry,tomato:park_scoop,lettuce:carry: [1, 5, 7, 73, 87, 103]
+      interleaved; plate onion:carry,tomato:park_scoop,lettuce:park_scoop: [1, 5, 7, 73, 87, 103]
+      interleaved; plate onion:park_scoop,tomato:scoop,lettuce:scoop: [1, 2, 3, 5, 7, 73, 85, 87, 103, 105, 135,
+        147]
+      interleaved; plate onion:park_scoop,tomato:scoop,lettuce:carry: [1, 3, 5, 7, 73, 85, 87, 103, 135]
+      interleaved; plate onion:park_scoop,tomato:scoop,lettuce:park_scoop: [1, 3, 5, 7, 73, 85, 87, 103, 135]
+      interleaved; plate onion:park_scoop,tomato:carry,lettuce:scoop: [2, 3, 4, 5, 7, 73, 87, 103, 105, 147]
+      interleaved; plate onion:park_scoop,tomato:carry,lettuce:carry: [3, 4, 5, 7, 73, 87, 103]
+      interleaved; plate onion:park_scoop,tomato:carry,lettuce:park_scoop: [3, 4, 5, 7, 73, 87, 103]
+      interleaved; plate onion:park_scoop,tomato:park_scoop,lettuce:scoop: [1, 2, 3, 5, 7, 73, 87, 103, 105, 147]
+      interleaved; plate onion:park_scoop,tomato:park_scoop,lettuce:carry: [1, 3, 5, 7, 73, 87, 103]
+      interleaved; plate onion:park_scoop,tomato:park_scoop,lettuce:park_scoop: [1, 3, 5, 7, 73, 87, 103]
+      interleaved; plate onion:scoop,lettuce:scoop,tomato:scoop: [1, 2, 3, 5, 7, 74, 85, 88, 102, 105, 135, 148]
+      interleaved; plate onion:scoop,lettuce:scoop,tomato:carry: [1, 3, 5, 7, 74, 85, 88, 102, 135]
+      interleaved; plate onion:scoop,lettuce:scoop,tomato:park_scoop: [1, 3, 5, 7, 74, 85, 88, 102, 135]
+      interleaved; plate onion:scoop,lettuce:carry,tomato:scoop: [2, 3, 4, 5, 7, 74, 88, 102, 105, 148]
+      interleaved; plate onion:scoop,lettuce:carry,tomato:carry: [3, 4, 5, 7, 74, 88, 102]
+      interleaved; plate onion:scoop,lettuce:carry,tomato:park_scoop: [3, 4, 5, 7, 74, 88, 102]
+      interleaved; plate onion:scoop,lettuce:park_scoop,tomato:scoop: [1, 2, 3, 5, 7, 74, 88, 102, 105, 148]
+      interleaved; plate onion:scoop,lettuce:park_scoop,tomato:carry: [1, 3, 5, 7, 74, 88, 102]
+      interleaved; plate onion:scoop,lettuce:park_scoop,tomato:park_scoop: [1, 3, 5, 7, 74, 88, 102]
+      interleaved; plate onion:carry,lettuce:scoop,tomato:scoop: [1, 2, 5, 7, 74, 85, 88, 102, 105, 135, 148]
+      interleaved; plate onion:carry,lettuce:scoop,tomato:carry: [1, 5, 7, 74, 85, 88, 102, 135]
+      interleaved; plate onion:carry,lettuce:scoop,tomato:park_scoop: [1, 5, 7, 74, 85, 88, 102, 135]
+      interleaved; plate onion:carry,lettuce:carry,tomato:scoop: [2, 4, 5, 7, 74, 88, 102, 105, 148]
+      interleaved; plate onion:carry,lettuce:carry,tomato:carry: [4, 5, 7, 74, 88, 102]
+      interleaved; plate onion:carry,lettuce:carry,tomato:park_scoop: [4, 5, 7, 74, 88, 102]
+      interleaved; plate onion:carry,lettuce:park_scoop,tomato:scoop: [1, 2, 5, 7, 74, 88, 102, 105, 148]
+      interleaved; plate onion:carry,lettuce:park_scoop,tomato:carry: [1, 5, 7, 74, 88, 102]
+      interleaved; plate onion:carry,lettuce:park_scoop,tomato:park_scoop: [1, 5, 7, 74, 88, 102]
+      interleaved; plate onion:park_scoop,lettuce:scoop,tomato:scoop: [1, 2, 3, 5, 7, 74, 85, 88, 102, 105, 135,
+        148]
+      interleaved; plate onion:park_scoop,lettuce:scoop,tomato:carry: [1, 3, 5, 7, 74, 85, 88, 102, 135]
+      interleaved; plate onion:park_scoop,lettuce:scoop,tomato:park_scoop: [1, 3, 5, 7, 74, 85, 88, 102, 135]
+      interleaved; plate onion:park_scoop,lettuce:carry,tomato:scoop: [2, 3, 4, 5, 7, 74, 88, 102, 105, 148]
+      interleaved; plate onion:park_scoop,lettuce:carry,tomato:carry: [3, 4, 5, 7, 74, 88, 102]
+      interleaved; plate onion:park_scoop,lettuce:carry,tomato:park_scoop: [3, 4, 5, 7, 74, 88, 102]
+      interleaved; plate onion:park_scoop,lettuce:park_scoop,tomato:scoop: [1, 2, 3, 5, 7, 74, 88, 102, 105, 148]
+      interleaved; plate onion:park_scoop,lettuce:park_scoop,tomato:carry: [1, 3, 5, 7, 74, 88, 102]
+      interleaved; plate onion:park_scoop,lettuce:park_scoop,tomato:park_scoop: [1, 3, 5, 7, 74, 88, 102]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:scoop; prep tomato>lettuce>onion; plate held: park': [
+        1, 3, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:carry; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:carry; prep tomato>lettuce>onion; plate held: park': [
+        1, 3, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:carry,onion:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        3, 4, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:carry,onion:carry; prep tomato>lettuce>onion; plate held: keep': [
+        3, 4, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:scoop; prep tomato>lettuce>onion; plate held: park': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:carry; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:carry,onion:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        4, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:carry,onion:carry; prep tomato>lettuce>onion; plate held: keep': [
+        4, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:scoop; prep tomato>lettuce>onion; plate held: park': [
+        1, 3, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:carry; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:carry; prep tomato>lettuce>onion; plate held: park': [
+        1, 3, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:carry,lettuce:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        3, 4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:carry,lettuce:carry; prep tomato>lettuce>onion; plate held: keep': [
+        3, 4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:scoop; prep tomato>lettuce>onion; plate held: park': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:carry; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:carry,lettuce:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:carry,lettuce:carry; prep tomato>lettuce>onion; plate held: keep': [
+        4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:scoop; prep tomato>lettuce>onion; plate held: park': [
+        1, 3, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:carry; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:carry; prep tomato>lettuce>onion; plate held: park': [
+        1, 3, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:carry,onion:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        3, 4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:carry,onion:carry; prep tomato>lettuce>onion; plate held: keep': [
+        3, 4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:scoop; prep tomato>lettuce>onion; plate held: park': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:carry; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:carry,onion:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:carry,onion:carry; prep tomato>lettuce>onion; plate held: keep': [
+        4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:scoop; prep tomato>lettuce>onion; plate held: park': [
+        1, 3, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:carry; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:carry; prep tomato>lettuce>onion; plate held: park': [
+        1, 3, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:carry,tomato:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        3, 4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:carry,tomato:carry; prep tomato>lettuce>onion; plate held: keep': [
+        3, 4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:scoop; prep tomato>lettuce>onion; plate held: park': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:carry; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:carry,tomato:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:carry,tomato:carry; prep tomato>lettuce>onion; plate held: keep': [
+        4, 5, 7, 71, 88, 102]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:scoop; prep tomato>lettuce>onion; plate held: park': [
+        1, 3, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:carry; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:carry; prep tomato>lettuce>onion; plate held: park': [
+        1, 3, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:carry,lettuce:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        3, 4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:carry,lettuce:carry; prep tomato>lettuce>onion; plate held: keep': [
+        3, 4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:scoop; prep tomato>lettuce>onion; plate held: park': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:carry; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:carry,lettuce:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:carry,lettuce:carry; prep tomato>lettuce>onion; plate held: keep': [
+        4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:scoop; prep tomato>lettuce>onion; plate held: park': [
+        1, 3, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:carry; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:carry; prep tomato>lettuce>onion; plate held: park': [
+        1, 3, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:carry,tomato:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        3, 4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:carry,tomato:carry; prep tomato>lettuce>onion; plate held: keep': [
+        3, 4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:scoop; prep tomato>lettuce>onion; plate held: park': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:carry; prep tomato>lettuce>onion; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:carry,tomato:scoop; prep tomato>lettuce>onion; plate held: keep': [
+        4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:carry,tomato:carry; prep tomato>lettuce>onion; plate held: keep': [
+        4, 5, 7, 74, 88, 102]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:scoop; prep tomato>onion>lettuce; plate held: park': [
+        1, 3, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:carry; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:carry; prep tomato>onion>lettuce; plate held: park': [
+        1, 3, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:carry,onion:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        3, 4, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:carry,onion:carry; prep tomato>onion>lettuce; plate held: keep': [
+        3, 4, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:scoop; prep tomato>onion>lettuce; plate held: park': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:carry; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:carry,onion:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        4, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:carry,onion:carry; prep tomato>onion>lettuce; plate held: keep': [
+        4, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:scoop; prep tomato>onion>lettuce; plate held: park': [
+        1, 3, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:carry; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:carry; prep tomato>onion>lettuce; plate held: park': [
+        1, 3, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:carry,lettuce:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        3, 4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:carry,lettuce:carry; prep tomato>onion>lettuce; plate held: keep': [
+        3, 4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:scoop; prep tomato>onion>lettuce; plate held: park': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:carry; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:carry,lettuce:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:carry,lettuce:carry; prep tomato>onion>lettuce; plate held: keep': [
+        4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:scoop; prep tomato>onion>lettuce; plate held: park': [
+        1, 3, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:carry; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:carry; prep tomato>onion>lettuce; plate held: park': [
+        1, 3, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:carry,onion:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        3, 4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:carry,onion:carry; prep tomato>onion>lettuce; plate held: keep': [
+        3, 4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:scoop; prep tomato>onion>lettuce; plate held: park': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:carry; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:carry,onion:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:carry,onion:carry; prep tomato>onion>lettuce; plate held: keep': [
+        4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:scoop; prep tomato>onion>lettuce; plate held: park': [
+        1, 3, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:carry; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:carry; prep tomato>onion>lettuce; plate held: park': [
+        1, 3, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:carry,tomato:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        3, 4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:carry,tomato:carry; prep tomato>onion>lettuce; plate held: keep': [
+        3, 4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:scoop; prep tomato>onion>lettuce; plate held: park': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:carry; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:carry,tomato:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:carry,tomato:carry; prep tomato>onion>lettuce; plate held: keep': [
+        4, 5, 7, 71, 88, 102]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:scoop; prep tomato>onion>lettuce; plate held: park': [
+        1, 3, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:carry; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:carry; prep tomato>onion>lettuce; plate held: park': [
+        1, 3, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:carry,lettuce:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        3, 4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:carry,lettuce:carry; prep tomato>onion>lettuce; plate held: keep': [
+        3, 4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:scoop; prep tomato>onion>lettuce; plate held: park': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:carry; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:carry,lettuce:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:carry,lettuce:carry; prep tomato>onion>lettuce; plate held: keep': [
+        4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:scoop; prep tomato>onion>lettuce; plate held: park': [
+        1, 3, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:carry; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:carry; prep tomato>onion>lettuce; plate held: park': [
+        1, 3, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:carry,tomato:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        3, 4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:carry,tomato:carry; prep tomato>onion>lettuce; plate held: keep': [
+        3, 4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:scoop; prep tomato>onion>lettuce; plate held: park': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:carry; prep tomato>onion>lettuce; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:carry,tomato:scoop; prep tomato>onion>lettuce; plate held: keep': [
+        4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:carry,tomato:carry; prep tomato>onion>lettuce; plate held: keep': [
+        4, 5, 7, 74, 88, 102]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:scoop; prep lettuce>tomato>onion; plate held: park': [
+        1, 3, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:carry; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:carry; prep lettuce>tomato>onion; plate held: park': [
+        1, 3, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:carry,onion:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        3, 4, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:carry,onion:carry; prep lettuce>tomato>onion; plate held: keep': [
+        3, 4, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:scoop; prep lettuce>tomato>onion; plate held: park': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:carry; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:carry,onion:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        4, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:carry,onion:carry; prep lettuce>tomato>onion; plate held: keep': [
+        4, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:scoop; prep lettuce>tomato>onion; plate held: park': [
+        1, 3, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:carry; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:carry; prep lettuce>tomato>onion; plate held: park': [
+        1, 3, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:carry,lettuce:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        3, 4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:carry,lettuce:carry; prep lettuce>tomato>onion; plate held: keep': [
+        3, 4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:scoop; prep lettuce>tomato>onion; plate held: park': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:carry; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:carry,lettuce:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:carry,lettuce:carry; prep lettuce>tomato>onion; plate held: keep': [
+        4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:scoop; prep lettuce>tomato>onion; plate held: park': [
+        1, 3, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:carry; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:carry; prep lettuce>tomato>onion; plate held: park': [
+        1, 3, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:carry,onion:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        3, 4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:carry,onion:carry; prep lettuce>tomato>onion; plate held: keep': [
+        3, 4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:scoop; prep lettuce>tomato>onion; plate held: park': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:carry; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:carry,onion:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:carry,onion:carry; prep lettuce>tomato>onion; plate held: keep': [
+        4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:scoop; prep lettuce>tomato>onion; plate held: park': [
+        1, 3, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:carry; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:carry; prep lettuce>tomato>onion; plate held: park': [
+        1, 3, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:carry,tomato:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        3, 4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:carry,tomato:carry; prep lettuce>tomato>onion; plate held: keep': [
+        3, 4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:scoop; prep lettuce>tomato>onion; plate held: park': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:carry; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:carry,tomato:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:carry,tomato:carry; prep lettuce>tomato>onion; plate held: keep': [
+        4, 5, 7, 71, 88, 102]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:scoop; prep lettuce>tomato>onion; plate held: park': [
+        1, 3, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:carry; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:carry; prep lettuce>tomato>onion; plate held: park': [
+        1, 3, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:carry,lettuce:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        3, 4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:carry,lettuce:carry; prep lettuce>tomato>onion; plate held: keep': [
+        3, 4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:scoop; prep lettuce>tomato>onion; plate held: park': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:carry; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:carry,lettuce:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:carry,lettuce:carry; prep lettuce>tomato>onion; plate held: keep': [
+        4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:scoop; prep lettuce>tomato>onion; plate held: park': [
+        1, 3, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:carry; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:carry; prep lettuce>tomato>onion; plate held: park': [
+        1, 3, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:carry,tomato:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        3, 4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:carry,tomato:carry; prep lettuce>tomato>onion; plate held: keep': [
+        3, 4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:scoop; prep lettuce>tomato>onion; plate held: park': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:carry; prep lettuce>tomato>onion; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:carry,tomato:scoop; prep lettuce>tomato>onion; plate held: keep': [
+        4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:carry,tomato:carry; prep lettuce>tomato>onion; plate held: keep': [
+        4, 5, 7, 74, 88, 102]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:scoop; prep lettuce>onion>tomato; plate held: park': [
+        1, 3, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:carry; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:carry; prep lettuce>onion>tomato; plate held: park': [
+        1, 3, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:carry,onion:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        3, 4, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:carry,onion:carry; prep lettuce>onion>tomato; plate held: keep': [
+        3, 4, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:scoop; prep lettuce>onion>tomato; plate held: park': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:carry; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:carry,onion:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        4, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:carry,onion:carry; prep lettuce>onion>tomato; plate held: keep': [
+        4, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:scoop; prep lettuce>onion>tomato; plate held: park': [
+        1, 3, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:carry; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:carry; prep lettuce>onion>tomato; plate held: park': [
+        1, 3, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:carry,lettuce:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        3, 4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:carry,lettuce:carry; prep lettuce>onion>tomato; plate held: keep': [
+        3, 4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:scoop; prep lettuce>onion>tomato; plate held: park': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:carry; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:carry,lettuce:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:carry,lettuce:carry; prep lettuce>onion>tomato; plate held: keep': [
+        4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:scoop; prep lettuce>onion>tomato; plate held: park': [
+        1, 3, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:carry; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:carry; prep lettuce>onion>tomato; plate held: park': [
+        1, 3, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:carry,onion:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        3, 4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:carry,onion:carry; prep lettuce>onion>tomato; plate held: keep': [
+        3, 4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:scoop; prep lettuce>onion>tomato; plate held: park': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:carry; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:carry,onion:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:carry,onion:carry; prep lettuce>onion>tomato; plate held: keep': [
+        4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:scoop; prep lettuce>onion>tomato; plate held: park': [
+        1, 3, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:carry; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:carry; prep lettuce>onion>tomato; plate held: park': [
+        1, 3, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:carry,tomato:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        3, 4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:carry,tomato:carry; prep lettuce>onion>tomato; plate held: keep': [
+        3, 4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:scoop; prep lettuce>onion>tomato; plate held: park': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:carry; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:carry,tomato:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:carry,tomato:carry; prep lettuce>onion>tomato; plate held: keep': [
+        4, 5, 7, 71, 88, 102]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:scoop; prep lettuce>onion>tomato; plate held: park': [
+        1, 3, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:carry; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:carry; prep lettuce>onion>tomato; plate held: park': [
+        1, 3, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:carry,lettuce:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        3, 4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:carry,lettuce:carry; prep lettuce>onion>tomato; plate held: keep': [
+        3, 4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:scoop; prep lettuce>onion>tomato; plate held: park': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:carry; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:carry,lettuce:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:carry,lettuce:carry; prep lettuce>onion>tomato; plate held: keep': [
+        4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:scoop; prep lettuce>onion>tomato; plate held: park': [
+        1, 3, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:carry; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:carry; prep lettuce>onion>tomato; plate held: park': [
+        1, 3, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:carry,tomato:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        3, 4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:carry,tomato:carry; prep lettuce>onion>tomato; plate held: keep': [
+        3, 4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:scoop; prep lettuce>onion>tomato; plate held: park': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:carry; prep lettuce>onion>tomato; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:carry,tomato:scoop; prep lettuce>onion>tomato; plate held: keep': [
+        4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:carry,tomato:carry; prep lettuce>onion>tomato; plate held: keep': [
+        4, 5, 7, 74, 88, 102]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:scoop; prep onion>tomato>lettuce; plate held: park': [
+        1, 3, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:carry; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:carry; prep onion>tomato>lettuce; plate held: park': [
+        1, 3, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:carry,onion:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        3, 4, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:carry,onion:carry; prep onion>tomato>lettuce; plate held: keep': [
+        3, 4, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:scoop; prep onion>tomato>lettuce; plate held: park': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:carry; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:carry,onion:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        4, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:carry,onion:carry; prep onion>tomato>lettuce; plate held: keep': [
+        4, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:scoop; prep onion>tomato>lettuce; plate held: park': [
+        1, 3, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:carry; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:carry; prep onion>tomato>lettuce; plate held: park': [
+        1, 3, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:carry,lettuce:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        3, 4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:carry,lettuce:carry; prep onion>tomato>lettuce; plate held: keep': [
+        3, 4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:scoop; prep onion>tomato>lettuce; plate held: park': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:carry; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:carry,lettuce:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:carry,lettuce:carry; prep onion>tomato>lettuce; plate held: keep': [
+        4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:scoop; prep onion>tomato>lettuce; plate held: park': [
+        1, 3, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:carry; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:carry; prep onion>tomato>lettuce; plate held: park': [
+        1, 3, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:carry,onion:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        3, 4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:carry,onion:carry; prep onion>tomato>lettuce; plate held: keep': [
+        3, 4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:scoop; prep onion>tomato>lettuce; plate held: park': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:carry; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:carry,onion:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:carry,onion:carry; prep onion>tomato>lettuce; plate held: keep': [
+        4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:scoop; prep onion>tomato>lettuce; plate held: park': [
+        1, 3, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:carry; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:carry; prep onion>tomato>lettuce; plate held: park': [
+        1, 3, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:carry,tomato:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        3, 4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:carry,tomato:carry; prep onion>tomato>lettuce; plate held: keep': [
+        3, 4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:scoop; prep onion>tomato>lettuce; plate held: park': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:carry; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:carry,tomato:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:carry,tomato:carry; prep onion>tomato>lettuce; plate held: keep': [
+        4, 5, 7, 71, 88, 102]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:scoop; prep onion>tomato>lettuce; plate held: park': [
+        1, 3, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:carry; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:carry; prep onion>tomato>lettuce; plate held: park': [
+        1, 3, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:carry,lettuce:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        3, 4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:carry,lettuce:carry; prep onion>tomato>lettuce; plate held: keep': [
+        3, 4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:scoop; prep onion>tomato>lettuce; plate held: park': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:carry; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:carry,lettuce:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:carry,lettuce:carry; prep onion>tomato>lettuce; plate held: keep': [
+        4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:scoop; prep onion>tomato>lettuce; plate held: park': [
+        1, 3, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:carry; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:carry; prep onion>tomato>lettuce; plate held: park': [
+        1, 3, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:carry,tomato:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        3, 4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:carry,tomato:carry; prep onion>tomato>lettuce; plate held: keep': [
+        3, 4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:scoop; prep onion>tomato>lettuce; plate held: park': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:carry; prep onion>tomato>lettuce; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:carry,tomato:scoop; prep onion>tomato>lettuce; plate held: keep': [
+        4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:carry,tomato:carry; prep onion>tomato>lettuce; plate held: keep': [
+        4, 5, 7, 74, 88, 102]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:scoop; prep onion>lettuce>tomato; plate held: park': [
+        1, 3, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:carry; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:scoop,onion:carry; prep onion>lettuce>tomato; plate held: park': [
+        1, 3, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:carry,onion:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        3, 4, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,lettuce:carry,onion:carry; prep onion>lettuce>tomato; plate held: keep': [
+        3, 4, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:scoop; prep onion>lettuce>tomato; plate held: park': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:scoop,onion:carry; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:carry,onion:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        4, 5, 7, 66, 86]
+      'prep_first; plate tomato:carry,lettuce:carry,onion:carry; prep onion>lettuce>tomato; plate held: keep': [
+        4, 5, 7, 66, 86]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:scoop; prep onion>lettuce>tomato; plate held: park': [
+        1, 3, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:carry; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:scoop,lettuce:carry; prep onion>lettuce>tomato; plate held: park': [
+        1, 3, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:carry,lettuce:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        3, 4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:scoop,onion:carry,lettuce:carry; prep onion>lettuce>tomato; plate held: keep': [
+        3, 4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:scoop; prep onion>lettuce>tomato; plate held: park': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:scoop,lettuce:carry; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:carry,lettuce:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate tomato:carry,onion:carry,lettuce:carry; prep onion>lettuce>tomato; plate held: keep': [
+        4, 5, 7, 67, 87, 103, 107]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:scoop; prep onion>lettuce>tomato; plate held: park': [
+        1, 3, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:carry; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:scoop,onion:carry; prep onion>lettuce>tomato; plate held: park': [
+        1, 3, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:carry,onion:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        3, 4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,tomato:carry,onion:carry; prep onion>lettuce>tomato; plate held: keep': [
+        3, 4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:scoop; prep onion>lettuce>tomato; plate held: park': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:scoop,onion:carry; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:carry,onion:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:carry,tomato:carry,onion:carry; prep onion>lettuce>tomato; plate held: keep': [
+        4, 5, 7, 70, 86, 109]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:scoop; prep onion>lettuce>tomato; plate held: park': [
+        1, 3, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:carry; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:scoop,tomato:carry; prep onion>lettuce>tomato; plate held: park': [
+        1, 3, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:carry,tomato:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        3, 4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:scoop,onion:carry,tomato:carry; prep onion>lettuce>tomato; plate held: keep': [
+        3, 4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:scoop; prep onion>lettuce>tomato; plate held: park': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:scoop,tomato:carry; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:carry,tomato:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        4, 5, 7, 71, 88, 102]
+      'prep_first; plate lettuce:carry,onion:carry,tomato:carry; prep onion>lettuce>tomato; plate held: keep': [
+        4, 5, 7, 71, 88, 102]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:scoop; prep onion>lettuce>tomato; plate held: park': [
+        1, 3, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:carry; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:scoop,lettuce:carry; prep onion>lettuce>tomato; plate held: park': [
+        1, 3, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:carry,lettuce:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        3, 4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,tomato:carry,lettuce:carry; prep onion>lettuce>tomato; plate held: keep': [
+        3, 4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:scoop; prep onion>lettuce>tomato; plate held: park': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:scoop,lettuce:carry; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:carry,lettuce:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:carry,tomato:carry,lettuce:carry; prep onion>lettuce>tomato; plate held: keep': [
+        4, 5, 7, 73, 87, 103]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:scoop; prep onion>lettuce>tomato; plate held: park': [
+        1, 3, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:carry; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:scoop,tomato:carry; prep onion>lettuce>tomato; plate held: park': [
+        1, 3, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:carry,tomato:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        3, 4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:scoop,lettuce:carry,tomato:carry; prep onion>lettuce>tomato; plate held: keep': [
+        3, 4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:scoop; prep onion>lettuce>tomato; plate held: park': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:scoop,tomato:carry; prep onion>lettuce>tomato; plate held: keep': [
+        1, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:carry,tomato:scoop; prep onion>lettuce>tomato; plate held: keep': [
+        4, 5, 7, 74, 88, 102]
+      'prep_first; plate onion:carry,lettuce:carry,tomato:carry; prep onion>lettuce>tomato; plate held: keep': [
+        4, 5, 7, 74, 88, 102]
+  V2_task_78_onion_fish_rice:
+    source: scripted_solution
+    bug_ids_raw: [1, 3, 5, 7, 26, 85, 135]
+    scripted_solution:
+      bug_ids_raw: [1, 3, 5, 7, 26, 85, 135]
+      steps: 57

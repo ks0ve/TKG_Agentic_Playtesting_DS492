@@ -1,0 +1,43 @@
+# Frozen baseline v2.1 configuration (2026-10-26). Supersedes baseline_v2.yaml (kept as the record
+# of the v2.0 runs in runs/grids/baseline_v2/). Same settings as v2.0; only the agent-visible text
+# changed (event wording from the player's view, held items without coordinates, station-letter
+# legend note, history step ranges, reset markers) plus one OUTPUT FORMAT sentence about when to
+# file a Bug report: see EXPERIMENT_LOG "v2.0 -> v2.1".
+# The grid driver refuses to run if the code's prompt hash, renderer hash or Action-reader version
+# no longer match (override: --allow-unfrozen). Check: python -m react_baseline.frozen --check <this file>
+# After review, tag the commit:  git tag baseline-v2.1-frozen
+name: baseline_v2_1
+prompts_sha256: 4c0f26843c784fc2eb0638e4a90b94f47f92bb13cda26b5fb50df24dcf292e0b   # + Bug-report format sentence
+renderer_sha256: a3cb6de30695d431e30c3d718b4c21e24985380c516f6b8b3e76515cc6ece31b   # v2.1 event wording
+action_reader_version: 2.1-floor-tolerant
+action_reader:
+  floor_tolerance: true      # goto on non-floor approaches without bumping; interact on floor walks
+  max_macro_len: 40
+  bfs_order: [right, down, left, up]
+agent:
+  history: 10
+  temperature: 0.7           # where supported; Claude Haiku 5.5 runs at its API default
+  intents_per_call: 1
+  actions_per_call: 1        # react-raw
+repro:
+  enabled: true
+  steps: 50
+  max_attempts: 5
+  max_fraction: 0.3
+  dedup_jaccard: 0.8
+budget:
+  max_env_steps: 1000
+  max_usd_per_paid_run: 1.00
+tasks:
+  - V2_task_01_tomato
+  - V2_task_07_tomato_steak
+  - V2_task_11_tomato_lettuce_onion
+profiles:
+  headline: haiku-5.5        # claude-haiku-5-5, thinking off, max_output_tokens 384
+  replication: llama3.1-8b
+  ablation: react-raw on haiku-5.5, V2_task_01_tomato only
+seeds:
+  haiku-5.5: 5
+  local: 3
+ignore_bug_ids: [5]
+normal_play: configs/normal_play_bugs.yaml   # reporting only (adjusted metrics); never filters the oracle
