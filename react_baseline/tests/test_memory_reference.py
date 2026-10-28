@@ -73,3 +73,46 @@ def test_coverage_report_on_stored_runs(tmp_path):
     rep = coverage(tmp_path)
     assert rep["transitions"] > 100 and 0.3 < rep["coverage"] < 1.0 and rep["match_rate"] > 0.9
     assert sum(v for k, v in rep["per_rule"].items()) == rep["covered"]
+
+
+def test_tkg_lookup_order_observed_then_reference_then_unseen():
+    import json as _json
+    from memory.tkg import TKG
+    tkg = TKG(min_support=3, reference=REF)
+    c0 = "interact | hands:nothing | counter:holding:unchopped tomato"
+    got = "pickup | - | hands:unchopped tomato | counter:empty"
+    first = tkg.lookup("START || " + c0, c0)
+    assert first["level"] == "reference" and first["id"] == "exp:reference:pickup_from_counter"
+    unknown = "interact | hands:nothing | counter:empty"
+    assert tkg.lookup("START || " + unknown, unknown)["level"] == "unseen"
+    for i in range(3):
+        t = {"id": f"t{i}", "episode_key": f"e{i}", "global_step_start": i, "global_step_end": i, "ctx0": c0,
+             "ctx1": "START || " + c0, "outcome": got, "target": "counter:holding:unchopped tomato"}
+        tkg.judge_reference(t)
+        assert (t["reference_rule_id"], t["reference_verdict"]) == ("pickup_from_counter", "match")
+        tkg.add(t, None, None, first["id"])
+    after = tkg.lookup("START || " + c0, c0)
+    assert after["level"] == "ctx1" and after["support"] == 3          # observed wins once supported
+    node = tkg.expectations["exp:reference:pickup_from_counter"].to_node()
+    assert node["source"] == "reference" and node["outcomes"] == {"match": 3} and node["changes_state"] is True
+    edges = [e for e in tkg.export()["edges"] if e["type"] == "ASSESSED_AGAINST"]
+    assert {e["target"] for e in edges} == {"exp:reference:pickup_from_counter"}
+    assert _json.dumps(tkg.export())                                   # serialisable
+
+
+def test_live_reference_fields_and_summary(tmp_path):
+    import json as _json
+    from react_baseline.llm import MockIntentLLM
+    from react_baseline.tkg_agent import TKGAgent
+    s = run(TKGAgent(MockIntentLLM(seed=1), seed=1), "V2_task_07_tomato_steak", 1, Budgets(max_env_steps=400),
+            tmp_path, {"backend": "mock", "model": "mock"})
+    rows = [_json.loads(l) for l in (tmp_path / "transitions.jsonl").read_text().splitlines()]
+    assert {r["reference_verdict"] for r in rows} <= {"match", "mismatch", "none"}
+    covered = [r for r in rows if r["reference_verdict"] != "none"]
+    assert covered and all(r["reference_rule_id"] for r in covered)
+    assert s["reference_coverage"] == len(covered) / len(rows)
+    assert s["reference_match_rate"] == sum(r["reference_verdict"] == "match" for r in covered) / len(covered)
+    assert s["reference_mismatches"] == sum(m["count"] for m in s["manual_mismatches"]) or len(s["manual_mismatches"]) == 20
+    graph = _json.loads((tmp_path / "tkg.json").read_text())
+    ref_nodes = {n["id"] for n in graph["nodes"] if n["type"] == "Expectation" and n["source"] == "reference"}
+    assert ref_nodes and any(e["type"] == "ASSESSED_AGAINST" and e["target"] in ref_nodes for e in graph["edges"])

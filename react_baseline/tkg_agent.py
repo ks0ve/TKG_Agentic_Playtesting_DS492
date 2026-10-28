@@ -100,7 +100,8 @@ class TKGAgent(CheapAgent):
                 self.investigate_left = self.investigate_k
                 self.pending_reason = reason
                 self.memory = memory_block(t)
-        return deviation, d.get("expectation")
+        # ASSESSED_AGAINST: the expectation in lookup order (observed ctx1 -> ctx0 -> reference -> unseen)
+        return deviation, self.tkg.lookup(t["ctx1"], t["ctx0"], self.trigger.min_support)["id"]
 
     # -- acting -------------------------------------------------------------------------
     def act(self, obs_text: str, state: dict | None = None) -> Decision:

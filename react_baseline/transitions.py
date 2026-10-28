@@ -35,6 +35,8 @@ class VisibleTransition:
     actor: str | None = None          # cheap | llm
     deviation: dict | None = None     # memory check: {fire, reason, score, ...}
     trigger_reason: str | None = None  # TKG arm: why the LLM chose this intent, or "cap_release"
+    reference_rule_id: str | None = None   # memory agents: the game-manual rule for this situation
+    reference_verdict: str | None = None   # match | mismatch | none (no rule)
 
     def to_row(self) -> dict:
         return asdict(self)

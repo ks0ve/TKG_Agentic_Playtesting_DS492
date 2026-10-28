@@ -47,11 +47,12 @@ def state_entities(state: dict) -> list[str]:
 
 
 class Expectation:
-    def __init__(self, level: str, key: str):
+    def __init__(self, level: str, key: str, source: str = "observed", extra: dict | None = None):
         self.level, self.key = level, key
-        self.outcomes: Counter = Counter()
+        self.outcomes: Counter = Counter()   # reference expectations count verdicts: match / mismatch
         self.first_seen_step = self.last_seen_step = None
-        self.source = "observed"
+        self.source = source
+        self.extra = extra or {}
 
     @property
     def id(self) -> str:
@@ -69,12 +70,13 @@ class Expectation:
         return {"id": self.id, "type": "Expectation", "level": self.level, "key": self.key,
                 "outcomes": dict(sorted(self.outcomes.items())), "support": self.support,
                 "first_seen_step": self.first_seen_step, "last_seen_step": self.last_seen_step,
-                "source": self.source}
+                "source": self.source, **self.extra}
 
 
 class TKG:
-    def __init__(self, min_support: int = 3):
+    def __init__(self, min_support: int = 3, reference=None):
         self.min_support = min_support
+        self.reference = reference            # memory.reference.Reference (manual rules) or None
         self.transitions: dict[str, dict] = {}
         self.states: dict[str, dict] = {}
         self.entities: dict[str, dict] = {}
@@ -88,6 +90,48 @@ class TKG:
         if eid not in self.expectations and create:
             self.expectations[eid] = Expectation(level, key)
         return self.expectations.get(eid)
+
+    # -- reference (game manual) ----------------------------------------------------------
+    def reference_node(self, hit) -> str:
+        """The Expectation node (source "reference") of a manual rule; created on first use."""
+        eid = f"exp:reference:{hit.rule.id}"
+        if eid not in self.expectations:
+            r = hit.rule
+            self.expectations[eid] = Expectation("reference", r.id, source="reference", extra={
+                "expect": {k: str(v) for k, v in r.expect.items()}, "changes_state": r.changes_state,
+                "manual": r.manual, "says": r.says})
+        return eid
+
+    def judge_reference(self, t: dict):
+        """Set t["reference_rule_id"] / t["reference_verdict"] (match | mismatch | none) and count the
+        verdict on the rule's Expectation node. -> the RuleHit or None."""
+        hit = self.reference.lookup(t["ctx0"]) if self.reference is not None else None
+        if hit is None:
+            t["reference_rule_id"], t["reference_verdict"] = None, "none"
+            return None
+        verdict = "match" if hit.matches(t["outcome"]) else "mismatch"
+        t["reference_rule_id"], t["reference_verdict"] = hit.rule.id, verdict
+        e = self.expectations[self.reference_node(hit)]
+        e.outcomes[verdict] += 1
+        step = t.get("global_step_end")
+        e.first_seen_step = step if e.first_seen_step is None else e.first_seen_step
+        e.last_seen_step = step
+        return hit
+
+    def lookup(self, ctx1: str | None, ctx0: str, min_support: int | None = None) -> dict:
+        """Expectation lookup order: observed ctx1 -> observed ctx0 (each if support >= min_support)
+        -> reference (a manual rule) -> unseen. -> {level, support, dist, id, hit, ctx0_support}."""
+        ms = self.min_support if min_support is None else min_support
+        dist, level, support, eid = self.expect(ctx1, ctx0, ms)
+        out = {"level": level, "support": support, "dist": dist, "id": eid, "hit": None,
+               "ctx0_support": self.count(ctx0)}
+        if support >= ms:
+            return out
+        hit = self.reference.lookup(ctx0) if self.reference is not None else None
+        if hit is not None:
+            return {**out, "level": "reference", "support": None, "dist": {}, "id": self.reference_node(hit),
+                    "hit": hit}
+        return {**out, "level": "unseen" if out["ctx0_support"] == 0 else level}
 
     def coarse_expectation(self, coarse: str) -> Expectation | None:
         return self._exp("coarse", coarse)

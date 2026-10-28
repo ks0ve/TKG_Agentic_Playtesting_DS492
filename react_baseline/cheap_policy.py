@@ -14,8 +14,10 @@ raw buttons -> intents).
 from __future__ import annotations
 
 import random
+from collections import Counter
 
 from memory.abstraction import abstract, predicted_ctx0
+from memory.reference import default_reference
 from memory.tkg import TKG
 
 from .action_reader import Intent, parse_intent, reachable_floor, valid_intents
@@ -60,10 +62,15 @@ class CheapAgent:
     name = "cheap"
     action_space = "intent"
 
-    def __init__(self, seed: int = 0, epsilon: float = 0.2, n_goto: int = 3, min_support: int = 3):
+    def __init__(self, seed: int = 0, epsilon: float = 0.2, n_goto: int = 3, min_support: int = 3,
+                 reference=True):
         self.rng = random.Random(seed)   # private: the env reseeds the global RNG on reset
         self.policy = CheapPolicy(self.rng, epsilon, n_goto)
-        self.tkg = TKG(min_support)
+        if reference is True:            # the game-manual rules (configs/reference_rules.yaml)
+            reference = default_reference()
+        self.tkg = TKG(min_support, reference=reference or None)
+        self.ref_counts: Counter = Counter()            # match / mismatch / none
+        self.mismatch_kinds: Counter = Counter()        # (rule, situation, observed) -> count
         self.env_steps = 0
         self.last_transition: dict | None = None
         self._actor = "cheap"            # who chose the decision being executed
@@ -86,15 +93,28 @@ class CheapAgent:
     def on_transition(self, r, prev_state, new_state, info) -> dict:
         ek = f"{info['run']}#ep{info['episode']}"
         t = build_transition(r, info, self.tkg.prev_outcome(ek), self._actor)
-        t["deviation"], assessed = self.assess(t)
+        t["deviation"], assessed = self.assess(t)   # memory check first (before the reference counts)
+        self.tkg.judge_reference(t)
+        self.ref_counts[t["reference_verdict"]] += 1
+        if t["reference_verdict"] == "mismatch":
+            self.mismatch_kinds[(t["reference_rule_id"], t["ctx0"], t["outcome"])] += 1
         self.tkg.add(t, prev_state, new_state, assessed)
         self.env_steps += r.n_steps
         self.last_transition = self.tkg.transitions[t["id"]]
-        return {"actor": t["actor"], "deviation": t["deviation"]}
+        return {"actor": t["actor"], "deviation": t["deviation"],
+                "reference_rule_id": t["reference_rule_id"], "reference_verdict": t["reference_verdict"]}
 
     def summary_fields(self) -> dict:
+        n = sum(self.ref_counts.values())
+        covered = self.ref_counts["match"] + self.ref_counts["mismatch"]
         return {"tkg_nodes": self.tkg.n_nodes, "tkg_edges": len(self.tkg.edges),
-                "tkg_transitions": len(self.tkg.transitions)}
+                "tkg_transitions": len(self.tkg.transitions),
+                # Tom's compare_graphs as live metrics: game manual vs what the game did
+                "reference_coverage": (covered / n) if n else None,
+                "reference_match_rate": (self.ref_counts["match"] / covered) if covered else None,
+                "reference_mismatches": self.ref_counts["mismatch"],
+                "manual_mismatches": [{"rule": r, "situation": c, "observed": o, "count": k}
+                                      for (r, c, o), k in self.mismatch_kinds.most_common(20)]}
 
     def write_artifacts(self, run_dir):
         self.tkg.export_json(run_dir / "tkg.json")

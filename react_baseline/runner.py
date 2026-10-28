@@ -502,7 +502,9 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
                                 coerced=r.coerced, phase=phase,
                                 repro_attempt_id=ctl.attempt_id, actor=extra.get("actor"),
                                 deviation=extra.get("deviation"),
-                                trigger_reason=extra.get("trigger_reason")).to_row()) + "\n")
+                                trigger_reason=extra.get("trigger_reason"),
+                                reference_rule_id=extra.get("reference_rule_id"),
+                                reference_verdict=extra.get("reference_verdict")).to_row()) + "\n")
                             stats.intents_coerced += r.coerced is not None
                         if r.done:
                             done = True
