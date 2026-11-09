@@ -195,5 +195,6 @@ def test_grid_task_and_seed_filters(capsys):
     assert grid.main([str(REPO / "configs/grids/final_tkg.yaml"), "--dry-run",
                       "--tasks", "V2_task_11_tomato_lettuce_onion", "--seeds", "0"]) == 0
     out = capsys.readouterr().out
-    assert "1 combinations, 1 to run" in out and "tkg/haiku-5.5/V2_task_11_tomato_lettuce_onion/seed0" in out
+    assert "1 combinations, " in out and "tkg/haiku-5.5/V2_task_11_tomato_lettuce_onion/seed0" in out
+    # (how many are left "to run" depends on which runs exist locally)
     assert "frozen check: OK" in out
