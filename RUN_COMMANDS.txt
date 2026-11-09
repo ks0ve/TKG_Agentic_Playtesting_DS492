@@ -118,6 +118,18 @@ FINAL PAID GRIDS (harness v2.2 + TKG v1; dry run first: est. TKG $1.36, ReAct $3
    then: python -m react_baseline.rescore runs\grids\final_tkg  and  runs\grids\final_react
 
 
+ALWAYS-ON HYBRID (the LLM is consulted at every decision; dry run first: est. $0.46 per run, $4.13 for 9, from final_react)
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_alwayson.yaml --dry-run
+
+(a) PAID - seed 0 on all 3 tasks first (est. ~$1.38, cap $1.00 per run), then bundle:
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_alwayson.yaml --seeds 0 --allow-paid
+.venv\Scripts\python.exe -m react_baseline.bundle --grid configs\grids\final_alwayson.yaml -o final_alwayson_seed0.zip
+
+(b) PAID - DO NOT RUN UNTIL APPROVED: seeds 1-2 (est. ~$2.75; resumable), then bundle:
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_alwayson.yaml --seeds 1,2 --allow-paid
+.venv\Scripts\python.exe -m react_baseline.bundle --grid configs\grids\final_alwayson.yaml -o final_alwayson.zip
+
+
 --- OTHER ---
 
 .venv\Scripts\python.exe -m react_baseline.solutions

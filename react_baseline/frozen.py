@@ -99,8 +99,9 @@ def code_identity() -> dict:
 
 
 TKG_KEYS = ("memory_text_sha256", "reference_rules_sha256", "cheap_policy")
-TKG_SETTINGS = ("trigger", "tau", "min_support", "warmup_steps", "investigate_k", "max_consecutive_llm",
-                "repro_path")
+TKG_OPTIONAL_KEYS = ("routine_text_sha256",)     # checked only when the freeze has them (not tkg_v1)
+TKG_SETTINGS = ("trigger", "trigger_n", "tau", "min_support", "warmup_steps", "investigate_k",
+                "max_consecutive_llm", "repro_path")
 
 
 def tkg_identity() -> dict:
@@ -111,7 +112,7 @@ def tkg_identity() -> dict:
     from memory.reference import RULES_YAML, Reference
     from .agents import ReActAgent
     from .cheap_policy import CheapPolicy
-    from .tkg_agent import INVESTIGATE, expectation_line, memory_block, path_block
+    from .tkg_agent import INVESTIGATE, ROUTINE_REASONS, expectation_line, memory_block, memory_block_for, path_block
     ref = Reference()
     t = {"actor": "cheap", "intent": "interact(0,2)", "event_text": "picked up tomato from the counter at (0,2)",
          "outcome": "pickup | - | hands:unchopped tomato | counter:empty"}
@@ -122,11 +123,14 @@ def tkg_identity() -> dict:
     text = "\x00".join([INVESTIGATE, path_block([t])] + [memory_block(t, lk) for lk in lookups]
                         + [inspect.getsource(f) for f in (memory_block, expectation_line, path_block,
                                                           ReActAgent.observe_auto)])
+    routine = "\x00".join([memory_block_for(t, lk, r) for lk in lookups for r in ROUTINE_REASONS]
+                          + [inspect.getsource(memory_block_for)])
     params = inspect.signature(CheapPolicy.__init__).parameters
     return {"memory_text_sha256": hashlib.sha256(text.encode()).hexdigest(),
             "reference_rules_sha256": hashlib.sha256(  # line endings normalised (git may check out CRLF)
                 RULES_YAML.read_bytes().replace(b"\r\n", b"\n")).hexdigest(),
-            "cheap_policy": {"epsilon": params["epsilon"].default, "n_goto": params["n_goto"].default}}
+            "cheap_policy": {"epsilon": params["epsilon"].default, "n_goto": params["n_goto"].default},
+            "routine_text_sha256": hashlib.sha256(routine.encode()).hexdigest()}
 
 
 def load(path: Path | str = FROZEN_DEFAULT) -> dict:
@@ -141,7 +145,8 @@ def check(path: Path | str = FROZEN_DEFAULT) -> list[str]:
     frozen = load(p)
     if frozen.get("kind") == "tkg":
         code = tkg_identity()
-        return [f"{k}: frozen {frozen.get(k)!r} != code {code[k]!r}" for k in TKG_KEYS if frozen.get(k) != code[k]]
+        keys = TKG_KEYS + tuple(k for k in TKG_OPTIONAL_KEYS if k in frozen)
+        return [f"{k}: frozen {frozen.get(k)!r} != code {code[k]!r}" for k in keys if frozen.get(k) != code[k]]
     code = code_identity()
     out = []
     for key in IDENTITY_KEYS:

@@ -109,7 +109,8 @@ def parse_args(argv=None):
     t.add_argument("--investigate-k", type=int, default=DEFAULT_INVESTIGATE_K,
                    help=f"LLM decisions per escalation (default {DEFAULT_INVESTIGATE_K})")
     t.add_argument("--max-consecutive-llm", type=int, default=6,
-                   help="cap on LLM decisions in a row, across fires that restart k (then cap_release)")
+                   help="cap on LLM decisions in a row, across fires that restart k (then cap_release); "
+                        "0 = no cap")
     t.add_argument("--tau", type=float, default=0.15, help="surprise threshold P(outcome) < tau")
     t.add_argument("--min-support", type=int, default=3,
                    help="observations needed before a context is judged (ctx1 backs off below it)")
@@ -125,8 +126,10 @@ def parse_args(argv=None):
         p.error("--actions-per-call and --intents-per-call must be >= 1")
     if args.warmup_steps < 0:
         p.error("--warmup-steps must be >= 0 (0 = memory building and testing interleave from step 1)")
-    if args.investigate_k < 1 or args.max_consecutive_llm < 1 or args.min_support < 1:
-        p.error("--investigate-k, --max-consecutive-llm and --min-support must be >= 1")
+    if args.investigate_k < 1 or args.min_support < 1:
+        p.error("--investigate-k and --min-support must be >= 1")
+    if args.max_consecutive_llm < 0:
+        p.error("--max-consecutive-llm must be >= 0 (0 = no cap)")
     if args.pilot:
         args.max_env_steps = PILOT_STEPS
         if args.out_dir == "runs":

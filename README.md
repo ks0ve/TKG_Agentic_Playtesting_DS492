@@ -525,8 +525,14 @@ is no graph database, no new dependency, and no LLM-drafted reference graph yet.
   - Defaults: `--trigger tkg1` (tau 0.15, min_support 3), `--warmup-steps 0` (memory starts empty and
     is checked from step 1; a warm-up of N env steps is exploration-only), `--investigate-k 1`.
   - After that, a fire hands the next decision(s) to the LLM, up to `--investigate-k` (default 1; never more than
-    `--max-consecutive-llm` (6) in a row, even when fires restart k), or
+    `--max-consecutive-llm` (6; 0 = no cap) in a row, even when fires restart k), or
     until it replies `Action: resume`.
+  - **Always-on hybrid** (`configs/grids/final_alwayson.yaml`, freeze `configs/frozen/tkg_v1_alwayson.yaml`): the same
+    agent with `--trigger every_n --trigger-n 1 --max-consecutive-llm 0`, so the LLM is consulted after every
+    decision. For the scheduled triggers (`every_n`, `random`) the MEMORY block opens the instruction with "Routine check-in:
+    the memory did not flag this step; it fires on a fixed schedule." instead of "This situation is new or unusual
+    for the memory."; all other wording is the same. A decision with no earlier check to act on is still the exploration
+    agent's: the run's first decision and the first one after a reproduction attempt.
   - The LLM gets the vanilla ReAct prompt, a history in which the exploration agent's turns are marked `[auto-explorer]`, and
     a MEMORY block built from the TKG.
   - Reproduction uses the runner's protocol. `--repro-path` (default on) adds the recorded path of

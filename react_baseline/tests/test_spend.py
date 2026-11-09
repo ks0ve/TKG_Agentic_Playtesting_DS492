@@ -28,6 +28,28 @@ profiles:
 """
 
 
+def test_grid_measurement_pools_finished_runs(tmp_path):
+    def put(name, **s):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "summary.json").write_text(json.dumps(s), encoding="utf-8")
+    row = {"model": "m", "total_env_steps": 100, "input_tokens": 1000, "output_tokens": 200,
+           "llm_latency_median_s": 2.0, "wall_time_s": 50.0}
+    put("a", **row, llm_calls=80)
+    put("b", **row, llm_calls=120)
+    put("a_stale2026", **row, llm_calls=9999)        # skipped: stale
+    put("c", **{**row, "model": "other"}, llm_calls=9999)
+    m = spend.grid_measurement(tmp_path, "m")
+    assert m["calls_per_step"] == 1.0 and m["tokens_in"] == 10.0 and m["tokens_out"] == 2.0
+    assert m["wall_per_step_s"] == 0.5 and m["source"].startswith("2 runs in ")
+    prof = SimpleNamespace(model="m", backend="anthropic", usd=lambda i, o: (i + 5 * o) / 1e6)
+    est = spend.estimate_run("tkg", prof, 1000, pilot_root=tmp_path / "none", from_grid=tmp_path)
+    assert est["source"] == m["source"] and est["usd"] == pytest.approx(1000 * 20 / 1e6)
+    # nothing measured in that folder: the usual fallback
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    assert spend.estimate_run("tkg", prof, 10, pilot_root=tmp_path / "none", from_grid=empty)["source"].startswith("conservative")
+
+
 @pytest.fixture
 def paid_env(tmp_path, monkeypatch):
     y = tmp_path / "models.yaml"

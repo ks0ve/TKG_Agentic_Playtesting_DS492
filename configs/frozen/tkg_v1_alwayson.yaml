@@ -1,0 +1,25 @@
+# Frozen always-on hybrid (2026-11-08): TKG arm v1 with the LLM consulted at every decision. Used together with the
+# harness freeze configs/frozen/baseline_v2_2.yaml. tkg_v1.yaml stays the freeze of the tkg1 runs.
+# Same identity as tkg_v1 (memory_text_sha256, reference_rules_sha256, cheap_policy), plus
+#   routine_text_sha256: the MEMORY text of the scheduled triggers (every_n, random) and the function that builds it.
+# The grid driver refuses to run when the code no longer matches, or the grid's `tkg:` settings differ from `settings`.
+# Check: python -m react_baseline.frozen --check configs/frozen/tkg_v1_alwayson.yaml
+# Print the code's values: python -m react_baseline.frozen --print-tkg-identity
+kind: tkg
+name: tkg_v1_alwayson
+baseline: configs/frozen/baseline_v2_2.yaml
+memory_text_sha256: 2abd4c89a99da4e26c642dca6648f67075ec6f1d80cd35d154418bfd3c9c9719
+reference_rules_sha256: 2ab6fb3fe47c4124857083cd8bce24fb9d266c7271a1b5400f379d0665f188fd
+cheap_policy:
+  epsilon: 0.2
+  n_goto: 3
+routine_text_sha256: 5b61b551382374d792d529a3efd3f4565c0d8af10795927c594c8957bc483d76
+settings:
+  trigger: every_n
+  trigger_n: 1
+  tau: 0.15
+  min_support: 3
+  warmup_steps: 0
+  investigate_k: 1
+  max_consecutive_llm: 0     # 0 = no cap
+  repro_path: true

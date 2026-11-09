@@ -5,7 +5,7 @@ check, no LLM. With ``warmup_steps=0`` there is no phase 1: memory starts empty,
 interleave from step 1, and a novel situation escalates on first sight. Phase 2, after every executed intent: memory check (``memory.trigger``) against the
 TKG, then the transition is added. When the check fires, the next decision goes to the LLM, which
 keeps control for up to ``investigate_k`` decisions (refreshed if it fires again, but never more than
-``max_consecutive_llm`` in a row: then control returns, logged as trigger_reason "cap_release") or
+``max_consecutive_llm`` in a row, 0 = no cap: then control returns, logged as trigger_reason "cap_release") or
 hands back early with ``Action: resume``; otherwise the cheap policy acts.
 
 The LLM call is a vanilla ReAct turn (same system prompt, same turn template; the history is the
@@ -59,6 +59,20 @@ def memory_block(t: dict, lookup: dict | None = None) -> str:
     if lookup is not None:
         lines.append(expectation_line(t, lookup))
     return "\n".join(lines + [INVESTIGATE])
+
+
+NEW_SITUATION = "This situation is new or unusual for the memory."
+ROUTINE = "Routine check-in: the memory did not flag this step; it fires on a fixed schedule."
+ROUTINE_REASONS = ("every_n", "random")      # triggers that fire regardless of what the memory says
+
+
+def memory_block_for(t: dict, lookup: dict | None, reason: str | None) -> str:
+    """The MEMORY block for a trigger reason. Scheduled triggers replace only the opening sentence of
+    the instruction; every other reason gets memory_block's text, which tkg_v1 freezes, unchanged."""
+    block = memory_block(t, lookup)
+    if reason not in ROUTINE_REASONS:
+        return block
+    return block[:-len(INVESTIGATE)] + INVESTIGATE.replace(NEW_SITUATION, ROUTINE, 1)
 
 
 def path_block(path: list[dict]) -> str:
@@ -120,15 +134,15 @@ class TKGAgent(CheapAgent):
                     t["escalated"] = True
                 self.investigate_left = self.investigate_k
                 self.pending_reason = reason
-                self.memory = memory_block(t, lookup)
+                self.memory = memory_block_for(t, lookup, reason)
         return deviation, lookup["id"]
 
     # -- acting -------------------------------------------------------------------------
     def act(self, obs_text: str, state: dict | None = None) -> Decision:
         if self.in_repro:
             reason, block = "repro", self.repro_block
-        elif self.investigate_left > 0 and self.consecutive_llm >= self.max_consecutive_llm:
-            # cap: hand control back however often the trigger restarted k
+        elif self.investigate_left > 0 and 0 < self.max_consecutive_llm <= self.consecutive_llm:
+            # cap (0 = no cap): hand control back however often the trigger restarted k
             self.investigate_left, self.memory, self.pending_reason = 0, None, None
             self.cap_releases += 1
             self.consecutive_llm = 0

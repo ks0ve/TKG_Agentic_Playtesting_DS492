@@ -79,7 +79,7 @@ def _base_argv(g: dict, agent: str, prof, task: str, seed: int) -> list[str]:
             argv += ["--allow-paid", "--max-usd", f"{float(g['max_usd_per_paid_run']):.2f}"]
     if agent == "tkg":   # the TKG arm's settings (frozen in configs/frozen/tkg_v1.yaml)
         t = g.get("tkg") or {}
-        flag = {"trigger": "--trigger", "tau": "--tau", "min_support": "--min-support",
+        flag = {"trigger": "--trigger", "trigger_n": "--trigger-n", "tau": "--tau", "min_support": "--min-support",
                 "warmup_steps": "--warmup-steps", "investigate_k": "--investigate-k",
                 "max_consecutive_llm": "--max-consecutive-llm"}
         for key, opt in flag.items():
@@ -139,7 +139,7 @@ def dry_run(g: dict, cs: list[Combo]) -> str:
     for c in cs:
         st = status(c)
         prof = resolve_profile(c.profile) if c.profile else None
-        est = spend.estimate_run(c.agent, prof, int(g["max_env_steps"]))
+        est = spend.estimate_run(c.agent, prof, int(g["max_env_steps"]), from_grid=g.get("estimate_from"))
         usd = est["usd"] or 0.0
         if st != "done":
             tot_wall += est["wall_s"]

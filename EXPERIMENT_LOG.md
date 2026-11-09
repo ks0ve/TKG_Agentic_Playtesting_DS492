@@ -811,3 +811,17 @@ Frozen identity:
   | ReAct | 9 | $0.381 | $3.43 | ~3.3 h | a 50-step salad pilot; the v2.0 grid actually averaged ~$0.49 per run, so expect ~$4.4 |
 
   The budget left is $12.73.
+
+## 2026-11-08: Always-on hybrid defined (no runs yet)
+
+- **Naming.** The cheap agent is now called the exploration agent (no LLM), and this log uses that name throughout.
+  `--agent explorer` is an alias of `--agent cheap`; logs keep the id `cheap`.
+- **What.** The always-on hybrid keeps the TKG arm's exploration agent, prompts and memory and asks the LLM at every
+  decision. For scale, the final TKG runs used 0.15–0.27 calls per step and the final ReAct runs 0.75–0.94.
+- **Definition.** `every_n` with n = 1, `--max-consecutive-llm 0` (no cap), k 1, warm-up 0, reproduction on (50 steps).
+  The MEMORY block's first instruction sentence becomes "Routine check-in: the memory did not flag this step; it fires
+  on a fixed schedule." for the `every_n` and `random` triggers only.
+- **Freeze.** `tkg_v1` is unchanged and still matches the code. `tkg_v1_alwayson` adds a hash of the routine text.
+  Check: all 1,428 MEMORY blocks of the 9 `final_tkg` runs re-render byte-identically.
+- **Dry run:** $0.459 per run, $4.13 for 9 runs, ~6.3 h, pooled from the 9 `final_react` runs (their mean is the same
+  $0.459 per run). The budget left is $7.55.

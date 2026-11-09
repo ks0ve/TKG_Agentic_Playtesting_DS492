@@ -3,6 +3,7 @@ recorded path free of oracle data, repro path only when enabled, mock end-to-end
 import json
 import re
 import zipfile
+from pathlib import Path
 
 import pytest
 
@@ -13,7 +14,7 @@ from react_baseline.repro import ReproConfig
 from react_baseline.runner import Budgets, run
 from react_baseline.tests.test_display_names import _raw_hits
 from react_baseline.tests.test_prompt_leak import _assert_sentinels_fired, _install_sentinels, _leaks
-from react_baseline.tkg_agent import TKGAgent
+from react_baseline.tkg_agent import NEW_SITUATION, ROUTINE, TKGAgent, memory_block, memory_block_for
 
 CFG = {"backend": "mock", "model": "mock"}
 TASK = "V2_task_01_tomato"
@@ -36,9 +37,9 @@ class OnceTrigger(Trigger):
 def _check_memory_block(b: str):
     """MEMORY = one TKG-derived line (who acted, intent -> event text) + the fixed instruction. The
     instruction is ours (it says "Report a bug only if ..."); the TKG part must be oracle-free."""
-    from react_baseline.tkg_agent import INVESTIGATE
+    from react_baseline.tkg_agent import INVESTIGATE, NEW_SITUATION, ROUTINE
     head, expected, instruction = b.split("\n", 2)
-    assert instruction == INVESTIGATE
+    assert instruction in (INVESTIGATE, INVESTIGATE.replace(NEW_SITUATION, ROUTINE))
     assert head.startswith(("MEMORY: The automatic explorer (not you) just did: ", "MEMORY: You just did: "))
     assert re.fullmatch(r"Memory expected: .+ \(from (observed, seen \d+ times?|the game manual|nothing: first time)\)\. "
                         r"This time: .+\.", expected), expected
@@ -110,6 +111,8 @@ def test_memory_block_and_recorded_path_have_no_oracle_data(tmp_path, monkeypatc
     assert mem and path
     for b in mem:
         _check_memory_block(b)
+        assert ROUTINE in b and NEW_SITUATION not in b, b    # every_n: the new sentence went through the leak check
+    assert _leaks(ROUTINE) == [] and not _raw_hits(ROUTINE) and "bug" not in ROUTINE.lower()
     for b in path:
         assert _leaks(b) == [] and "bug" not in b.lower(), b[:300]
         assert not _raw_hits(b), (_raw_hits(b), b[:300])
@@ -197,6 +200,55 @@ def test_consecutive_llm_cap_across_restarts(tmp_path):
     assert released and all(t["actor"] == "cheap" for t in released) and s["cap_releases"] == len(released)
     assert {t["trigger_reason"] for t in trans if t["actor"] == "llm"} <= {"every_n", "investigate"}
     assert s["max_consecutive_llm"] == 6
+
+
+def test_max_consecutive_llm_zero_means_no_cap(tmp_path):
+    llm = MockLLM(script=["Thought: look\nAction: wait"])
+    agent = TKGAgent(llm, investigate_k=1, trigger=EveryNTrigger(1), max_consecutive_llm=0)
+    s = run(agent, TASK, 0, Budgets(max_env_steps=60), tmp_path, CFG)
+    trans = _rows(tmp_path / "transitions.jsonl")
+    assert s["cap_releases"] == 0 and s["max_consecutive_llm"] == 0
+    assert not any(t["trigger_reason"] == "cap_release" for t in trans)
+    assert trans[0]["actor"] == "cheap" and {t["actor"] for t in trans[1:]} == {"llm"} and len(trans) > 7  # past 6
+    assert run_cli.parse_args(["--agent", "tkg", "--llm", "mock", "--max-consecutive-llm", "0"]).max_consecutive_llm == 0
+    with pytest.raises(SystemExit):
+        run_cli.parse_args(["--agent", "tkg", "--llm", "mock", "--max-consecutive-llm", "-1"])
+
+
+@pytest.mark.parametrize("reason,routine", [("every_n", True), ("random", True), ("novel", False), ("surprising", False),
+                                            ("refusal", False), ("sequence_novel", False), (None, False)])
+def test_memory_wording_by_trigger_reason(reason, routine):
+    t = {"actor": "cheap", "intent": "interact(0,2)", "event_text": "picked up tomato",
+         "outcome": "pickup | - | hands:unchopped tomato | counter:empty"}
+    lookup = {"level": "unseen", "dist": {}, "support": 0, "hit": None}
+    base = memory_block(t, lookup)
+    assert memory_block_for(t, lookup, reason) == (base.replace(NEW_SITUATION, ROUTINE) if routine else base)
+    assert (ROUTINE in memory_block_for(t, lookup, reason)) is routine
+
+
+def test_tkg1_memory_blocks_match_the_final_tkg_runs():
+    """Real MEMORY blocks copied from runs/grids/final_tkg prompts, re-rendered from the same inputs."""
+    from memory.reference import default_reference
+    cases = json.loads((Path(__file__).parent / "snapshots" / "tkg1_memory_blocks.json").read_text(encoding="utf-8"))
+    assert {c["lookup"]["level"] for c in cases} == {"reference", "unseen"} and {c["t"]["actor"] for c in cases} == {"cheap", "llm"}
+    ref = default_reference()
+    for c in cases:
+        lk = c["lookup"]
+        lookup = {**lk, "hit": ref.lookup(c["t"]["ctx0"]) if lk["level"] == "reference" else None}
+        assert memory_block_for(c["t"], lookup, c["reason"]) == c["expected_block"], c["source"]
+
+
+def test_random_trigger_memory_blocks_are_routine_and_clean(tmp_path, monkeypatch):
+    from memory.trigger import make_trigger
+    _install_sentinels(monkeypatch)
+    llm = MockIntentLLM(seed=2)
+    agent = TKGAgent(llm, trigger=make_trigger("random", p=0.3, seed=2))
+    run(agent, "V2_task_11_tomato_lettuce_onion", 0, Budgets(max_env_steps=300), tmp_path, CFG)
+    blocks = [u[u.index("MEMORY:"):].split("\n\n")[0] for _, u in llm.calls if "MEMORY:" in u]
+    assert blocks
+    for b in blocks:
+        _check_memory_block(b)
+        assert ROUTINE in b and NEW_SITUATION not in b
 
 
 def test_warmup_zero_interleaves_from_step_one(tmp_path):

@@ -191,6 +191,28 @@ def test_final_grids_and_tkg_freeze(monkeypatch, capsys):
     assert [m.split(":")[0] for m in frozen.check(REPO / "configs/frozen/tkg_v1.yaml")] == ["memory_text_sha256"]
 
 
+def test_alwayson_grid_and_freeze(monkeypatch):
+    g = grid.load_grid(REPO / "configs/grids/final_alwayson.yaml")
+    cs = grid.combos(g)
+    assert len(cs) == 9 and all(c.paid and c.agent == "tkg" and c.profile == "haiku-5.5" for c in cs)
+    assert {c.seed for c in cs} == {0, 1, 2} and {c.run_dir.parent.name for c in cs} == {"final_alwayson"}
+    a = cs[0].argv
+    for flag, val in (("--trigger", "every_n"), ("--trigger-n", "1"), ("--max-consecutive-llm", "0"),
+                      ("--investigate-k", "1"), ("--warmup-steps", "0"), ("--repro-steps", "50"),
+                      ("--max-env-steps", "1000"), ("--max-usd", "1.00")):
+        assert a[a.index(flag) + 1] == val, flag
+    assert "--repro" in a and "--repro-path" in a
+    assert grid.frozen_mismatches(g) == [] and frozen.check(REPO / "configs/frozen/tkg_v1_alwayson.yaml") == []
+    assert any("trigger_n" in m for m in grid.frozen_mismatches({**g, "tkg": {**g["tkg"], "trigger_n": 2}}))
+    # the finished TKG grid keeps its arguments (so its config hashes and "done" status)
+    assert "--trigger-n" not in grid.combos(grid.load_grid(REPO / "configs/grids/final_tkg.yaml"))[0].argv
+    # new routine wording breaks only the always-on freeze
+    from react_baseline import tkg_agent
+    monkeypatch.setattr(tkg_agent, "ROUTINE", "Something else.")
+    assert [m.split(":")[0] for m in frozen.check(REPO / "configs/frozen/tkg_v1_alwayson.yaml")] == ["routine_text_sha256"]
+    assert frozen.check(REPO / "configs/frozen/tkg_v1.yaml") == []
+
+
 def test_grid_task_and_seed_filters(capsys):
     assert grid.main([str(REPO / "configs/grids/final_tkg.yaml"), "--dry-run",
                       "--tasks", "V2_task_11_tomato_lettuce_onion", "--seeds", "0"]) == 0
