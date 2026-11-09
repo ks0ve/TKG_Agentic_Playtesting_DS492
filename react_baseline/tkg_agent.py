@@ -105,6 +105,8 @@ class TKGAgent(CheapAgent):
         self.max_consecutive_llm = max_consecutive_llm
         self.consecutive_llm = 0                 # investigation decisions in a row (across refreshes)
         self.cap_releases = 0
+        self.explorer_decisions_unprompted = 0   # no check to act on: the run start, the decision after a repro attempt
+        self._unprompted = True                  # the next non-reproduction decision is such a decision
         self._decision_reason: str | None = None  # trigger_reason of the decision being executed
 
     @property
@@ -157,6 +159,9 @@ class TKGAgent(CheapAgent):
         else:
             self.consecutive_llm = 0
             self._decision_reason = None
+            if self._unprompted:
+                self.explorer_decisions_unprompted += 1
+                self._unprompted = False
             return super().act(obs_text, state)
         self._decision_reason = reason
         self.react.extra_block = block
@@ -204,6 +209,7 @@ class TKGAgent(CheapAgent):
         self.react.on_repro_tick(steps_left)
 
     def on_repro_end(self):
+        self._unprompted = True
         self.repro_block = None
         self.react.on_repro_end()
 
@@ -213,6 +219,7 @@ class TKGAgent(CheapAgent):
                 "investigate_k": self.investigate_k, "repro_path": self.repro_path,
                 "escalations": self.escalations, "llm_decisions": self.llm_decisions,
                 "llm_resumes": self.resumes, "max_consecutive_llm": self.max_consecutive_llm,
-                "cap_releases": self.cap_releases, "trigger_checks": self.checks, "trigger_fires": self.fires,
+                "cap_releases": self.cap_releases, "explorer_decisions_unprompted": self.explorer_decisions_unprompted,
+                "trigger_checks": self.checks, "trigger_fires": self.fires,
                 "trigger_fire_rate": (self.fires / self.checks) if self.checks else None,
                 "deviation_reasons": dict(sorted(self.reasons.items()))}

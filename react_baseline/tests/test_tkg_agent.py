@@ -269,6 +269,9 @@ def test_alwayson_mock_run_consults_the_llm_at_every_decision(tmp_path):
     assert trans[0]["actor"] == "cheap" and all(t["actor"] == "llm" for t in trans[1:])
     assert not any(c["resumed"] for c in calls) and len(calls) == len(trans) - 1
     assert all("Routine check-in" in c["prompt"] and "new or unusual" not in c["prompt"] for c in calls)
+    # an ordinary episode reset is not counted: the LLM acts first in the next episode
+    assert s["explorer_decisions_unprompted"] == 1 and s["episodes"] > 1
+    assert next(t for t in trans if t["episode"] == 2)["actor"] == "llm"
 
 
 def test_alwayson_exploration_decisions_are_first_resume_and_after_repro(tmp_path):
@@ -284,6 +287,7 @@ def test_alwayson_exploration_decisions_are_first_resume_and_after_repro(tmp_pat
     explorer = {t["decision_id"] for t in trans if t["actor"] == "cheap"}
     assert resumed and repro and s["cap_releases"] == 0
     assert explorer == {min(t["decision_id"] for t in trans)} | resumed | after_repro
+    assert s["explorer_decisions_unprompted"] == len(explorer - resumed) == 1 + len(after_repro) > 1
 
 
 def test_warmup_zero_interleaves_from_step_one(tmp_path):

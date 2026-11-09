@@ -825,3 +825,11 @@ Frozen identity:
   Check: all 1,428 MEMORY blocks of the 9 `final_tkg` runs re-render byte-identically.
 - **Dry run:** $0.459 per run, $4.13 for 9 runs, ~6.3 h, pooled from the 9 `final_react` runs (their mean is the same
   $0.459 per run). The budget left is $7.55.
+- **Decisions the LLM does not see.** The exploration agent still makes the run's first decision and the first decision
+  after each reproduction attempt, because no memory check has fired yet and there is no MEMORY block to show. There is
+  no new `trigger_reason` for them. The summary field `explorer_decisions_unprompted` counts them; with
+  `max_attempts: 5` that is at most 6 per run. It exists only in runs made after this change.
+- **Paper wording.** "The LLM is consulted at every decision except the first decision after each reset (at most 6 per
+  run)." Here "reset" means the run start and the end of a reproduction attempt only. After an ordinary episode reset
+  (order completed or the 200-step limit) the LLM acts first, and a decision it hands back with `Action: resume` still
+  consulted it, so neither is counted.
