@@ -4,7 +4,14 @@ external/
 runs/**
 !runs/**/
 !runs/**/summary.json
+!runs/trigger_eval/*/trigger_eval.json
+!runs/trigger_eval/*/trigger_eval.md
 __pycache__/
 *.pyc
 .pytest_cache/
 game_logs.jsonl
+# bundles made for sharing runs (python -m react_baseline.bundle)
+/*.zip
+/pilots_*/
+/final_*_seed0/
+/final_tkg_first/
