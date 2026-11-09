@@ -13,5 +13,4 @@ game_logs.jsonl
 # bundles made for sharing runs (python -m react_baseline.bundle)
 /*.zip
 /pilots_*/
-/final_*_seed0/
-/final_tkg_first/
+/final_*/
