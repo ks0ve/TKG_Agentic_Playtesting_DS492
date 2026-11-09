@@ -1,0 +1,288 @@
+{
+  "agent": "tkg",
+  "task": "V2_task_07_tomato_steak",
+  "seed": 0,
+  "backend": "anthropic",
+  "model": "claude-haiku-5-5",
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": 0.0,
+  "parse_errors": 0,
+  "total_env_steps": 1000,
+  "episodes": 14,
+  "llm_calls": 213,
+  "input_tokens": 911100,
+  "output_tokens": 46927,
+  "total_tokens": 958027,
+  "wall_time_s": 401.15,
+  "unique_bug_ids": [
+    1,
+    3,
+    8,
+    13,
+    15,
+    16,
+    17,
+    19,
+    20,
+    21,
+    25,
+    28,
+    42,
+    47,
+    51,
+    52,
+    54,
+    119
+  ],
+  "n_unique_bugs": 18,
+  "first_found_step": {
+    "1": 186,
+    "3": 129,
+    "8": 389,
+    "13": 787,
+    "15": 411,
+    "16": 428,
+    "17": 229,
+    "19": 64,
+    "20": 24,
+    "21": 113,
+    "25": 186,
+    "28": 30,
+    "42": 397,
+    "47": 402,
+    "51": 608,
+    "52": 631,
+    "54": 751,
+    "119": 186
+  },
+  "discovery_curve": [
+    {
+      "global_step": 24,
+      "cumulative_tokens": 32141,
+      "unique_bugs": 1
+    },
+    {
+      "global_step": 30,
+      "cumulative_tokens": 37180,
+      "unique_bugs": 2
+    },
+    {
+      "global_step": 64,
+      "cumulative_tokens": 102509,
+      "unique_bugs": 3
+    },
+    {
+      "global_step": 113,
+      "cumulative_tokens": 197236,
+      "unique_bugs": 4
+    },
+    {
+      "global_step": 129,
+      "cumulative_tokens": 227258,
+      "unique_bugs": 5
+    },
+    {
+      "global_step": 186,
+      "cumulative_tokens": 260485,
+      "unique_bugs": 8
+    },
+    {
+      "global_step": 229,
+      "cumulative_tokens": 280876,
+      "unique_bugs": 9
+    },
+    {
+      "global_step": 389,
+      "cumulative_tokens": 476770,
+      "unique_bugs": 10
+    },
+    {
+      "global_step": 397,
+      "cumulative_tokens": 481340,
+      "unique_bugs": 11
+    },
+    {
+      "global_step": 402,
+      "cumulative_tokens": 494282,
+      "unique_bugs": 12
+    },
+    {
+      "global_step": 411,
+      "cumulative_tokens": 511777,
+      "unique_bugs": 13
+    },
+    {
+      "global_step": 428,
+      "cumulative_tokens": 520510,
+      "unique_bugs": 14
+    },
+    {
+      "global_step": 608,
+      "cumulative_tokens": 790142,
+      "unique_bugs": 15
+    },
+    {
+      "global_step": 631,
+      "cumulative_tokens": 794708,
+      "unique_bugs": 16
+    },
+    {
+      "global_step": 751,
+      "cumulative_tokens": 838940,
+      "unique_bugs": 17
+    },
+    {
+      "global_step": 787,
+      "cumulative_tokens": 850641,
+      "unique_bugs": 18
+    },
+    {
+      "global_step": 1000,
+      "cumulative_tokens": 958027,
+      "unique_bugs": 18
+    }
+  ],
+  "deliveries_success": 0,
+  "delivery_attempts": 5,
+  "agent_bug_reports": 7,
+  "bug_reports_discarded": 0,
+  "ignore_bug_ids": [
+    5
+  ],
+  "action_space": "intent",
+  "usd_cost": 0.114573,
+  "decisions": 476,
+  "llm_calls_per_decision": 0.4474789915966387,
+  "llm_calls_per_env_step": 0.213,
+  "llm_latency_mean_s": 1.8685,
+  "llm_latency_median_s": 1.7338,
+  "intents_executed": 476,
+  "intent_failures": 0,
+  "intent_failure_rate": 0.0,
+  "intents_coerced": 0,
+  "intent_coercion_rate": 0.0,
+  "reports_strict_match": 2,
+  "reports_lenient_match": 2,
+  "unique_bugs_reported_strict": 2,
+  "unique_bug_ids_reported_strict": [
+    16,
+    28
+  ],
+  "bugs_by_proposed_class": {
+    "A_transition_anomaly": 11,
+    "B_no_transition_anomaly": 6,
+    "EXCLUDED_normal_play": 1
+  },
+  "bugs_by_family": {
+    "cooking_timing": 1,
+    "counter_pickup": 2,
+    "delivery": 1,
+    "dirty_plate": 6,
+    "plate_composition": 3,
+    "station_misuse": 3,
+    "trash": 2
+  },
+  "taxonomy_warnings": [],
+  "steps_explore": 949,
+  "llm_calls_explore": 178,
+  "tokens_explore": 763540,
+  "usd_explore": 0.091998,
+  "steps_repro": 51,
+  "llm_calls_repro": 35,
+  "tokens_repro": 194487,
+  "usd_repro": 0.022576,
+  "n_unique_bugs_explore": 18,
+  "repro_attempts": 5,
+  "repro_skipped": {
+    "max_attempts": 2
+  },
+  "repro_success_rate": 0.0,
+  "unique_bugs_reproduced": 0,
+  "unique_bug_ids_reproduced": [],
+  "agent_claim_accuracy": 0.0,
+  "loop_decision_fraction": 0.14285714285714285,
+  "cycle2_decision_fraction": 0.025210084033613446,
+  "unique_bugs_excluding_normal_play": 15,
+  "normal_play_bug_ids": [
+    1,
+    3,
+    4,
+    5,
+    6,
+    21,
+    68,
+    78,
+    127
+  ],
+  "unique_bugs_reported_strict_adj": 2,
+  "unique_bugs_discovered_adj": 2,
+  "unique_bug_ids_discovered_adj": [
+    16,
+    28
+  ],
+  "trigger_precision_adj": 0.09392265193370165,
+  "trigger_recall_unique_adj": 1.0,
+  "trigger_recall_events_adj": 0.3220338983050847,
+  "bugs_triggered_by_llm_adj": 1,
+  "bugs_triggered_by_cheap_adj": 14,
+  "bug_ids_triggered_by_llm_adj": [
+    20
+  ],
+  "bug_ids_triggered_by_cheap_adj": [
+    8,
+    13,
+    15,
+    16,
+    17,
+    19,
+    25,
+    28,
+    42,
+    47,
+    51,
+    52,
+    54,
+    119
+  ],
+  "tkg_nodes": 1367,
+  "tkg_edges": 4925,
+  "tkg_transitions": 476,
+  "reference_coverage": 0.6638655462184874,
+  "reference_match_rate": 0.9841772151898734,
+  "reference_mismatches": 5,
+  "manual_mismatches": [
+    {
+      "rule": "pickup_from_counter",
+      "situation": "interact | hands:nothing | counter:holding:unchopped uncooked steak+also:chopped onion",
+      "observed": "pickup | - | hands:unchopped uncooked steak | counter:empty+also:chopped onion",
+      "count": 3
+    },
+    {
+      "rule": "pickup_from_counter",
+      "situation": "move | hands:nothing | counter:holding:unchopped uncooked steak+also:chopped onion",
+      "observed": "pickup | - | hands:unchopped uncooked steak | counter:empty+also:chopped onion",
+      "count": 1
+    },
+    {
+      "rule": "pickup_from_counter",
+      "situation": "move | hands:nothing | counter:holding:chopped tomato+also:chopped onion",
+      "observed": "pickup | - | hands:chopped tomato | counter:empty+also:chopped onion",
+      "count": 1
+    }
+  ],
+  "warmup_steps": 0,
+  "trigger": "tkg1",
+  "investigate_k": 1,
+  "repro_path": true,
+  "escalations": 181,
+  "llm_decisions": 213,
+  "llm_resumes": 0,
+  "max_consecutive_llm": 6,
+  "cap_releases": 1,
+  "trigger_checks": 441,
+  "trigger_fires": 181,
+  "trigger_fire_rate": 0.41043083900226757,
+  "deviation_reasons": {
+    "novel": 181
+  }
+}

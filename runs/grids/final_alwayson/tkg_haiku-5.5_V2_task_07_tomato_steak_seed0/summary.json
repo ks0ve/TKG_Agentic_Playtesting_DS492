@@ -1,0 +1,250 @@
+{
+  "agent": "tkg",
+  "task": "V2_task_07_tomato_steak",
+  "seed": 0,
+  "backend": "anthropic",
+  "model": "claude-haiku-5-5",
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": 0.0,
+  "parse_errors": 0,
+  "total_env_steps": 1000,
+  "episodes": 34,
+  "llm_calls": 839,
+  "input_tokens": 4129063,
+  "output_tokens": 166764,
+  "total_tokens": 4295827,
+  "wall_time_s": 1128.83,
+  "unique_bug_ids": [
+    1,
+    3,
+    4,
+    6,
+    9,
+    19,
+    21,
+    28,
+    42,
+    47,
+    67,
+    68,
+    78,
+    127
+  ],
+  "n_unique_bugs": 14,
+  "first_found_step": {
+    "1": 702,
+    "3": 363,
+    "4": 88,
+    "6": 127,
+    "9": 863,
+    "19": 214,
+    "21": 382,
+    "28": 210,
+    "42": 993,
+    "47": 996,
+    "67": 961,
+    "68": 88,
+    "78": 755,
+    "127": 88
+  },
+  "discovery_curve": [
+    {
+      "global_step": 88,
+      "cumulative_tokens": 373118,
+      "unique_bugs": 3
+    },
+    {
+      "global_step": 127,
+      "cumulative_tokens": 536903,
+      "unique_bugs": 4
+    },
+    {
+      "global_step": 210,
+      "cumulative_tokens": 852627,
+      "unique_bugs": 5
+    },
+    {
+      "global_step": 214,
+      "cumulative_tokens": 862329,
+      "unique_bugs": 6
+    },
+    {
+      "global_step": 363,
+      "cumulative_tokens": 1447683,
+      "unique_bugs": 7
+    },
+    {
+      "global_step": 382,
+      "cumulative_tokens": 1502552,
+      "unique_bugs": 8
+    },
+    {
+      "global_step": 702,
+      "cumulative_tokens": 2977881,
+      "unique_bugs": 9
+    },
+    {
+      "global_step": 755,
+      "cumulative_tokens": 3212913,
+      "unique_bugs": 10
+    },
+    {
+      "global_step": 863,
+      "cumulative_tokens": 3699833,
+      "unique_bugs": 11
+    },
+    {
+      "global_step": 961,
+      "cumulative_tokens": 4100474,
+      "unique_bugs": 12
+    },
+    {
+      "global_step": 993,
+      "cumulative_tokens": 4259185,
+      "unique_bugs": 13
+    },
+    {
+      "global_step": 996,
+      "cumulative_tokens": 4275104,
+      "unique_bugs": 14
+    },
+    {
+      "global_step": 1000,
+      "cumulative_tokens": 4295827,
+      "unique_bugs": 14
+    }
+  ],
+  "deliveries_success": 23,
+  "delivery_attempts": 24,
+  "agent_bug_reports": 16,
+  "bug_reports_discarded": 0,
+  "ignore_bug_ids": [
+    5
+  ],
+  "action_space": "intent",
+  "usd_cost": 0.496288,
+  "decisions": 845,
+  "llm_calls_per_decision": 0.9928994082840237,
+  "llm_calls_per_env_step": 0.839,
+  "llm_latency_mean_s": 1.3397,
+  "llm_latency_median_s": 1.2514,
+  "intents_executed": 845,
+  "intent_failures": 0,
+  "intent_failure_rate": 0.0,
+  "intents_coerced": 0,
+  "intent_coercion_rate": 0.0,
+  "reports_strict_match": 5,
+  "reports_lenient_match": 5,
+  "unique_bugs_reported_strict": 5,
+  "unique_bug_ids_reported_strict": [
+    1,
+    4,
+    9,
+    21,
+    68
+  ],
+  "bugs_by_proposed_class": {
+    "A_transition_anomaly": 8,
+    "B_no_transition_anomaly": 4,
+    "EXCLUDED_normal_play": 2
+  },
+  "bugs_by_family": {
+    "cooking_timing": 1,
+    "counter_pickup": 2,
+    "delivery": 1,
+    "dirty_plate": 1,
+    "plate_composition": 7,
+    "station_misuse": 2
+  },
+  "taxonomy_warnings": [],
+  "steps_explore": 892,
+  "llm_calls_explore": 746,
+  "tokens_explore": 3747914,
+  "usd_explore": 0.433143,
+  "steps_repro": 108,
+  "llm_calls_repro": 93,
+  "tokens_repro": 547913,
+  "usd_repro": 0.063145,
+  "n_unique_bugs_explore": 14,
+  "repro_attempts": 5,
+  "repro_skipped": {
+    "max_attempts": 9
+  },
+  "repro_success_rate": 1.0,
+  "unique_bugs_reproduced": 2,
+  "unique_bug_ids_reproduced": [
+    4,
+    68
+  ],
+  "agent_claim_accuracy": 1.0,
+  "loop_decision_fraction": 0.23550295857988165,
+  "cycle2_decision_fraction": 0.05562130177514793,
+  "unique_bugs_excluding_normal_play": 6,
+  "normal_play_bug_ids": [
+    1,
+    3,
+    4,
+    5,
+    6,
+    21,
+    68,
+    78,
+    127
+  ],
+  "unique_bugs_reported_strict_adj": 1,
+  "unique_bugs_discovered_adj": 1,
+  "unique_bug_ids_discovered_adj": [
+    9
+  ],
+  "trigger_precision_adj": 0.023936170212765957,
+  "trigger_recall_unique_adj": 1.0,
+  "trigger_recall_events_adj": 1.0,
+  "bugs_triggered_by_llm_adj": 5,
+  "bugs_triggered_by_cheap_adj": 1,
+  "bug_ids_triggered_by_llm_adj": [
+    9,
+    19,
+    42,
+    47,
+    67
+  ],
+  "bug_ids_triggered_by_cheap_adj": [
+    28
+  ],
+  "tkg_nodes": 1403,
+  "tkg_edges": 5862,
+  "tkg_transitions": 845,
+  "reference_coverage": 0.8449704142011835,
+  "reference_match_rate": 0.9957983193277311,
+  "reference_mismatches": 3,
+  "manual_mismatches": [
+    {
+      "rule": "pickup_from_counter",
+      "situation": "interact | hands:nothing | counter:holding:unchopped tomato+also:chopped uncooked steak",
+      "observed": "pickup | - | hands:unchopped tomato | counter:empty+also:chopped uncooked steak",
+      "count": 2
+    },
+    {
+      "rule": "pickup_from_counter",
+      "situation": "move | hands:nothing | counter:holding:unchopped tomato+also:chopped uncooked steak",
+      "observed": "pickup | - | hands:unchopped tomato | counter:empty+also:chopped uncooked steak",
+      "count": 1
+    }
+  ],
+  "warmup_steps": 0,
+  "trigger": "every_n",
+  "investigate_k": 1,
+  "repro_path": true,
+  "escalations": 752,
+  "llm_decisions": 839,
+  "llm_resumes": 0,
+  "max_consecutive_llm": 0,
+  "cap_releases": 0,
+  "explorer_decisions_unprompted": 6,
+  "trigger_checks": 752,
+  "trigger_fires": 752,
+  "trigger_fire_rate": 1.0,
+  "deviation_reasons": {
+    "every_n": 752
+  }
+}

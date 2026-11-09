@@ -1,0 +1,141 @@
+{
+  "agent": "react",
+  "task": "V2_task_07_tomato_steak",
+  "seed": 1,
+  "backend": "anthropic",
+  "model": "claude-haiku-5-5",
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": 0.0,
+  "parse_errors": 0,
+  "total_env_steps": 1000,
+  "episodes": 39,
+  "llm_calls": 939,
+  "input_tokens": 4360714,
+  "output_tokens": 184451,
+  "total_tokens": 4545165,
+  "wall_time_s": 1524.82,
+  "unique_bug_ids": [
+    1,
+    4,
+    6,
+    21,
+    68,
+    78,
+    127
+  ],
+  "n_unique_bugs": 7,
+  "first_found_step": {
+    "1": 222,
+    "4": 46,
+    "6": 91,
+    "21": 23,
+    "68": 46,
+    "78": 169,
+    "127": 46
+  },
+  "discovery_curve": [
+    {
+      "global_step": 23,
+      "cumulative_tokens": 89567,
+      "unique_bugs": 1
+    },
+    {
+      "global_step": 46,
+      "cumulative_tokens": 198001,
+      "unique_bugs": 4
+    },
+    {
+      "global_step": 91,
+      "cumulative_tokens": 423378,
+      "unique_bugs": 5
+    },
+    {
+      "global_step": 169,
+      "cumulative_tokens": 805748,
+      "unique_bugs": 6
+    },
+    {
+      "global_step": 222,
+      "cumulative_tokens": 1087853,
+      "unique_bugs": 7
+    },
+    {
+      "global_step": 1000,
+      "cumulative_tokens": 4545165,
+      "unique_bugs": 7
+    }
+  ],
+  "deliveries_success": 28,
+  "delivery_attempts": 28,
+  "agent_bug_reports": 27,
+  "bug_reports_discarded": 0,
+  "ignore_bug_ids": [
+    5
+  ],
+  "action_space": "intent",
+  "usd_cost": 0.528297,
+  "decisions": 939,
+  "llm_calls_per_decision": 1.0,
+  "llm_calls_per_env_step": 0.939,
+  "llm_latency_mean_s": 1.6176,
+  "llm_latency_median_s": 1.5033,
+  "intents_executed": 939,
+  "intent_failures": 0,
+  "intent_failure_rate": 0.0,
+  "intents_coerced": 0,
+  "intent_coercion_rate": 0.0,
+  "reports_strict_match": 1,
+  "reports_lenient_match": 4,
+  "unique_bugs_reported_strict": 3,
+  "unique_bug_ids_reported_strict": [
+    4,
+    68,
+    127
+  ],
+  "bugs_by_proposed_class": {
+    "A_transition_anomaly": 4,
+    "B_no_transition_anomaly": 1,
+    "EXCLUDED_normal_play": 2
+  },
+  "bugs_by_family": {
+    "cooking_timing": 1,
+    "delivery": 1,
+    "plate_composition": 5
+  },
+  "taxonomy_warnings": [],
+  "steps_explore": 902,
+  "llm_calls_explore": 841,
+  "tokens_explore": 4034548,
+  "usd_explore": 0.46858,
+  "steps_repro": 98,
+  "llm_calls_repro": 98,
+  "tokens_repro": 510617,
+  "usd_repro": 0.059716,
+  "n_unique_bugs_explore": 6,
+  "repro_attempts": 5,
+  "repro_skipped": {
+    "max_attempts": 19,
+    "no_budget": 1
+  },
+  "repro_success_rate": 0.0,
+  "unique_bugs_reproduced": 0,
+  "unique_bug_ids_reproduced": [],
+  "agent_claim_accuracy": 0.0,
+  "loop_decision_fraction": 0.2374866879659212,
+  "cycle2_decision_fraction": 0.029818956336528223,
+  "unique_bugs_excluding_normal_play": 0,
+  "normal_play_bug_ids": [
+    1,
+    3,
+    4,
+    5,
+    6,
+    21,
+    68,
+    78,
+    127
+  ],
+  "unique_bugs_reported_strict_adj": 0,
+  "unique_bugs_discovered_adj": 0,
+  "unique_bug_ids_discovered_adj": []
+}
