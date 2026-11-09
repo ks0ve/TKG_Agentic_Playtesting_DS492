@@ -63,8 +63,8 @@ interesting happens. With qwen2.5:7b it also cannot reliably map directions to a
 2026-10-07), so it fails the pilot gate on navigation alone. A baseline that spends its budget
 walking makes any memory-based arm look better for a reason unrelated to the research question.
 
-**Problem 2, the action-interface confound.** The TKG arm will plan at a higher level (a cheap
-policy for routine moves, the LLM only when memory flags an unexpected outcome). If that arm
+**Problem 2, the action-interface confound.** The TKG arm will plan at a higher level (an exploration
+agent (no LLM) for routine moves, the LLM only when memory flags an unexpected outcome). If that arm
 also gets a coarser action interface than ReAct, the comparison mixes two effects: "memory
 decides *when* to call the LLM" and "the action interface is coarser".
 
@@ -180,7 +180,7 @@ are not intent failures. Off-map, unreachable and unparseable intents are still 
 and the pilot gate are unchanged.
 
 **Scope.** This is part of the shared Action reader, so it applies identically to every agent,
-including the future TKG arm's cheap policy and LLM. It is interface design, not planning.
+including the future TKG arm's exploration agent and LLM. It is interface design, not planning.
 
 ## 2026-10-20/21: Post-tolerance pilots (tomato, seed 0, 50 steps, temperature 0.7, history 10)
 
@@ -495,7 +495,7 @@ novelty agent) without merging it. The changes from his draft:
 - **One transition per executed intent**, not per button press.
 - **Abstract expectation keys.** Expectations are keyed on coordinate-free ctx0 / ctx1
   abstractions; exact-state hashes are kept only as the State node ids.
-- **Intents.** The cheap policy emits intents through the shared Action reader, with novelty
+- **Intents.** The exploration agent (no LLM) emits intents through the shared Action reader, with novelty
   counts from the TKG.
 - **No observation text in steps.jsonl.** transitions.jsonl already holds the structured states.
 
@@ -511,10 +511,10 @@ min_support 3; mock LLM = seeded random intents):
 | 01 tomato | 0.256–0.324 (mean 0.29) | 70–81 (mean 77) | 0.23–0.28 | novel 349, surprising 2 |
 | 11 salad | 0.290–0.305 (mean 0.30) | 69–78 (mean 74) | 0.23–0.25 | novel 343 |
 
-**Cheap alone** (no LLM; 1,000 steps × 3 seeds), adjusted unique bugs per run (normal-play IDs
+**Exploration agent alone** (no LLM; 1,000 steps × 3 seeds), adjusted unique bugs per run (normal-play IDs
 removed):
 
-| task | cheap | random-intent (v2.0) | random (v2.0) |
+| task | exploration agent (no LLM) | random-intent (v2.0) | random (v2.0) |
 |---|---|---|---|
 | 01 tomato | 15.0 | 7.3 | 8.3 |
 | 07 tomato + steak | 16.0 | 7.3 | 9.7 |
@@ -522,7 +522,7 @@ removed):
 
 **Design points that did not work as written, or needed a decision:**
 - **Novelty search drives the novelty trigger.** Almost every fire is "novel" (692 of 694). The
-  cheap policy deliberately seeks situations with the lowest TKG count, often zero, so its own
+  exploration agent deliberately seeks situations with the lowest TKG count, often zero, so its own
   successes trip the novelty check. The mock LLM's random intents add more. "Surprising" almost
   never fires on mock runs. I kept the design and am flagging it; it is the first thing to look at
   in the Haiku pilot.
@@ -534,7 +534,7 @@ removed):
   an intent straddling step 200 counts as warm-up.
 - **Where "resume" is explained.** The system prompt is unchanged, so the "reply Action: resume"
   instruction lives in the MEMORY block. A resume reply is still an accounted LLM call, and the
-  cheap policy acts in that same decision.
+  exploration agent acts in that same decision.
 - **Pilot config.** There is no YAML pilot config: grid files are out of scope, and the grid
   driver does not know the TKG flags. The pilot command is in RUN_COMMANDS.
 
@@ -547,7 +547,7 @@ date used 384.
 
 ## 2026-10-26: Trigger evaluation in shadow mode (no LLM; `runs/trigger_eval/20261026-232752/`)
 
-**Setup.** Cheap-agent trajectories on the 3 grid tasks, 1,000 steps, seeds 0–2. Every trigger
+**Setup.** Exploration-agent trajectories on the 3 grid tasks, 1,000 steps, seeds 0–2. Every trigger
 was replayed on the same trajectory with a fresh memory. Metrics are adjusted (normal-play IDs
 removed):
 - recall_unique_adj is over the whole run; first occurrences during the warm-up count as missed.
@@ -597,7 +597,7 @@ k = 1; k = 3 triples the calls):
   warm-up 0: recall 0.40.
 - The best tkg1c overall is tau 0.3 / min_support 2 / warm-up 0: recall 0.84 at 0.13 calls per
   step.
-- Caveat: these are cheap-only trajectories. With the LLM in control the path changes, and a fire
+- Caveat: these are exploration-only trajectories. With the LLM in control the path changes, and a fire
   during an investigation restarts k instead of adding k, so real call rates should be at or below
   the projection.
 
@@ -619,7 +619,7 @@ New defaults: `--trigger tkg1` (tau 0.15, min_support 3), `--warmup-steps 0`,
 
 ## 2026-10-27: Trigger evaluation v2: refusal, tkg1s, matched baselines, A/B split (`runs/trigger_eval/20261027-005617`)
 
-**Setup.** Shadow mode, warm-up 0, cheap-agent trajectories, 3 grid tasks × seeds 0–2 × 1,000
+**Setup.** Shadow mode, warm-up 0, exploration-agent trajectories, 3 grid tasks × seeds 0–2 × 1,000
 steps. random / every_n are matched to each of tkg1's and tkg1c's fire rates. The A/B split uses
 the draft taxonomy's `proposed_rq3_class`: A = transition anomaly, B = no transition anomaly.
 Adjusted bugs per run: 13–18, of which A 9–14 and B 4–6. Each cell lists tomato / tomato+steak /
@@ -655,7 +655,7 @@ bug_manager.py, the taxonomy and the normal-play sets were not consulted. They c
 wall bumps, pickups, putdowns (counter, cutting board, pan, rice cooker, sink), chop, wash, plate
 additions, delivery and trash. Unknown situations return None.
 
-Coverage on the 9 stored cheap trajectories (`runs/trigger_eval/20261027-005617/runs`, 3,245
+Coverage on the 9 stored exploration-agent trajectories (`runs/trigger_eval/20261027-005617/runs`, 3,245
 transitions):
 
 | version | covered | matched (of covered) |
@@ -729,7 +729,7 @@ The reference's main live value is the expectation line in the MEMORY block and 
 
 ## 2026-10-28: Items sharing a counter tile (the manual_mismatch cases); translator v2.2
 
-**Method.** Deterministic replay of the 9 stored cheap trajectories (`runs/trigger_eval/20261027-005617/runs`):
+**Method.** Deterministic replay of the 9 stored exploration-agent trajectories (`runs/trigger_eval/20261027-005617/runs`):
 the button presses from steps.jsonl were replayed, and the raw `item_manager` contents of the bumped tile and
 its neighbours were dumped before and after each mismatch step. No LLM.
 
@@ -777,7 +777,7 @@ Frozen identity:
 
 **Reruns (nothing stale):**
 - **Normal-play sets:** unchanged, byte-identical (correct play never stacks).
-- **Cheap-trajectory trigger_eval:** `runs/trigger_eval/20261028-111305`. Conclusions unchanged: tkg1
+- **Exploration-agent-trajectory trigger_eval:** `runs/trigger_eval/20261028-111305`. Conclusions unchanged: tkg1
   recall 1.00 on A and B at fire rate .39/.45/.43; tkg1r .56–.63 (B .00–.17); refusal A 1.00, B 0.00;
   tkg1c .52–.66; matched random / every_n .08–.52.
 - **Reference coverage on the new trajectories:** 54.8%, match 98.3%. All 31 mismatches are now one
@@ -798,7 +798,7 @@ Frozen identity:
   - the MEMORY / recorded-path text hash (rendered samples + the source of the functions that build
     them);
   - the reference-rules hash (line endings normalised);
-  - the cheap-policy parameters;
+  - the exploration-agent parameters;
   - the trigger / agent settings.
 
   The grid driver checks every listed freeze. It refuses a TKG grid whose `tkg:` settings differ

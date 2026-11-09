@@ -237,7 +237,7 @@ Parsing tolerates case, markdown, backticks, brackets and trailing text. Several
 - `valid_intents(state)` lists the four moves, `wait`, `goto` to every other reachable floor tile
   and `interact` with every non-floor tile next to a reachable floor tile (used by `random-intent`).
 
-The module holds no agent logic, so the future TKG arm's cheap policy and its LLM reuse it as-is.
+The module holds no agent logic, so the future TKG arm's exploration agent and its LLM reuse it as-is.
 Every verified demonstration task can be completed by a short hand-written intent sequence
 (`tests/test_action_reader.py::SOLUTIONS`).
 
@@ -488,7 +488,7 @@ transitions and bug_reports. Summary: `{steps,llm_calls,tokens,usd}_{explore,rep
   `pilot_check.txt`, the ledger, the spend report, git HEAD / status and the grid dry run, in one
   zip for analysis elsewhere.
 
-## TKG arm (`--agent tkg`) and the cheap agent (`--agent cheap`)
+## TKG arm (`--agent tkg`) and the exploration agent (no LLM) (`--agent explorer`)
 
 The TKG arm keeps everything in memory (plain Python) and writes `tkg.json` into the run dir. There
 is no graph database, no new dependency, and no LLM-drafted reference graph yet.
@@ -516,17 +516,18 @@ is no graph database, no new dependency, and no LLM-drafted reference graph yet.
   - `tkg1`: novel (ctx0 never seen) or surprising (P(outcome) < `--tau` at `--min-support` or more).
   - `tkg0`: ctx0 only.
   - `random` (`--trigger-p`) and `every_n` (`--trigger-n`) for RQ2.
-- **Cheap policy** (`react_baseline/cheap_policy.py`). Candidates are interact on every reachable
+- **Exploration agent (no LLM)** (`react_baseline/cheap_policy.py`). Candidates are interact on every reachable
   non-floor tile, `wait(3)`, and goto to 3 random floor tiles. Each scores
-  1 / (1 + TKG count of its ctx0); ε = 0.2 picks a random candidate instead. `--agent cheap` runs
-  it alone (no LLM).
+  1 / (1 + TKG count of its ctx0); ε = 0.2 picks a random candidate instead. `--agent explorer` runs
+  it alone (no LLM). `--agent explorer` is an alias for `--agent cheap`: same code path, and only the run-dir name
+  and `cli_args` say `explorer`, while logs and summaries keep the id `cheap` (`agent`, `actor`, `bugs_triggered_by_cheap_adj`).
 - **TKG agent** (`react_baseline/tkg_agent.py`).
   - Defaults: `--trigger tkg1` (tau 0.15, min_support 3), `--warmup-steps 0` (memory starts empty and
-    is checked from step 1; a warm-up of N env steps is cheap-only), `--investigate-k 1`.
+    is checked from step 1; a warm-up of N env steps is exploration-only), `--investigate-k 1`.
   - After that, a fire hands the next decision(s) to the LLM, up to `--investigate-k` (default 1; never more than
     `--max-consecutive-llm` (6) in a row, even when fires restart k), or
     until it replies `Action: resume`.
-  - The LLM gets the vanilla ReAct prompt, a history in which cheap turns are marked `[auto-explorer]`, and
+  - The LLM gets the vanilla ReAct prompt, a history in which the exploration agent's turns are marked `[auto-explorer]`, and
     a MEMORY block built from the TKG.
   - Reproduction uses the runner's protocol. `--repro-path` (default on) adds the recorded path of
     the reported episode.

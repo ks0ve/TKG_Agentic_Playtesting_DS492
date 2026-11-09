@@ -24,6 +24,28 @@ def _seen(tkg, ctx0, n):
     e.outcomes["x"] += n
 
 
+def test_explorer_is_an_alias_of_cheap(tmp_path):
+    """Same code path and byte-identical logs; only the run-dir name says explorer, ids stay cheap."""
+    from react_baseline import run as run_cli
+
+    def go(agent, parent):
+        rd = tmp_path / parent / "run"          # same dir name: the run name is written into the logs
+        assert run_cli.main(["--agent", agent, "--seed", "3", "--max-env-steps", "80", "--run-dir", str(rd),
+                             "--quiet"]) == 0
+        return rd
+    a, b = go("cheap", "a"), go("explorer", "b")
+    for f in ("steps.jsonl", "transitions.jsonl", "tkg.json"):
+        assert (a / f).read_bytes() == (b / f).read_bytes(), f
+    s = json.loads((b / "summary.json").read_text())
+    assert s["agent"] == "cheap" and "bugs_triggered_by_cheap_adj" in s
+    trans = [json.loads(l) for l in (b / "transitions.jsonl").read_text().splitlines()]
+    assert {t["actor"] for t in trans} == {"cheap"}
+    assert run_cli.main(["--agent", "explorer", "--max-env-steps", "20", "--out-dir", str(tmp_path / "o"),
+                         "--quiet"]) == 0
+    names = [p.name for p in (tmp_path / "o").iterdir()]
+    assert len(names) == 1 and "_explorer_V2_task_01_tomato_seed0" in names[0]
+
+
 def test_prefers_the_least_tried_situation():
     state, tkg = _state(), TKG()
     pol = CheapPolicy(random.Random(0), epsilon=0.0)

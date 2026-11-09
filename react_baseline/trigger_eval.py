@@ -174,7 +174,7 @@ def main(argv=None):
     p.add_argument("--match", default=",".join(MATCHED),
                    help="triggers whose fire rate random / every_n are matched to")
     p.add_argument("--from-runs", default=None,
-                   help="reuse stored cheap trajectories: <dir>/<task>_seed<N>/ (e.g. a previous run's runs/)")
+                   help="reuse stored exploration-agent trajectories: <dir>/<task>_seed<N>/ (e.g. a previous run's runs/)")
     p.add_argument("--no-sweep", action="store_true", help="skip the tkg1c parameter sweep")
     a = p.parse_args(argv)
     triggers = [t for t in a.triggers.split(",") if t.strip()]

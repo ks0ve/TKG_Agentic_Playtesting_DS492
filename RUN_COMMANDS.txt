@@ -92,8 +92,8 @@ record of runs\grids\baseline_v2\ and no longer pass the frozen check.
 
 --- TKG ARM (branch tkg-arm) ---
 
-.venv\Scripts\python.exe -m react_baseline.run --agent cheap --task V2_task_11_tomato_lettuce_onion --seeds 0,1,2 --max-env-steps 1000
-   cheap policy alone (no LLM, free, ~1 s per run); writes tkg.json
+.venv\Scripts\python.exe -m react_baseline.run --agent explorer --task V2_task_11_tomato_lettuce_onion --seeds 0,1,2 --max-env-steps 1000
+   exploration agent (no LLM) alone (free, ~1 s per run); writes tkg.json. --agent explorer is an alias for --agent cheap
 .venv\Scripts\python.exe -m react_baseline.run --agent tkg --llm mock --task V2_task_11_tomato_lettuce_onion --max-env-steps 1000 --repro
    offline TKG-arm check (mock LLM)
 .venv\Scripts\python.exe -m react_baseline.trigger_eval --grid-tasks --seeds 0,1,2 --steps 1000

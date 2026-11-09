@@ -1,4 +1,4 @@
-"""CLI: python -m react_baseline.run --agent {react,react-raw,random,random-intent,cheap,tkg} --task <id> ..."""
+"""CLI: python -m react_baseline.run --agent {react,react-raw,random,random-intent,cheap,explorer,tkg} --task <id> ..."""
 from __future__ import annotations
 
 import argparse
@@ -22,8 +22,9 @@ AGENTS = {
     "react-raw": "ReAct, raw moves 0-4 (MVP ablation)",
     "random": "uniform over the 5 raw actions",
     "random-intent": "uniform over currently valid intents",
-    "cheap": "no-LLM TKG novelty policy (intents; RQ1 reference)",
-    "tkg": "TKG arm: cheap policy + memory check; the LLM investigates deviations",
+    "cheap": "exploration agent (no LLM): TKG novelty policy (intents; RQ1 reference)",
+    "explorer": "alias of cheap (same code path; the run dir says explorer, logs keep the id cheap)",
+    "tkg": "TKG arm: exploration agent + memory check; the LLM investigates deviations",
 }
 LLM_AGENTS = ("react", "react-raw", "tkg")
 PILOT_STEPS = 50
@@ -103,7 +104,7 @@ def parse_args(argv=None):
     t.add_argument("--trigger-p", type=float, default=0.1, help="random trigger probability")
     t.add_argument("--trigger-n", type=int, default=10, help="every_n trigger period")
     t.add_argument("--warmup-steps", type=int, default=0,
-                   help="env steps of cheap-only memory building first (count in the budget); 0 = "
+                   help="env steps of exploration-only memory building first (count in the budget); 0 = "
                         "memory starts empty and a novel situation escalates on first sight")
     t.add_argument("--investigate-k", type=int, default=DEFAULT_INVESTIGATE_K,
                    help=f"LLM decisions per escalation (default {DEFAULT_INVESTIGATE_K})")
@@ -174,7 +175,7 @@ def make_agent(args, seed: int):
         return RandomAgent(seed=seed), None, None
     if args.agent == "random-intent":
         return RandomIntentAgent(seed=seed), None, None
-    if args.agent == "cheap":
+    if args.agent in ("cheap", "explorer"):
         return CheapAgent(seed=seed), None, None
     intent = args.agent in ("react", "tkg")
     llm = make_llm_from_profile(args.profile, seed, intent_mock=intent)
