@@ -251,6 +251,41 @@ def test_random_trigger_memory_blocks_are_routine_and_clean(tmp_path, monkeypatc
         assert ROUTINE in b and NEW_SITUATION not in b
 
 
+ALWAYS_ON = ["--trigger", "every_n", "--trigger-n", "1", "--max-consecutive-llm", "0", "--investigate-k", "1",
+             "--warmup-steps", "0", "--repro", "--repro-steps", "50"]
+
+
+def test_alwayson_mock_run_consults_the_llm_at_every_decision(tmp_path):
+    rd = tmp_path / "run"
+    assert run_cli.main(["--agent", "tkg", "--llm", "mock", "--task", "V2_task_11_tomato_lettuce_onion",
+                         "--max-env-steps", "300", "--run-dir", str(rd), "--quiet"] + ALWAYS_ON) == 0
+    s = json.loads((rd / "summary.json").read_text())
+    trans, calls = _rows(rd / "transitions.jsonl"), _rows(rd / "llm_calls.jsonl")
+    assert s["total_env_steps"] == 300 and s["cap_releases"] == 0 and s["max_consecutive_llm"] == 0
+    assert s["trigger"] == "every_n" and set(s["deviation_reasons"]) == {"every_n"}
+    assert {c["trigger_reason"] for c in calls} == {"every_n"}
+    assert not any(t["trigger_reason"] == "cap_release" for t in trans)
+    # only the first decision has no earlier check to act on (this mock never resumes)
+    assert trans[0]["actor"] == "cheap" and all(t["actor"] == "llm" for t in trans[1:])
+    assert not any(c["resumed"] for c in calls) and len(calls) == len(trans) - 1
+    assert all("Routine check-in" in c["prompt"] and "new or unusual" not in c["prompt"] for c in calls)
+
+
+def test_alwayson_exploration_decisions_are_first_resume_and_after_repro(tmp_path):
+    script = ["Thought: a\nAction: wait", "Thought: b\nAction: resume",
+              "Thought: c\nAction: interact(0,2)\nBug report: the tomato looked odd", "Thought: d\nAction: wait"]
+    agent = TKGAgent(MockLLM(script=script), investigate_k=1, trigger=EveryNTrigger(1), max_consecutive_llm=0)
+    s = run(agent, TASK, 0, Budgets(max_env_steps=200), tmp_path, CFG,
+            repro=ReproConfig(enabled=True, steps=10, max_fraction=0.5))
+    calls, trans = _rows(tmp_path / "llm_calls.jsonl"), _rows(tmp_path / "transitions.jsonl")
+    resumed = {c["decision_id"] for c in calls if c["resumed"]}
+    repro = {t["decision_id"] for t in trans if t["phase"] == "repro"}
+    after_repro = {i for i in {r + 1 for r in repro} - repro}
+    explorer = {t["decision_id"] for t in trans if t["actor"] == "cheap"}
+    assert resumed and repro and s["cap_releases"] == 0
+    assert explorer == {min(t["decision_id"] for t in trans)} | resumed | after_repro
+
+
 def test_warmup_zero_interleaves_from_step_one(tmp_path):
     llm = MockLLM(script=["Thought: look\nAction: resume"])
     s = run(TKGAgent(llm, warmup_steps=0, investigate_k=1), TASK, 0, Budgets(max_env_steps=80), tmp_path, CFG)
