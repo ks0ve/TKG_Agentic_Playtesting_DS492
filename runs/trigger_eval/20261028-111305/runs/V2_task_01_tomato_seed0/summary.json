@@ -1,0 +1,229 @@
+{
+  "agent": "cheap",
+  "task": "V2_task_01_tomato",
+  "seed": 0,
+  "backend": null,
+  "model": null,
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": null,
+  "parse_errors": 0,
+  "total_env_steps": 1000,
+  "episodes": 5,
+  "llm_calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "total_tokens": 0,
+  "wall_time_s": 0.99,
+  "unique_bug_ids": [
+    3,
+    13,
+    15,
+    16,
+    17,
+    19,
+    20,
+    28,
+    42,
+    47,
+    51,
+    52,
+    53,
+    54
+  ],
+  "n_unique_bugs": 14,
+  "first_found_step": {
+    "3": 100,
+    "13": 116,
+    "15": 116,
+    "16": 123,
+    "17": 266,
+    "19": 22,
+    "20": 69,
+    "28": 8,
+    "42": 112,
+    "47": 499,
+    "51": 275,
+    "52": 492,
+    "53": 395,
+    "54": 440
+  },
+  "discovery_curve": [
+    {
+      "global_step": 8,
+      "cumulative_tokens": 0,
+      "unique_bugs": 1
+    },
+    {
+      "global_step": 22,
+      "cumulative_tokens": 0,
+      "unique_bugs": 2
+    },
+    {
+      "global_step": 69,
+      "cumulative_tokens": 0,
+      "unique_bugs": 3
+    },
+    {
+      "global_step": 100,
+      "cumulative_tokens": 0,
+      "unique_bugs": 4
+    },
+    {
+      "global_step": 112,
+      "cumulative_tokens": 0,
+      "unique_bugs": 5
+    },
+    {
+      "global_step": 116,
+      "cumulative_tokens": 0,
+      "unique_bugs": 7
+    },
+    {
+      "global_step": 123,
+      "cumulative_tokens": 0,
+      "unique_bugs": 8
+    },
+    {
+      "global_step": 266,
+      "cumulative_tokens": 0,
+      "unique_bugs": 9
+    },
+    {
+      "global_step": 275,
+      "cumulative_tokens": 0,
+      "unique_bugs": 10
+    },
+    {
+      "global_step": 395,
+      "cumulative_tokens": 0,
+      "unique_bugs": 11
+    },
+    {
+      "global_step": 440,
+      "cumulative_tokens": 0,
+      "unique_bugs": 12
+    },
+    {
+      "global_step": 492,
+      "cumulative_tokens": 0,
+      "unique_bugs": 13
+    },
+    {
+      "global_step": 499,
+      "cumulative_tokens": 0,
+      "unique_bugs": 14
+    },
+    {
+      "global_step": 1000,
+      "cumulative_tokens": 0,
+      "unique_bugs": 14
+    }
+  ],
+  "deliveries_success": 0,
+  "delivery_attempts": 7,
+  "agent_bug_reports": 0,
+  "bug_reports_discarded": 0,
+  "ignore_bug_ids": [
+    5
+  ],
+  "action_space": "intent",
+  "usd_cost": 0.0,
+  "decisions": 357,
+  "llm_calls_per_decision": 0.0,
+  "llm_calls_per_env_step": 0.0,
+  "llm_latency_mean_s": null,
+  "llm_latency_median_s": null,
+  "intents_executed": 357,
+  "intent_failures": 0,
+  "intent_failure_rate": 0.0,
+  "intents_coerced": 0,
+  "intent_coercion_rate": 0.0,
+  "reports_strict_match": 0,
+  "reports_lenient_match": 0,
+  "unique_bugs_reported_strict": 0,
+  "unique_bug_ids_reported_strict": [],
+  "bugs_by_proposed_class": {
+    "A_transition_anomaly": 9,
+    "B_no_transition_anomaly": 5
+  },
+  "bugs_by_family": {
+    "counter_pickup": 2,
+    "delivery": 1,
+    "dirty_plate": 7,
+    "station_misuse": 3,
+    "trash": 1
+  },
+  "taxonomy_warnings": [],
+  "steps_explore": 1000,
+  "llm_calls_explore": 0,
+  "tokens_explore": 0,
+  "usd_explore": 0.0,
+  "steps_repro": 0,
+  "llm_calls_repro": 0,
+  "tokens_repro": 0,
+  "usd_repro": 0.0,
+  "n_unique_bugs_explore": 14,
+  "repro_attempts": 0,
+  "repro_skipped": {},
+  "repro_success_rate": null,
+  "unique_bugs_reproduced": 0,
+  "unique_bug_ids_reproduced": [],
+  "agent_claim_accuracy": null,
+  "loop_decision_fraction": 0.06722689075630252,
+  "cycle2_decision_fraction": 0.011204481792717087,
+  "unique_bugs_excluding_normal_play": 14,
+  "normal_play_bug_ids": [
+    5
+  ],
+  "unique_bugs_reported_strict_adj": 0,
+  "unique_bugs_discovered_adj": 0,
+  "unique_bug_ids_discovered_adj": [],
+  "trigger_precision_adj": null,
+  "trigger_recall_unique_adj": null,
+  "trigger_recall_events_adj": null,
+  "bugs_triggered_by_llm_adj": 0,
+  "bugs_triggered_by_cheap_adj": 14,
+  "bug_ids_triggered_by_llm_adj": [],
+  "bug_ids_triggered_by_cheap_adj": [
+    3,
+    13,
+    15,
+    16,
+    17,
+    19,
+    20,
+    28,
+    42,
+    47,
+    51,
+    52,
+    53,
+    54
+  ],
+  "tkg_nodes": 1080,
+  "tkg_edges": 3449,
+  "tkg_transitions": 357,
+  "reference_coverage": 0.5854341736694678,
+  "reference_match_rate": 0.9760765550239234,
+  "reference_mismatches": 5,
+  "manual_mismatches": [
+    {
+      "rule": "pickup_from_counter",
+      "situation": "interact | hands:nothing | counter:holding:plate:dirty:[]+also:unchopped onion",
+      "observed": "pickup | - | hands:plate:dirty:[] | counter:empty+also:unchopped onion",
+      "count": 3
+    },
+    {
+      "rule": "pickup_from_counter",
+      "situation": "interact | hands:nothing | counter:holding:unchopped uncooked steak+also:unchopped lettuce",
+      "observed": "pickup | - | hands:unchopped uncooked steak | counter:empty+also:unchopped lettuce",
+      "count": 1
+    },
+    {
+      "rule": "pickup_from_counter",
+      "situation": "interact | hands:nothing | counter:holding:plate:dirty:[]+also:unchopped lettuce",
+      "observed": "pickup | - | hands:plate:dirty:[] | counter:empty+also:unchopped lettuce",
+      "count": 1
+    }
+  ]
+}
