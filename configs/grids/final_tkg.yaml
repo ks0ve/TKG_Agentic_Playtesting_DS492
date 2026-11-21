@@ -34,4 +34,4 @@ tkg:
   max_consecutive_llm: 6
   repro_path: true
 rows:
-  - {agent: tkg, profile: haiku-5.5, seeds: [0, 1, 2]}
+  - {agent: tkg, profile: haiku-5.5, seeds: [0, 1, 2, 3, 4]}

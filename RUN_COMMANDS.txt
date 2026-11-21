@@ -20,7 +20,7 @@ MODELS   --model-profile from configs\models.yaml:
          haiku-5.5 (headline, PAID $0.10/$0.50 per MTok) | llama3.1-8b (replication, free)
          qwen2.5-7b / qwen2.5-14b / mistral-nemo-12b (free) | haiku-4.5 (DISABLED)
 PAID     needs --allow-paid and --max-usd (<= $2 unless --max-usd-override); checked against
-         configs\budget.yaml ($20 cap, $1 margin) and recorded in spend\ledger.jsonl.
+         configs\budget.yaml ($25 cap, $1 margin) and recorded in spend\ledger.jsonl.
 REPRO    --repro turns on agent-driven reproduction (<= 5 attempts, <= 30% of the steps). The
          grids use 50-step attempts (5 x 50 = 250 of 1,000); 50-step pilots use --repro-steps 15.
 
@@ -128,6 +128,37 @@ ALWAYS-ON HYBRID (the LLM is consulted at every decision; dry run first: est. $0
 (b) PAID - DO NOT RUN UNTIL APPROVED: seeds 1-2 (est. ~$2.75; resumable), then bundle:
 .venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_alwayson.yaml --seeds 1,2 --allow-paid
 .venv\Scripts\python.exe -m react_baseline.bundle --grid configs\grids\final_alwayson.yaml -o final_alwayson.zip
+
+
+--- FINAL SEEDS 3-4 (branch main; 2026-11-21) ---
+
+The three final grids list seeds 0-4; seeds 0-2 stay "done" (same config hash), so only seeds 3-4 run.
+Dry runs: frozen check OK, 6 pending per grid. Est. ReAct $2.28, TKG $0.91, always-on $2.75
+(measured means from seeds 0-2: $0.46 / $0.12 / $0.47 per run, ~$6.26 for all 18). Cap $25, margin $1.
+
+(1) FREE - exploration agent, random, random-intent: seeds 3-4 on the 3 grid tasks, same settings as
+    runs\grids\final_free (no repro, 1,000 steps); ~2 s per run. Use --agent cheap, NOT the explorer
+    alias, so the run folders keep the "cheap" name. Today's code reproduces final_free seed 0 byte-identically.
+foreach ($a in "cheap","random","random-intent") { foreach ($t in "V2_task_01_tomato","V2_task_07_tomato_steak","V2_task_11_tomato_lettuce_onion") { .venv\Scripts\python.exe -m react_baseline.run --agent $a --task $t --seeds 3,4 --max-env-steps 1000 --out-dir runs\grids\final_free } }
+
+(2) FREE - shadow-mode trigger evaluation on seeds 0-4 (default triggers and matched baselines; ~1 min)
+.venv\Scripts\python.exe -m react_baseline.trigger_eval --grid-tasks --seeds 0,1,2,3,4 --steps 1000
+
+(3) PAID - the three grids, seeds 3-4 (resumable; rerun the same command after a crash or Ctrl-C)
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_tkg.yaml --seeds 3,4 --allow-paid
+   6 runs, ~40 min (median 6.6 min per run), cap $0.40 per run
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_react.yaml --seeds 3,4 --allow-paid
+   6 runs, ~2.6 h (median 25.6 min per run; 2 of 9 earlier runs took 66 and 122 min), cap $1.00 per run
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_alwayson.yaml --seeds 3,4 --allow-paid
+   6 runs, ~1.9 h (median 18.8 min per run; 1 of 9 earlier runs took 155 min), cap $1.00 per run
+
+Parallel: (1) and (2) need no ledger and can run any time. The three grids in (3) may run at the same
+time in three terminals: each writes only to its own runs\grids\<name>\ folder, and each reserves its
+cap in the ledger before a run, so together they hold at most $2.40, inside the ~$7.78 left. Never
+run the SAME grid in two terminals: a second process moves the first one's unfinished folder to
+_stale. If a grid stops with "paid run refused", wait for the others to finish and rerun it.
+
+After all finish: .venv\Scripts\python.exe -m react_baseline.spend   (totals; open reservations should be $0)
 
 
 --- OTHER ---

@@ -169,7 +169,7 @@ def test_final_grids_and_tkg_freeze(monkeypatch, capsys):
     gt = grid.load_grid(REPO / "configs/grids/final_tkg.yaml")
     gr = grid.load_grid(REPO / "configs/grids/final_react.yaml")
     ct, cr = grid.combos(gt), grid.combos(gr)
-    assert len(ct) == len(cr) == 9 and all(c.paid for c in ct + cr)
+    assert len(ct) == len(cr) == 15 and all(c.paid for c in ct + cr)
     a = ct[0].argv
     assert a[a.index("--agent") + 1] == "tkg" and a[a.index("--max-usd") + 1] == "0.40"
     for flag, val in (("--trigger", "tkg1"), ("--tau", "0.15"), ("--min-support", "3"), ("--warmup-steps", "0"),
@@ -178,7 +178,7 @@ def test_final_grids_and_tkg_freeze(monkeypatch, capsys):
     assert "--repro-path" in a and "--repro" in a
     b = cr[0].argv
     assert b[b.index("--agent") + 1] == "react" and b[b.index("--max-usd") + 1] == "1.00" and "--trigger" not in b
-    assert {c.task for c in ct} == {c.task for c in cr} and {c.seed for c in ct} == {0, 1, 2}
+    assert {c.task for c in ct} == {c.task for c in cr} and {c.seed for c in ct} == {0, 1, 2, 3, 4}
     # both freezes match the code, and the TKG grid's settings match tkg_v1
     assert grid.frozen_mismatches(gt) == [] and grid.frozen_mismatches(gr) == []
     assert frozen.check(REPO / "configs/frozen/tkg_v1.yaml") == []
@@ -194,8 +194,8 @@ def test_final_grids_and_tkg_freeze(monkeypatch, capsys):
 def test_alwayson_grid_and_freeze(monkeypatch):
     g = grid.load_grid(REPO / "configs/grids/final_alwayson.yaml")
     cs = grid.combos(g)
-    assert len(cs) == 9 and all(c.paid and c.agent == "tkg" and c.profile == "haiku-5.5" for c in cs)
-    assert {c.seed for c in cs} == {0, 1, 2} and {c.run_dir.parent.name for c in cs} == {"final_alwayson"}
+    assert len(cs) == 15 and all(c.paid and c.agent == "tkg" and c.profile == "haiku-5.5" for c in cs)
+    assert {c.seed for c in cs} == {0, 1, 2, 3, 4} and {c.run_dir.parent.name for c in cs} == {"final_alwayson"}
     a = cs[0].argv
     for flag, val in (("--trigger", "every_n"), ("--trigger-n", "1"), ("--max-consecutive-llm", "0"),
                       ("--investigate-k", "1"), ("--warmup-steps", "0"), ("--repro-steps", "50"),
