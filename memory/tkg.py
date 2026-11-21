@@ -1,0 +1,230 @@
+"""In-memory temporal knowledge graph of executed intents, with a JSON export.
+
+Transition-centric schema:
+
+    (Transition) -NEXT-> (Transition)              consecutive transitions within one episode
+    (Transition) -FROM-> (State)  -TO-> (State)    exact visible states before / after
+    (Transition) -TARGET-> (Entity)                the bumped / entered tile's entity state
+    (Transition) -ASSESSED_AGAINST-> (Expectation) the expectation the memory check used
+    (State) -HAS_ENTITY_STATE-> (Entity)
+
+One transition = one executed intent. State ids hash the visible state without episode_step and
+last_event. Entities are coordinate-free entity-state strings, shared between states.
+Expectations are keyed on the abstraction (ctx1, ctx0 and the coarse (intent kind, target kind)
+level, see memory.abstraction), never on exact states, so they generalise: each holds an outcome ->
+count table (coarse expectations count (event type, success)). Only the observed source exists
+for now (an LLM-drafted reference source comes later).
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+from collections import Counter, defaultdict
+from pathlib import Path
+
+from .abstraction import hands_str, item_str, tile_str
+
+SCHEMA = {
+    "nodes": ["Transition", "State", "Entity", "Expectation"],
+    "edges": ["NEXT", "FROM", "TO", "TARGET", "ASSESSED_AGAINST", "HAS_ENTITY_STATE"],
+}
+
+
+def state_id(state: dict) -> str:
+    core = {k: v for k, v in state.items() if k not in ("episode_step", "last_event")}
+    return "s:" + hashlib.sha256(json.dumps(core, sort_keys=True).encode()).hexdigest()[:16]
+
+
+def state_entities(state: dict) -> list[str]:
+    """Entity-state strings of a visible state: your hands, every station, every counter item."""
+    ents = {hands_str(state["agent"]["holding"])}
+    for st in state.get("stations", []):
+        ents.add(tile_str({"kind": st["label"], "holding": st.get("holding")}))
+    for it in state.get("items", []):
+        if it.get("where") == "counter":
+            ents.add(f"counter:holding:{item_str({k: v for k, v in it.items() if k not in ('pos', 'where')})}")
+    return sorted(ents)
+
+
+class Expectation:
+    def __init__(self, level: str, key: str, source: str = "observed", extra: dict | None = None):
+        self.level, self.key = level, key
+        self.outcomes: Counter = Counter()   # reference expectations count verdicts: match / mismatch
+        self.first_seen_step = self.last_seen_step = None
+        self.source = source
+        self.extra = extra or {}
+
+    @property
+    def id(self) -> str:
+        return f"exp:{self.level}:{self.key}"
+
+    @property
+    def support(self) -> int:
+        return sum(self.outcomes.values())
+
+    def distribution(self) -> dict[str, float]:
+        n = self.support
+        return {o: c / n for o, c in self.outcomes.items()} if n else {}
+
+    def to_node(self) -> dict:
+        return {"id": self.id, "type": "Expectation", "level": self.level, "key": self.key,
+                "outcomes": dict(sorted(self.outcomes.items())), "support": self.support,
+                "first_seen_step": self.first_seen_step, "last_seen_step": self.last_seen_step,
+                "source": self.source, **self.extra}
+
+
+class TKG:
+    def __init__(self, min_support: int = 3, reference=None):
+        self.min_support = min_support
+        self.reference = reference            # memory.reference.Reference (manual rules) or None
+        self.transitions: dict[str, dict] = {}
+        self.states: dict[str, dict] = {}
+        self.entities: dict[str, dict] = {}
+        self.expectations: dict[str, Expectation] = {}
+        self.edges: list[dict] = []
+        self._episodes: dict[str, list[str]] = defaultdict(list)
+
+    # -- lookups ------------------------------------------------------------------
+    def _exp(self, level: str, key: str, create: bool = False) -> Expectation | None:
+        eid = f"exp:{level}:{key}"
+        if eid not in self.expectations and create:
+            self.expectations[eid] = Expectation(level, key)
+        return self.expectations.get(eid)
+
+    # -- reference (game manual) ----------------------------------------------------------
+    def reference_node(self, hit) -> str:
+        """The Expectation node (source "reference") of a manual rule; created on first use."""
+        eid = f"exp:reference:{hit.rule.id}"
+        if eid not in self.expectations:
+            r = hit.rule
+            self.expectations[eid] = Expectation("reference", r.id, source="reference", extra={
+                "expect": {k: str(v) for k, v in r.expect.items()}, "changes_state": r.changes_state,
+                "manual": r.manual, "says": r.says})
+        return eid
+
+    def judge_reference(self, t: dict):
+        """Set t["reference_rule_id"] / t["reference_verdict"] (match | mismatch | none) and count the
+        verdict on the rule's Expectation node. -> the RuleHit or None."""
+        hit = self.reference.lookup(t["ctx0"]) if self.reference is not None else None
+        if hit is None:
+            t["reference_rule_id"], t["reference_verdict"] = None, "none"
+            return None
+        verdict = "match" if hit.matches(t["outcome"]) else "mismatch"
+        t["reference_rule_id"], t["reference_verdict"] = hit.rule.id, verdict
+        e = self.expectations[self.reference_node(hit)]
+        e.outcomes[verdict] += 1
+        step = t.get("global_step_end")
+        e.first_seen_step = step if e.first_seen_step is None else e.first_seen_step
+        e.last_seen_step = step
+        return hit
+
+    def lookup(self, ctx1: str | None, ctx0: str, min_support: int | None = None) -> dict:
+        """Expectation lookup order: observed ctx1 -> observed ctx0 (each if support >= min_support)
+        -> reference (a manual rule) -> unseen. -> {level, support, dist, id, hit, ctx0_support}."""
+        ms = self.min_support if min_support is None else min_support
+        dist, level, support, eid = self.expect(ctx1, ctx0, ms)
+        out = {"level": level, "support": support, "dist": dist, "id": eid, "hit": None,
+               "ctx0_support": self.count(ctx0)}
+        if support >= ms:
+            return out
+        hit = self.reference.lookup(ctx0) if self.reference is not None else None
+        if hit is not None:
+            return {**out, "level": "reference", "support": None, "dist": {}, "id": self.reference_node(hit),
+                    "hit": hit}
+        return {**out, "level": "unseen" if out["ctx0_support"] == 0 else level}
+
+    def coarse_expectation(self, coarse: str) -> Expectation | None:
+        return self._exp("coarse", coarse)
+
+    def count_ctx1(self, ctx1: str) -> int:
+        e = self._exp("ctx1", ctx1)
+        return e.support if e else 0
+
+    def count(self, ctx0: str) -> int:
+        e = self._exp("ctx0", ctx0)
+        return e.support if e else 0
+
+    def expect(self, ctx1: str | None, ctx0: str, min_support: int | None = None):
+        """-> (outcome distribution, level, support, expectation id). Uses ctx1 when it has at
+        least ``min_support`` observations, otherwise backs off to ctx0 (``ctx1=None``: ctx0 only)."""
+        ms = self.min_support if min_support is None else min_support
+        e1 = self._exp("ctx1", ctx1) if ctx1 is not None else None
+        if e1 is not None and e1.support >= ms:
+            return e1.distribution(), "ctx1", e1.support, e1.id
+        e0 = self._exp("ctx0", ctx0)
+        return (e0.distribution() if e0 else {}), "ctx0", (e0.support if e0 else 0), f"exp:ctx0:{ctx0}"
+
+    def prev_outcome(self, episode_key: str) -> str | None:
+        ids = self._episodes.get(episode_key)
+        return self.transitions[ids[-1]]["outcome"] if ids else None
+
+    def episode_path(self, episode_key: str, upto: str | None = None) -> list[dict]:
+        """Transitions of one episode from its reset up to (and including) transition ``upto``."""
+        out = []
+        for tid in self._episodes.get(episode_key, []):
+            out.append(self.transitions[tid])
+            if tid == upto:
+                break
+        return out
+
+    # -- building -------------------------------------------------------------------
+    def _add_state(self, state: dict) -> str:
+        sid = state_id(state)
+        if sid not in self.states:
+            ents = state_entities(state)
+            self.states[sid] = {"id": sid, "type": "State", "n_entities": len(ents)}
+            for ent in ents:
+                self._add_entity(ent)
+                self.edges.append({"type": "HAS_ENTITY_STATE", "source": sid, "target": f"ent:{ent}"})
+        return sid
+
+    def _add_entity(self, ent: str) -> str:
+        eid = f"ent:{ent}"
+        if eid not in self.entities:
+            self.entities[eid] = {"id": eid, "type": "Entity", "state": ent}
+        return eid
+
+    def add(self, t: dict, from_state: dict | None, to_state: dict | None, assessed_against: str | None = None):
+        """Add one Transition node (a dict with at least id, episode_key, ctx0, ctx1, outcome,
+        target, global_step_start/end) and update both expectation tables."""
+        t = dict(t, type="Transition")
+        tid = t["id"]
+        prev = self._episodes[t["episode_key"]]
+        if prev:
+            self.edges.append({"type": "NEXT", "source": prev[-1], "target": tid})
+        prev.append(tid)
+        self.transitions[tid] = t
+        if from_state is not None:   # (shadow replays skip the State nodes)
+            self.edges.append({"type": "FROM", "source": tid, "target": self._add_state(from_state)})
+        if to_state is not None:
+            self.edges.append({"type": "TO", "source": tid, "target": self._add_state(to_state)})
+        if t["target"] != "none":
+            self.edges.append({"type": "TARGET", "source": tid, "target": self._add_entity(t["target"])})
+        if assessed_against:
+            self.edges.append({"type": "ASSESSED_AGAINST", "source": tid, "target": assessed_against})
+        levels = [("ctx1", t["ctx1"], t["outcome"]), ("ctx0", t["ctx0"], t["outcome"])]
+        if t.get("coarse"):
+            levels.append(("coarse", t["coarse"], t["outcome_coarse"]))
+        for level, key, outcome in levels:
+            e = self._exp(level, key, create=True)
+            e.outcomes[outcome] += 1
+            step = t["global_step_end"]
+            e.first_seen_step = step if e.first_seen_step is None else e.first_seen_step
+            e.last_seen_step = step
+        return t
+
+    # -- export -------------------------------------------------------------------
+    @property
+    def n_nodes(self) -> int:
+        return len(self.transitions) + len(self.states) + len(self.entities) + len(self.expectations)
+
+    def export(self) -> dict:
+        # an ASSESSED_AGAINST edge may point to an expectation that did not exist yet at check time
+        # (a novel situation); it exists after add(), so every edge endpoint is a node
+        nodes = (list(self.transitions.values()) + list(self.states.values())
+                 + list(self.entities.values()) + [e.to_node() for e in self.expectations.values()])
+        return {"schema": SCHEMA, "n_nodes": len(nodes), "n_edges": len(self.edges),
+                "nodes": nodes, "edges": self.edges}
+
+    def export_json(self, path: Path | str):
+        Path(path).write_text(json.dumps(self.export(), indent=1, sort_keys=True), encoding="utf-8")

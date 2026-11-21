@@ -1,4 +1,4 @@
-"""CLI: python -m react_baseline.run --agent {react,react-raw,random,random-intent} --task <id> ..."""
+"""CLI: python -m react_baseline.run --agent {react,react-raw,random,random-intent,cheap,explorer,tkg} --task <id> ..."""
 from __future__ import annotations
 
 import argparse
@@ -9,7 +9,10 @@ from pathlib import Path
 from . import pilot_check, spend
 from .action_reader import DEFAULT_MAX_MACRO_LEN, ActionReader
 from .agents import ContextOverflowError, RandomAgent, RandomIntentAgent, ReActAgent
+from .cheap_policy import CheapAgent
+from .tkg_agent import DEFAULT_INVESTIGATE_K, TKGAgent
 from .repro import ReproConfig
+from memory.trigger import make_trigger
 from .env_adapter import list_tasks
 from .llm import BACKENDS, MODELS_YAML, LLMSetupError, make_llm_from_profile, resolve_profile
 from .runner import Budgets, make_run_dir, run
@@ -19,8 +22,11 @@ AGENTS = {
     "react-raw": "ReAct, raw moves 0-4 (MVP ablation)",
     "random": "uniform over the 5 raw actions",
     "random-intent": "uniform over currently valid intents",
+    "cheap": "exploration agent (no LLM): TKG novelty policy (intents; RQ1 reference)",
+    "explorer": "alias of cheap (same code path; the run dir says explorer, logs keep the id cheap)",
+    "tkg": "TKG arm: exploration agent + memory check; the LLM investigates deviations",
 }
-LLM_AGENTS = ("react", "react-raw")
+LLM_AGENTS = ("react", "react-raw", "tkg")
 PILOT_STEPS = 50
 PAID_MAX_USD_CEILING = 2.0
 
@@ -87,6 +93,29 @@ def parse_args(argv=None):
                    help="max share of --max-env-steps spent on attempts")
     g.add_argument("--repro-dedup-jaccard", type=float, default=ReproConfig.dedup_jaccard,
                    help="skip reports whose token Jaccard with an attempted report is >= this")
+    t = p.add_argument_group("TKG arm (--agent tkg)")
+    t.add_argument("--trigger", choices=["tkg1", "tkg0", "tkg1c", "tkg1s", "tkg1r", "tkg1r_strict", "refusal", "random", "every_n"],
+                   default="tkg1",
+                   help="memory check: tkg1 (temporal context, backoff), tkg0 (current situation only), "
+                        "tkg1c (tkg1 with a coarse (intent, target kind) fallback), tkg1s (sequence "
+                        "novelty: ctx1 unseen), tkg1r / tkg1r_strict (tkg1 + game-manual reference), "
+                        "refusal (memoryless: failed event or empty bump), "
+                        "random (p), every_n (n)")
+    t.add_argument("--trigger-p", type=float, default=0.1, help="random trigger probability")
+    t.add_argument("--trigger-n", type=int, default=10, help="every_n trigger period")
+    t.add_argument("--warmup-steps", type=int, default=0,
+                   help="env steps of exploration-only memory building first (count in the budget); 0 = "
+                        "memory starts empty and a novel situation escalates on first sight")
+    t.add_argument("--investigate-k", type=int, default=DEFAULT_INVESTIGATE_K,
+                   help=f"LLM decisions per escalation (default {DEFAULT_INVESTIGATE_K})")
+    t.add_argument("--max-consecutive-llm", type=int, default=6,
+                   help="cap on LLM decisions in a row, across fires that restart k (then cap_release); "
+                        "0 = no cap")
+    t.add_argument("--tau", type=float, default=0.15, help="surprise threshold P(outcome) < tau")
+    t.add_argument("--min-support", type=int, default=3,
+                   help="observations needed before a context is judged (ctx1 backs off below it)")
+    t.add_argument("--repro-path", action=argparse.BooleanOptionalAction, default=True,
+                   help="add the recorded path from the TKG to reproduction prompts")
     p.add_argument("--quiet", action="store_true")
     args = p.parse_args(argv)
     args.repro_config = ReproConfig(args.repro, args.repro_steps, args.max_repro_attempts,
@@ -95,6 +124,12 @@ def parse_args(argv=None):
         p.error(f"unknown task {args.task!r}; see external/SAGE/scenarios/overcooked_plus/tasks.json")
     if args.actions_per_call < 1 or args.intents_per_call < 1:
         p.error("--actions-per-call and --intents-per-call must be >= 1")
+    if args.warmup_steps < 0:
+        p.error("--warmup-steps must be >= 0 (0 = memory building and testing interleave from step 1)")
+    if args.investigate_k < 1 or args.min_support < 1:
+        p.error("--investigate-k and --min-support must be >= 1")
+    if args.max_consecutive_llm < 0:
+        p.error("--max-consecutive-llm must be >= 0 (0 = no cap)")
     if args.pilot:
         args.max_env_steps = PILOT_STEPS
         if args.out_dir == "runs":
@@ -143,8 +178,19 @@ def make_agent(args, seed: int):
         return RandomAgent(seed=seed), None, None
     if args.agent == "random-intent":
         return RandomIntentAgent(seed=seed), None, None
-    intent = args.agent == "react"
+    if args.agent in ("cheap", "explorer"):
+        return CheapAgent(seed=seed), None, None
+    intent = args.agent in ("react", "tkg")
     llm = make_llm_from_profile(args.profile, seed, intent_mock=intent)
+    if args.agent == "tkg":
+        trig = make_trigger(args.trigger, p=args.trigger_p, n=args.trigger_n, tau=args.tau,
+                            min_support=args.min_support, seed=seed)
+        agent = TKGAgent(llm, seed=seed, trigger=trig, warmup_steps=args.warmup_steps,
+                         investigate_k=args.investigate_k, repro_path=args.repro_path,
+                         history=args.history, min_support=args.min_support,
+                         max_consecutive_llm=args.max_consecutive_llm,
+                         warn=lambda m: print(m, file=sys.stderr))
+        return agent, args.profile.backend, args.profile.model
     agent = ReActAgent(llm, history=args.history, actions_per_call=args.actions_per_call,
                        warn=lambda m: print(m, file=sys.stderr),
                        action_space="intent" if intent else "primitive",

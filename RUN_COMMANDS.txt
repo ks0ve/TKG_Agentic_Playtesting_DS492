@@ -90,6 +90,46 @@ v2.0 configs (configs\grids\baseline_v2*.yaml, configs\frozen\baseline_v2.yaml) 
 record of runs\grids\baseline_v2\ and no longer pass the frozen check.
 
 
+--- TKG ARM (branch tkg-arm) ---
+
+.venv\Scripts\python.exe -m react_baseline.run --agent explorer --task V2_task_11_tomato_lettuce_onion --seeds 0,1,2 --max-env-steps 1000
+   exploration agent (no LLM) alone (free, ~1 s per run); writes tkg.json. --agent explorer is an alias for --agent cheap
+.venv\Scripts\python.exe -m react_baseline.run --agent tkg --llm mock --task V2_task_11_tomato_lettuce_onion --max-env-steps 1000 --repro
+   offline TKG-arm check (mock LLM)
+.venv\Scripts\python.exe -m react_baseline.trigger_eval --grid-tasks --seeds 0,1,2 --steps 1000
+   shadow-mode trigger evaluation (no LLM, ~30 s) -> runs\trigger_eval\<timestamp>\trigger_eval.md
+   (--from-runs <dir> reuses stored trajectories; --triggers / --match choose triggers and matched baselines)
+.venv\Scripts\python.exe -m memory.reference --coverage runs\trigger_eval\20261027-005617\runs
+   game-manual rule coverage / match rate / mismatches on stored trajectories
+
+FINAL PAID GRIDS (harness v2.2 + TKG v1; dry run first: est. TKG $1.36, ReAct $3.43 from the latest pilots)
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_tkg.yaml --dry-run
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_react.yaml --dry-run
+
+(a) PAID - one TKG grid run first (salad, seed 0; ~$0.15, cap $0.40), then bundle it:
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_tkg.yaml --only tkg/haiku-5.5 --tasks V2_task_11_tomato_lettuce_onion --seeds 0 --allow-paid
+.venv\Scripts\python.exe -m react_baseline.bundle --grid configs\grids\final_tkg.yaml -o final_tkg_first.zip
+
+(b) PAID - DO NOT RUN UNTIL APPROVED: the remaining runs of both grids (resumable; finished runs are skipped)
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_tkg.yaml --only tkg/haiku-5.5 --allow-paid
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_react.yaml --only react/haiku-5.5 --allow-paid
+.venv\Scripts\python.exe -m react_baseline.bundle --grid configs\grids\final_tkg.yaml -o final_tkg.zip
+.venv\Scripts\python.exe -m react_baseline.bundle --grid configs\grids\final_react.yaml -o final_react.zip
+   then: python -m react_baseline.rescore runs\grids\final_tkg  and  runs\grids\final_react
+
+
+ALWAYS-ON HYBRID (the LLM is consulted at every decision; dry run first: est. $0.46 per run, $4.13 for 9, from final_react)
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_alwayson.yaml --dry-run
+
+(a) PAID - seed 0 on all 3 tasks first (est. ~$1.38, cap $1.00 per run), then bundle:
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_alwayson.yaml --seeds 0 --allow-paid
+.venv\Scripts\python.exe -m react_baseline.bundle --grid configs\grids\final_alwayson.yaml -o final_alwayson_seed0.zip
+
+(b) PAID - DO NOT RUN UNTIL APPROVED: seeds 1-2 (est. ~$2.75; resumable), then bundle:
+.venv\Scripts\python.exe -m react_baseline.grid configs\grids\final_alwayson.yaml --seeds 1,2 --allow-paid
+.venv\Scripts\python.exe -m react_baseline.bundle --grid configs\grids\final_alwayson.yaml -o final_alwayson.zip
+
+
 --- OTHER ---
 
 .venv\Scripts\python.exe -m react_baseline.solutions

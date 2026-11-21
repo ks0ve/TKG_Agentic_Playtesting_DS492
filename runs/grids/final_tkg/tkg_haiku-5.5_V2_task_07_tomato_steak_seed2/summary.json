@@ -1,0 +1,236 @@
+{
+  "agent": "tkg",
+  "task": "V2_task_07_tomato_steak",
+  "seed": 2,
+  "backend": "anthropic",
+  "model": "claude-haiku-5-5",
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": 0.0,
+  "parse_errors": 0,
+  "total_env_steps": 1000,
+  "episodes": 13,
+  "llm_calls": 268,
+  "input_tokens": 1339026,
+  "output_tokens": 64096,
+  "total_tokens": 1403122,
+  "wall_time_s": 526.6,
+  "unique_bug_ids": [
+    3,
+    13,
+    15,
+    17,
+    19,
+    20,
+    21,
+    28,
+    42,
+    47,
+    52,
+    54
+  ],
+  "n_unique_bugs": 12,
+  "first_found_step": {
+    "3": 146,
+    "13": 61,
+    "15": 50,
+    "17": 693,
+    "19": 105,
+    "20": 54,
+    "21": 9,
+    "28": 104,
+    "42": 60,
+    "47": 65,
+    "52": 730,
+    "54": 635
+  },
+  "discovery_curve": [
+    {
+      "global_step": 9,
+      "cumulative_tokens": 16367,
+      "unique_bugs": 1
+    },
+    {
+      "global_step": 50,
+      "cumulative_tokens": 69909,
+      "unique_bugs": 2
+    },
+    {
+      "global_step": 54,
+      "cumulative_tokens": 74307,
+      "unique_bugs": 3
+    },
+    {
+      "global_step": 60,
+      "cumulative_tokens": 90090,
+      "unique_bugs": 4
+    },
+    {
+      "global_step": 61,
+      "cumulative_tokens": 95687,
+      "unique_bugs": 5
+    },
+    {
+      "global_step": 65,
+      "cumulative_tokens": 120806,
+      "unique_bugs": 6
+    },
+    {
+      "global_step": 104,
+      "cumulative_tokens": 357650,
+      "unique_bugs": 7
+    },
+    {
+      "global_step": 105,
+      "cumulative_tokens": 357650,
+      "unique_bugs": 8
+    },
+    {
+      "global_step": 146,
+      "cumulative_tokens": 429335,
+      "unique_bugs": 9
+    },
+    {
+      "global_step": 635,
+      "cumulative_tokens": 1094335,
+      "unique_bugs": 10
+    },
+    {
+      "global_step": 693,
+      "cumulative_tokens": 1168149,
+      "unique_bugs": 11
+    },
+    {
+      "global_step": 730,
+      "cumulative_tokens": 1209146,
+      "unique_bugs": 12
+    },
+    {
+      "global_step": 1000,
+      "cumulative_tokens": 1403122,
+      "unique_bugs": 12
+    }
+  ],
+  "deliveries_success": 0,
+  "delivery_attempts": 10,
+  "agent_bug_reports": 5,
+  "bug_reports_discarded": 0,
+  "ignore_bug_ids": [
+    5
+  ],
+  "action_space": "intent",
+  "usd_cost": 0.165951,
+  "decisions": 495,
+  "llm_calls_per_decision": 0.5414141414141415,
+  "llm_calls_per_env_step": 0.268,
+  "llm_latency_mean_s": 1.9521,
+  "llm_latency_median_s": 1.8689,
+  "intents_executed": 495,
+  "intent_failures": 0,
+  "intent_failure_rate": 0.0,
+  "intents_coerced": 0,
+  "intent_coercion_rate": 0.0,
+  "reports_strict_match": 1,
+  "reports_lenient_match": 1,
+  "unique_bugs_reported_strict": 1,
+  "unique_bug_ids_reported_strict": [
+    15
+  ],
+  "bugs_by_proposed_class": {
+    "A_transition_anomaly": 7,
+    "B_no_transition_anomaly": 4,
+    "EXCLUDED_normal_play": 1
+  },
+  "bugs_by_family": {
+    "cooking_timing": 1,
+    "counter_pickup": 2,
+    "delivery": 1,
+    "dirty_plate": 4,
+    "station_misuse": 3,
+    "trash": 1
+  },
+  "taxonomy_warnings": [],
+  "steps_explore": 858,
+  "llm_calls_explore": 145,
+  "tokens_explore": 629190,
+  "usd_explore": 0.076123,
+  "steps_repro": 142,
+  "llm_calls_repro": 123,
+  "tokens_repro": 773932,
+  "usd_repro": 0.089827,
+  "n_unique_bugs_explore": 11,
+  "repro_attempts": 5,
+  "repro_skipped": {},
+  "repro_success_rate": 1.0,
+  "unique_bugs_reproduced": 1,
+  "unique_bug_ids_reproduced": [
+    15
+  ],
+  "agent_claim_accuracy": 0.0,
+  "loop_decision_fraction": 0.1191919191919192,
+  "cycle2_decision_fraction": 0.08080808080808081,
+  "unique_bugs_excluding_normal_play": 10,
+  "normal_play_bug_ids": [
+    1,
+    3,
+    4,
+    5,
+    6,
+    21,
+    68,
+    78,
+    127
+  ],
+  "unique_bugs_reported_strict_adj": 1,
+  "unique_bugs_discovered_adj": 1,
+  "unique_bug_ids_discovered_adj": [
+    15
+  ],
+  "trigger_precision_adj": 0.08,
+  "trigger_recall_unique_adj": 0.6,
+  "trigger_recall_events_adj": 0.19672131147540983,
+  "bugs_triggered_by_llm_adj": 6,
+  "bugs_triggered_by_cheap_adj": 4,
+  "bug_ids_triggered_by_llm_adj": [
+    13,
+    15,
+    20,
+    28,
+    42,
+    47
+  ],
+  "bug_ids_triggered_by_cheap_adj": [
+    17,
+    19,
+    52,
+    54
+  ],
+  "tkg_nodes": 1309,
+  "tkg_edges": 4759,
+  "tkg_transitions": 495,
+  "reference_coverage": 0.705050505050505,
+  "reference_match_rate": 0.997134670487106,
+  "reference_mismatches": 1,
+  "manual_mismatches": [
+    {
+      "rule": "pickup_from_counter",
+      "situation": "interact | hands:nothing | counter:holding:unchopped onion+also:chopped lettuce",
+      "observed": "pickup | - | hands:unchopped onion | counter:empty+also:chopped lettuce",
+      "count": 1
+    }
+  ],
+  "warmup_steps": 0,
+  "trigger": "tkg1",
+  "investigate_k": 1,
+  "repro_path": true,
+  "escalations": 150,
+  "llm_decisions": 268,
+  "llm_resumes": 0,
+  "max_consecutive_llm": 6,
+  "cap_releases": 3,
+  "trigger_checks": 372,
+  "trigger_fires": 150,
+  "trigger_fire_rate": 0.4032258064516129,
+  "deviation_reasons": {
+    "novel": 150
+  }
+}

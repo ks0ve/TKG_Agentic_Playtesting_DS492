@@ -27,6 +27,7 @@ from .repro import ReproConfig, ReproController
 from .solutions import load_normal_play
 from .taxonomy import taxonomy_counts
 from .transitions import VisibleTransition
+from .trigger_metrics import evaluate as evaluate_trigger
 
 BUG_REPORT_WINDOW = 3  # bug_reports.jsonl pairs each report with oracle bugs within ±3 steps
 
@@ -199,6 +200,53 @@ def normal_play_excluded(task: str, found) -> dict:
             "normal_play_bug_ids": sorted(normal)}
 
 
+def discovered_fields(task: str, found, strict_ids) -> dict:
+    """Reported (strict) and discovered (= triggered AND reported strict) unique bugs, adjusted for
+    the task's normal-play set. Reporting only; n_unique_bugs is unchanged."""
+    normal = load_normal_play().get(task)
+    if normal is None:
+        return {"unique_bugs_reported_strict_adj": None, "unique_bugs_discovered_adj": None,
+                "unique_bug_ids_discovered_adj": None}
+    strict_adj = set(strict_ids) - set(normal)
+    discovered = (set(found) - set(normal)) & strict_adj
+    return {"unique_bugs_reported_strict_adj": len(strict_adj), "unique_bugs_discovered_adj": len(discovered),
+            "unique_bug_ids_discovered_adj": sorted(discovered)}
+
+
+def trigger_fields(trig_rows, step_rows: list[dict], task: str) -> dict:
+    """trigger_precision_adj / trigger_recall_unique_adj / trigger_recall_events_adj for agents with
+    a memory check (None when no check ran; absent for agents without the hook)."""
+    if trig_rows is None:
+        return {}
+    keys = ("precision_adj", "recall_unique_adj", "recall_events_adj")
+    if not any(t["checked"] for t in trig_rows):
+        return {f"trigger_{k}": None for k in keys}
+    ev = evaluate_trigger(trig_rows, step_rows, load_normal_play().get(task))
+    return {f"trigger_{k}": ev[k] for k in keys}
+
+
+def actor_fields(trig_rows, step_rows: list[dict], task: str) -> dict:
+    """bugs_triggered_by_llm_adj / bugs_triggered_by_cheap_adj: unique adjusted bugs whose first
+    occurrence came from an intent chosen by the LLM / by the cheap policy (memory agents only)."""
+    if trig_rows is None:
+        return {}
+    normal = load_normal_play().get(task)
+    if normal is None:
+        return {"bugs_triggered_by_llm_adj": None, "bugs_triggered_by_cheap_adj": None}
+    actor_at = {g: t.get("actor") for t in trig_rows for g in range(t["start"], t["end"] + 1)}
+    first = {}
+    for r in step_rows:
+        for b in r["bug_ids_triggered"]:
+            if b not in normal:
+                first.setdefault(b, r["global_step"])
+    by = {"llm": [], "cheap": []}
+    for b, g in sorted(first.items()):
+        if actor_at.get(g) in by:
+            by[actor_at[g]].append(b)
+    return {"bugs_triggered_by_llm_adj": len(by["llm"]), "bugs_triggered_by_cheap_adj": len(by["cheap"]),
+            "bug_ids_triggered_by_llm_adj": by["llm"], "bug_ids_triggered_by_cheap_adj": by["cheap"]}
+
+
 def phase_split(stats: RunStats, step_rows: list[dict]) -> dict:
     out = {}
     for ph in ("explore", "repro"):
@@ -264,6 +312,7 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
     error = None
     ctl = ReproController(repro, budgets.max_env_steps)
     step_rows: list[dict] = []  # kept for bug-report attribution and repro scoring
+    trig_rows: list[dict] | None = [] if hasattr(agent, "on_transition") else None  # memory checks
     t0 = time.perf_counter()
     obs_text = adapter.reset()
     episode_step = 0
@@ -428,6 +477,19 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
                             obs_text, state, obs_summary = r.final.obs_text, r.final.state, r.final.summary
                         if r.n_steps:
                             stats.intents_executed += 1
+                            extra = {}
+                            hook = getattr(agent, "on_transition", None)
+                            if hook:   # agent-visible data only (memory agents build their TKG here)
+                                extra = hook(r, prev_state, state, {
+                                    "run": f"{task}/seed{seed}", "episode": stats.episodes,
+                                    "global_step_start": start, "global_step_end": stats.global_step,
+                                    "decision_id": decision_id, "intent_id": intent_id,
+                                    "phase": phase}) or {}
+                                dev = extra.get("deviation")
+                                counted = bool(dev) and dev.get("counted", True)
+                                trig_rows.append({"start": start, "end": stats.global_step, "checked": counted,
+                                                  "fired": counted and bool(dev.get("fire")),
+                                                  "actor": extra.get("actor")})
                             stats.intent_failures += r.error is not None
                             f_trans.write(json.dumps(VisibleTransition(
                                 prev_state=prev_state, intent=r.intent,
@@ -438,7 +500,11 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
                                 event_records=r.event_records, stop_reason=r.stop_reason,
                                 error=r.error, note=r.note, episode_ended=r.done,
                                 coerced=r.coerced, phase=phase,
-                                repro_attempt_id=ctl.attempt_id).to_row()) + "\n")
+                                repro_attempt_id=ctl.attempt_id, actor=extra.get("actor"),
+                                deviation=extra.get("deviation"),
+                                trigger_reason=extra.get("trigger_reason"),
+                                reference_rule_id=extra.get("reference_rule_id"),
+                                reference_verdict=extra.get("reference_verdict")).to_row()) + "\n")
                             stats.intents_coerced += r.coerced is not None
                         if r.done:
                             done = True
@@ -562,7 +628,17 @@ def run(agent, task: str, seed: int, budgets: Budgets, run_dir: Path, config: di
         **loop_metrics(decision_keys(step_rows)),
         # post hoc: IDs that also fire during scripted correct play (configs/normal_play_bugs.yaml)
         **normal_play_excluded(task, stats.first_found),
+        **discovered_fields(task, stats.first_found, strict_ids),
+        # oracle-side evaluation of the memory check (analysis only; see trigger_metrics.py)
+        **trigger_fields(trig_rows, step_rows, task),
+        **actor_fields(trig_rows, step_rows, task),
     }
+    fields = getattr(agent, "summary_fields", None)   # e.g. the TKG arm's escalations, tkg size
+    if fields:
+        summary.update({k: v for k, v in fields().items() if k not in summary})
+    artifacts = getattr(agent, "write_artifacts", None)   # e.g. tkg.json
+    if artifacts:
+        artifacts(run_dir)
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     if ledger is not None:
         status = ("error" if stats.stop_reason.startswith("error") else

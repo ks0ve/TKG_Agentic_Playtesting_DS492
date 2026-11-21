@@ -1,0 +1,238 @@
+{
+  "agent": "cheap",
+  "task": "V2_task_01_tomato",
+  "seed": 2,
+  "backend": null,
+  "model": null,
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": null,
+  "parse_errors": 0,
+  "total_env_steps": 1000,
+  "episodes": 5,
+  "llm_calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "total_tokens": 0,
+  "wall_time_s": 1.14,
+  "unique_bug_ids": [
+    1,
+    3,
+    8,
+    11,
+    13,
+    15,
+    16,
+    17,
+    19,
+    20,
+    28,
+    42,
+    47,
+    51,
+    52,
+    53,
+    54,
+    68
+  ],
+  "n_unique_bugs": 18,
+  "first_found_step": {
+    "1": 377,
+    "3": 379,
+    "8": 397,
+    "11": 377,
+    "13": 577,
+    "15": 254,
+    "16": 264,
+    "17": 192,
+    "19": 34,
+    "20": 83,
+    "28": 2,
+    "42": 197,
+    "47": 274,
+    "51": 199,
+    "52": 487,
+    "53": 575,
+    "54": 482,
+    "68": 377
+  },
+  "discovery_curve": [
+    {
+      "global_step": 2,
+      "cumulative_tokens": 0,
+      "unique_bugs": 1
+    },
+    {
+      "global_step": 34,
+      "cumulative_tokens": 0,
+      "unique_bugs": 2
+    },
+    {
+      "global_step": 83,
+      "cumulative_tokens": 0,
+      "unique_bugs": 3
+    },
+    {
+      "global_step": 192,
+      "cumulative_tokens": 0,
+      "unique_bugs": 4
+    },
+    {
+      "global_step": 197,
+      "cumulative_tokens": 0,
+      "unique_bugs": 5
+    },
+    {
+      "global_step": 199,
+      "cumulative_tokens": 0,
+      "unique_bugs": 6
+    },
+    {
+      "global_step": 254,
+      "cumulative_tokens": 0,
+      "unique_bugs": 7
+    },
+    {
+      "global_step": 264,
+      "cumulative_tokens": 0,
+      "unique_bugs": 8
+    },
+    {
+      "global_step": 274,
+      "cumulative_tokens": 0,
+      "unique_bugs": 9
+    },
+    {
+      "global_step": 377,
+      "cumulative_tokens": 0,
+      "unique_bugs": 12
+    },
+    {
+      "global_step": 379,
+      "cumulative_tokens": 0,
+      "unique_bugs": 13
+    },
+    {
+      "global_step": 397,
+      "cumulative_tokens": 0,
+      "unique_bugs": 14
+    },
+    {
+      "global_step": 482,
+      "cumulative_tokens": 0,
+      "unique_bugs": 15
+    },
+    {
+      "global_step": 487,
+      "cumulative_tokens": 0,
+      "unique_bugs": 16
+    },
+    {
+      "global_step": 575,
+      "cumulative_tokens": 0,
+      "unique_bugs": 17
+    },
+    {
+      "global_step": 577,
+      "cumulative_tokens": 0,
+      "unique_bugs": 18
+    },
+    {
+      "global_step": 1000,
+      "cumulative_tokens": 0,
+      "unique_bugs": 18
+    }
+  ],
+  "deliveries_success": 0,
+  "delivery_attempts": 7,
+  "agent_bug_reports": 0,
+  "bug_reports_discarded": 0,
+  "ignore_bug_ids": [
+    5
+  ],
+  "action_space": "intent",
+  "usd_cost": 0.0,
+  "decisions": 356,
+  "llm_calls_per_decision": 0.0,
+  "llm_calls_per_env_step": 0.0,
+  "llm_latency_mean_s": null,
+  "llm_latency_median_s": null,
+  "intents_executed": 356,
+  "intent_failures": 0,
+  "intent_failure_rate": 0.0,
+  "intents_coerced": 0,
+  "intent_coercion_rate": 0.0,
+  "reports_strict_match": 0,
+  "reports_lenient_match": 0,
+  "unique_bugs_reported_strict": 0,
+  "unique_bug_ids_reported_strict": [],
+  "bugs_by_proposed_class": {
+    "A_transition_anomaly": 12,
+    "B_no_transition_anomaly": 6
+  },
+  "bugs_by_family": {
+    "counter_pickup": 2,
+    "delivery": 1,
+    "dirty_plate": 7,
+    "plate_composition": 3,
+    "station_misuse": 3,
+    "trash": 2
+  },
+  "taxonomy_warnings": [],
+  "steps_explore": 1000,
+  "llm_calls_explore": 0,
+  "tokens_explore": 0,
+  "usd_explore": 0.0,
+  "steps_repro": 0,
+  "llm_calls_repro": 0,
+  "tokens_repro": 0,
+  "usd_repro": 0.0,
+  "n_unique_bugs_explore": 18,
+  "repro_attempts": 0,
+  "repro_skipped": {},
+  "repro_success_rate": null,
+  "unique_bugs_reproduced": 0,
+  "unique_bug_ids_reproduced": [],
+  "agent_claim_accuracy": null,
+  "loop_decision_fraction": 0.06179775280898876,
+  "cycle2_decision_fraction": 0.0,
+  "unique_bugs_excluding_normal_play": 18,
+  "normal_play_bug_ids": [
+    5
+  ],
+  "unique_bugs_reported_strict_adj": 0,
+  "unique_bugs_discovered_adj": 0,
+  "unique_bug_ids_discovered_adj": [],
+  "trigger_precision_adj": null,
+  "trigger_recall_unique_adj": null,
+  "trigger_recall_events_adj": null,
+  "bugs_triggered_by_llm_adj": 0,
+  "bugs_triggered_by_cheap_adj": 18,
+  "bug_ids_triggered_by_llm_adj": [],
+  "bug_ids_triggered_by_cheap_adj": [
+    1,
+    3,
+    8,
+    11,
+    13,
+    15,
+    16,
+    17,
+    19,
+    20,
+    28,
+    42,
+    47,
+    51,
+    52,
+    53,
+    54,
+    68
+  ],
+  "tkg_nodes": 1110,
+  "tkg_edges": 3626,
+  "tkg_transitions": 356,
+  "reference_coverage": 0.5702247191011236,
+  "reference_match_rate": 1.0,
+  "reference_mismatches": 0,
+  "manual_mismatches": []
+}

@@ -31,6 +31,12 @@ class VisibleTransition:
     coerced: str | None = None
     phase: str = "explore"
     repro_attempt_id: int | None = None
+    # set by memory agents (cheap / tkg) through the runner's on_transition hook
+    actor: str | None = None          # cheap | llm
+    deviation: dict | None = None     # memory check: {fire, reason, score, ...}
+    trigger_reason: str | None = None  # TKG arm: why the LLM chose this intent, or "cap_release"
+    reference_rule_id: str | None = None   # memory agents: the game-manual rule for this situation
+    reference_verdict: str | None = None   # match | mismatch | none (no rule)
 
     def to_row(self) -> dict:
         return asdict(self)

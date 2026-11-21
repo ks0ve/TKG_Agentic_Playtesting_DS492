@@ -1,0 +1,247 @@
+{
+  "agent": "tkg",
+  "task": "V2_task_07_tomato_steak",
+  "seed": 1,
+  "backend": "anthropic",
+  "model": "claude-haiku-5-5",
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": 0.0,
+  "parse_errors": 0,
+  "total_env_steps": 1000,
+  "episodes": 33,
+  "llm_calls": 832,
+  "input_tokens": 4187985,
+  "output_tokens": 176102,
+  "total_tokens": 4364087,
+  "wall_time_s": 9294.76,
+  "unique_bug_ids": [
+    1,
+    3,
+    4,
+    6,
+    15,
+    17,
+    19,
+    20,
+    21,
+    25,
+    28,
+    42,
+    47,
+    51,
+    68,
+    78,
+    127
+  ],
+  "n_unique_bugs": 17,
+  "first_found_step": {
+    "1": 103,
+    "3": 98,
+    "4": 28,
+    "6": 30,
+    "15": 575,
+    "17": 757,
+    "19": 949,
+    "20": 646,
+    "21": 143,
+    "25": 103,
+    "28": 58,
+    "42": 576,
+    "47": 579,
+    "51": 779,
+    "68": 152,
+    "78": 28,
+    "127": 152
+  },
+  "discovery_curve": [
+    {
+      "global_step": 28,
+      "cumulative_tokens": 83117,
+      "unique_bugs": 2
+    },
+    {
+      "global_step": 30,
+      "cumulative_tokens": 93335,
+      "unique_bugs": 3
+    },
+    {
+      "global_step": 58,
+      "cumulative_tokens": 217446,
+      "unique_bugs": 4
+    },
+    {
+      "global_step": 98,
+      "cumulative_tokens": 388112,
+      "unique_bugs": 5
+    },
+    {
+      "global_step": 103,
+      "cumulative_tokens": 413313,
+      "unique_bugs": 7
+    },
+    {
+      "global_step": 143,
+      "cumulative_tokens": 620826,
+      "unique_bugs": 8
+    },
+    {
+      "global_step": 152,
+      "cumulative_tokens": 664404,
+      "unique_bugs": 10
+    },
+    {
+      "global_step": 575,
+      "cumulative_tokens": 2520229,
+      "unique_bugs": 11
+    },
+    {
+      "global_step": 576,
+      "cumulative_tokens": 2525965,
+      "unique_bugs": 12
+    },
+    {
+      "global_step": 579,
+      "cumulative_tokens": 2537692,
+      "unique_bugs": 13
+    },
+    {
+      "global_step": 646,
+      "cumulative_tokens": 2757950,
+      "unique_bugs": 14
+    },
+    {
+      "global_step": 757,
+      "cumulative_tokens": 3245105,
+      "unique_bugs": 15
+    },
+    {
+      "global_step": 779,
+      "cumulative_tokens": 3350192,
+      "unique_bugs": 16
+    },
+    {
+      "global_step": 949,
+      "cumulative_tokens": 4138423,
+      "unique_bugs": 17
+    },
+    {
+      "global_step": 1000,
+      "cumulative_tokens": 4364087,
+      "unique_bugs": 17
+    }
+  ],
+  "deliveries_success": 22,
+  "delivery_attempts": 25,
+  "agent_bug_reports": 9,
+  "bug_reports_discarded": 0,
+  "ignore_bug_ids": [
+    5
+  ],
+  "action_space": "intent",
+  "usd_cost": 0.506849,
+  "decisions": 838,
+  "llm_calls_per_decision": 0.9928400954653938,
+  "llm_calls_per_env_step": 0.832,
+  "llm_latency_mean_s": 11.1656,
+  "llm_latency_median_s": 1.4642,
+  "intents_executed": 838,
+  "intent_failures": 0,
+  "intent_failure_rate": 0.0,
+  "intents_coerced": 1,
+  "intent_coercion_rate": 0.0011933174224343676,
+  "reports_strict_match": 1,
+  "reports_lenient_match": 1,
+  "unique_bugs_reported_strict": 1,
+  "unique_bug_ids_reported_strict": [
+    21
+  ],
+  "bugs_by_proposed_class": {
+    "A_transition_anomaly": 10,
+    "B_no_transition_anomaly": 5,
+    "EXCLUDED_normal_play": 2
+  },
+  "bugs_by_family": {
+    "cooking_timing": 1,
+    "counter_pickup": 2,
+    "delivery": 2,
+    "dirty_plate": 2,
+    "plate_composition": 6,
+    "station_misuse": 3,
+    "trash": 1
+  },
+  "taxonomy_warnings": [],
+  "steps_explore": 950,
+  "llm_calls_explore": 787,
+  "tokens_explore": 4096393,
+  "usd_explore": 0.475897,
+  "steps_repro": 50,
+  "llm_calls_repro": 45,
+  "tokens_repro": 267694,
+  "usd_repro": 0.030953,
+  "n_unique_bugs_explore": 17,
+  "repro_attempts": 5,
+  "repro_skipped": {
+    "max_attempts": 3
+  },
+  "repro_success_rate": null,
+  "unique_bugs_reproduced": 0,
+  "unique_bug_ids_reproduced": [],
+  "agent_claim_accuracy": null,
+  "loop_decision_fraction": 0.21121718377088305,
+  "cycle2_decision_fraction": 0.059665871121718374,
+  "unique_bugs_excluding_normal_play": 9,
+  "normal_play_bug_ids": [
+    1,
+    3,
+    4,
+    5,
+    6,
+    21,
+    68,
+    78,
+    127
+  ],
+  "unique_bugs_reported_strict_adj": 0,
+  "unique_bugs_discovered_adj": 0,
+  "unique_bug_ids_discovered_adj": [],
+  "trigger_precision_adj": 0.02269861286254729,
+  "trigger_recall_unique_adj": 1.0,
+  "trigger_recall_events_adj": 1.0,
+  "bugs_triggered_by_llm_adj": 9,
+  "bugs_triggered_by_cheap_adj": 0,
+  "bug_ids_triggered_by_llm_adj": [
+    15,
+    17,
+    19,
+    20,
+    25,
+    28,
+    42,
+    47,
+    51
+  ],
+  "bug_ids_triggered_by_cheap_adj": [],
+  "tkg_nodes": 1499,
+  "tkg_edges": 6349,
+  "tkg_transitions": 838,
+  "reference_coverage": 0.850835322195704,
+  "reference_match_rate": 1.0,
+  "reference_mismatches": 0,
+  "manual_mismatches": [],
+  "warmup_steps": 0,
+  "trigger": "every_n",
+  "investigate_k": 1,
+  "repro_path": true,
+  "escalations": 793,
+  "llm_decisions": 832,
+  "llm_resumes": 0,
+  "max_consecutive_llm": 0,
+  "cap_releases": 0,
+  "explorer_decisions_unprompted": 6,
+  "trigger_checks": 793,
+  "trigger_fires": 793,
+  "trigger_fire_rate": 1.0,
+  "deviation_reasons": {
+    "every_n": 793
+  }
+}

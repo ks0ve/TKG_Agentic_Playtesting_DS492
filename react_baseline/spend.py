@@ -217,10 +217,37 @@ def pilot_measurement(agent: str, model: str | None, pilot_root: Path | str = PI
     return None
 
 
-def estimate_run(agent: str, profile, steps: int, pilot_root: Path | str = PILOT_ROOT) -> dict:
-    """-> {usd, wall_s, calls, source, calls_per_step, tokens_in, tokens_out, latency_s}."""
+def grid_measurement(grid_dir: Path | str, model: str | None) -> dict | None:
+    """Per-call numbers pooled over the finished runs of ``model`` in a grid's output folder (any
+    agent; "_stale" folders are skipped). For an arm whose closest call rate is another arm's."""
+    root = REPO_ROOT / grid_dir
+    rows = []
+    for sp in sorted(root.glob("*/summary.json")):
+        if "_stale" in sp.parent.name:
+            continue
+        try:
+            s = json.loads(sp.read_text())
+        except json.JSONDecodeError:
+            continue
+        if s.get("model") == model and s.get("llm_calls") and s.get("total_env_steps"):
+            rows.append(s)
+    if not rows:
+        return None
+    calls, steps = (sum(s[k] for s in rows) for k in ("llm_calls", "total_env_steps"))
+    return {"source": f"{len(rows)} runs in {Path(grid_dir).as_posix()}",
+            "calls_per_step": calls / steps,
+            "tokens_in": sum(s.get("input_tokens") or 0 for s in rows) / calls,
+            "tokens_out": sum(s.get("output_tokens") or 0 for s in rows) / calls,
+            "latency_s": sum(s.get("llm_latency_median_s") or 0.0 for s in rows) / len(rows),
+            "wall_per_step_s": sum(s.get("wall_time_s") or 0.0 for s in rows) / steps}
+
+
+def estimate_run(agent: str, profile, steps: int, pilot_root: Path | str = PILOT_ROOT,
+                 from_grid: Path | str | None = None) -> dict:
+    """-> {usd, wall_s, calls, source, calls_per_step, tokens_in, tokens_out, latency_s}. ``from_grid``:
+    use that grid folder's measurements when it has any, instead of the agent's latest pilot."""
     model = getattr(profile, "model", None) if profile is not None else None
-    m = pilot_measurement(agent, model, pilot_root)
+    m = (grid_measurement(from_grid, model) if from_grid else None) or pilot_measurement(agent, model, pilot_root)
     if m is None:
         if profile is None:  # no-LLM agents: measured ~1.5 ms per step offline
             m = {"source": "default (no LLM)", "calls_per_step": 0.0, "tokens_in": 0, "tokens_out": 0,

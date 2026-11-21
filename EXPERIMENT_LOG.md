@@ -63,8 +63,8 @@ interesting happens. With qwen2.5:7b it also cannot reliably map directions to a
 2026-10-07), so it fails the pilot gate on navigation alone. A baseline that spends its budget
 walking makes any memory-based arm look better for a reason unrelated to the research question.
 
-**Problem 2, the action-interface confound.** The TKG arm will plan at a higher level (a cheap
-policy for routine moves, the LLM only when memory flags an unexpected outcome). If that arm
+**Problem 2, the action-interface confound.** The TKG arm will plan at a higher level (an exploration
+agent (no LLM) for routine moves, the LLM only when memory flags an unexpected outcome). If that arm
 also gets a coarser action interface than ReAct, the comparison mixes two effects: "memory
 decides *when* to call the LLM" and "the action interface is coarser".
 
@@ -180,7 +180,7 @@ are not intent failures. Off-map, unreachable and unparseable intents are still 
 and the pilot gate are unchanged.
 
 **Scope.** This is part of the shared Action reader, so it applies identically to every agent,
-including the future TKG arm's cheap policy and LLM. It is interface design, not planning.
+including the future TKG arm's exploration agent and LLM. It is interface design, not planning.
 
 ## 2026-10-20/21: Post-tolerance pilots (tomato, seed 0, 50 steps, temperature 0.7, history 10)
 
@@ -485,3 +485,351 @@ confirmed here." Two changes:
   `bug_report_discarded` and counted in summary `bug_reports_discarded`.
 
 Prompt hash updated in `configs/frozen/baseline_v2_1.yaml`; the react-raw snapshot was regenerated.
+
+## 2026-10-26: TKG arm v1 (branch `tkg-arm`; offline, mock LLM only)
+
+Built on baseline-v2, porting the ideas of Tom's `origin/cheap-agent-baseline` (observed graph,
+novelty agent) without merging it. The changes from his draft:
+- **Structured data, not text.** The graph is built from `visible_state` and the event records,
+  not observation text.
+- **One transition per executed intent**, not per button press.
+- **Abstract expectation keys.** Expectations are keyed on coordinate-free ctx0 / ctx1
+  abstractions; exact-state hashes are kept only as the State node ids.
+- **Intents.** The exploration agent (no LLM) emits intents through the shared Action reader, with novelty
+  counts from the TKG.
+- **No observation text in steps.jsonl.** transitions.jsonl already holds the structured states.
+
+Modules: `memory/abstraction.py`, `memory/tkg.py`, `memory/trigger.py`,
+`react_baseline/cheap_policy.py`, `react_baseline/tkg_agent.py`, plus add-only runner hooks.
+See the README section "TKG arm".
+
+**Mock measurements** (1,000 steps, seeds 0–2, tkg1 defaults: warm-up 200, k 3, tau 0.15,
+min_support 3; mock LLM = seeded random intents):
+
+| task | trigger fire rate (phase 2) | escalations / 1,000 post-warm-up steps | LLM calls / env step | fire reasons |
+|---|---|---|---|---|
+| 01 tomato | 0.256–0.324 (mean 0.29) | 70–81 (mean 77) | 0.23–0.28 | novel 349, surprising 2 |
+| 11 salad | 0.290–0.305 (mean 0.30) | 69–78 (mean 74) | 0.23–0.25 | novel 343 |
+
+**Exploration agent alone** (no LLM; 1,000 steps × 3 seeds), adjusted unique bugs per run (normal-play IDs
+removed):
+
+| task | exploration agent (no LLM) | random-intent (v2.0) | random (v2.0) |
+|---|---|---|---|
+| 01 tomato | 15.0 | 7.3 | 8.3 |
+| 07 tomato + steak | 16.0 | 7.3 | 9.7 |
+| 11 salad | 16.0 | 5.3 | 9.0 |
+
+**Design points that did not work as written, or needed a decision:**
+- **Novelty search drives the novelty trigger.** Almost every fire is "novel" (692 of 694). The
+  exploration agent deliberately seeks situations with the lowest TKG count, often zero, so its own
+  successes trip the novelty check. The mock LLM's random intents add more. "Surprising" almost
+  never fires on mock runs. I kept the design and am flagging it; it is the first thing to look at
+  in the Haiku pilot.
+- **"≤ k decisions" is per fire.** A new fire during an investigation refreshes k without counting
+  a new escalation, so the LLM keeps control while each of its own transitions deviates.
+- **Memory check during reproduction.** It is still run and logged (`deviation`), but it is not
+  counted in the fire rate and never escalates, since the LLM is already in control.
+- **Warm-up boundary.** The check starts with the first intent that begins after 200 env steps;
+  an intent straddling step 200 counts as warm-up.
+- **Where "resume" is explained.** The system prompt is unchanged, so the "reply Action: resume"
+  instruction lives in the MEMORY block. A resume reply is still an accounted LLM call, and the
+  exploration agent acts in that same decision.
+- **Pilot config.** There is no YAML pilot config: grid files are out of scope, and the grid
+  driver does not know the TKG flags. The pilot command is in RUN_COMMANDS.
+
+**2026-10-26, haiku-5.5 `max_output_tokens` 384 → 512** (all agents: react, react-raw, tkg). The
+Haiku TKG pilot (`runs/pilot/20261026-225747_tkg_V2_task_11_…`) had 2 parse errors from replies
+cut off before the Action line. The output cap only costs when it is used ($0.50/MTok), so 128
+more tokens add at most $0.000064 per call. The v2.1 frozen config's profile note is updated; the
+frozen hashes are unchanged, since the profile is not part of them. v2.1 runs made before this
+date used 384.
+
+## 2026-10-26: Trigger evaluation in shadow mode (no LLM; `runs/trigger_eval/20261026-232752/`)
+
+**Setup.** Exploration-agent trajectories on the 3 grid tasks, 1,000 steps, seeds 0–2. Every trigger
+was replayed on the same trajectory with a fresh memory. Metrics are adjusted (normal-play IDs
+removed):
+- recall_unique_adj is over the whole run; first occurrences during the warm-up count as missed.
+- Projected LLM calls = fires × k (here k = 1), an upper bound.
+- random and every_n are matched to tkg1c's fire rate.
+
+Each cell lists tomato / tomato+steak / salad.
+
+| warm-up | trigger | fire rate | precision_adj | recall_unique_adj | projected calls per step |
+|---|---|---|---|---|---|
+| 0 | tkg1 | 0.40 / 0.46 / 0.41 | 0.15 / 0.13 / 0.15 | **1.00 / 1.00 / 1.00** | 0.14 / 0.16 / 0.15 |
+| 0 | tkg0 | identical to tkg1 | | | |
+| 0 | tkg1c | 0.16 / 0.18 / 0.17 | 0.24 / 0.24 / 0.29 | 0.45 / 0.59 / 0.62 | 0.06 / 0.07 / 0.06 |
+| 0 | random (matched) | 0.15 / 0.18 / 0.17 | 0.18 / 0.15 / 0.19 | 0.17 / 0.12 / 0.16 | 0.06 |
+| 0 | every_n (matched) | 0.15 / 0.19 / 0.17 | 0.17 / 0.17 / 0.15 | 0.19 / 0.19 / 0.12 | 0.06 |
+| 200 | tkg1 | 0.32 / 0.38 / 0.31 | 0.14 / 0.14 / 0.16 | 0.42 / 0.54 / 0.48 | 0.09 / 0.11 / 0.09 |
+| 200 | tkg1c | 0.10 / 0.14 / 0.11 | 0.22 / 0.21 / 0.31 | 0.17 / 0.21 / 0.27 | 0.03 / 0.04 / 0.03 |
+| 200 | random (matched) | 0.12 / 0.14 / 0.12 | | 0.07 / 0.08 / 0.06 | 0.03 |
+| 200 | every_n (matched) | 0.10 / 0.14 / 0.11 | | 0.02 / 0.11 / 0.02 | 0.03 |
+
+tkg1c sweep, means over the 3 tasks (fire rate / recall_unique_adj / projected calls per step at
+k = 1; k = 3 triples the calls):
+
+| warm-up | tau | min_support 2, 3, 5 |
+|---|---|---|
+| 0 | 0.05 | 0.086 / 0.40 / 0.031, with min_support making no difference |
+| 0 | 0.15 | 0.16–0.18 / 0.55 / 0.06 |
+| 0 | 0.3 | 0.36–0.43 / 0.84 / 0.13–0.15 |
+| 200 | 0.05 | 0.03 / 0.12 / 0.01 |
+| 200 | 0.15 | 0.11–0.12 / 0.22 / 0.03 |
+| 200 | 0.3 | 0.31–0.39 / 0.41 / 0.09–0.11 |
+
+**Reading.**
+- **The warm-up is what lost the bugs.** With warm-up 200, every trigger misses roughly half or
+  more of the first occurrences. This matches the Haiku pilot.
+- **Fires saturate as memory fills.** With warm-up 0, tkg1 fires about 30 times per 100 steps at
+  first and 5–7 per 100 by steps 700–1,000.
+- **Temporal context adds nothing here.** tkg0 equals tkg1 on these trajectories: almost every
+  fire is "novel".
+- **tkg1c trades recall for rate.** It cuts fires by 2.5x but loses 40–55% of recall. It still
+  beats matched random and every_n by about 3x on recall.
+
+**Recommendation** (recall_unique_adj first, then projected calls, at most about 0.25 per step):
+`--trigger tkg1 --warmup-steps 0 --investigate-k 1 --max-consecutive-llm 6`. That gives recall
+1.00 on all three tasks at about 0.15 projected calls per step.
+- With the stricter "fire rate ≤ 0.10" rule, the best is tkg1c tau 0.05 / min_support 2 /
+  warm-up 0: recall 0.40.
+- The best tkg1c overall is tau 0.3 / min_support 2 / warm-up 0: recall 0.84 at 0.13 calls per
+  step.
+- Caveat: these are exploration-only trajectories. With the LLM in control the path changes, and a fire
+  during an investigation restarts k instead of adding k, so real call rates should be at or below
+  the projection.
+
+## 2026-10-27: TKG-arm defaults: tkg1, warm-up 0, k 1
+
+New defaults: `--trigger tkg1` (tau 0.15, min_support 3), `--warmup-steps 0`,
+`--investigate-k 1`, with `--max-consecutive-llm 6` unchanged. The evidence is the shadow-mode run
+`runs/trigger_eval/20261026-232752` (entry above).
+- **Warm-up 0 roughly doubles first-occurrence recall.** For tkg1, recall_unique_adj goes from
+  0.42 / 0.54 / 0.48 to 1.00 / 1.00 / 1.00 on tomato / tomato+steak / salad. In a deterministic
+  game, an observed-memory trigger gets one chance per bug, at its first occurrence, and an
+  LLM-free warm-up spends those chances.
+- **tkg1 catches every first occurrence** (recall 1.00) at a fire rate of about 0.40, which is
+  about 0.15 projected LLM calls per step at k = 1.
+- **Memory triggers get 3–4x the recall of random / every_n at a matched rate.** For tkg1c at
+  warm-up 0: 0.45–0.62 vs 0.12–0.19.
+- **tkg1 == tkg0 exactly.** In a deterministic game whose bugs are state-local, the previous
+  outcome adds no detection power.
+
+## 2026-10-27: Trigger evaluation v2: refusal, tkg1s, matched baselines, A/B split (`runs/trigger_eval/20261027-005617`)
+
+**Setup.** Shadow mode, warm-up 0, exploration-agent trajectories, 3 grid tasks × seeds 0–2 × 1,000
+steps. random / every_n are matched to each of tkg1's and tkg1c's fire rates. The A/B split uses
+the draft taxonomy's `proposed_rq3_class`: A = transition anomaly, B = no transition anomaly.
+Adjusted bugs per run: 13–18, of which A 9–14 and B 4–6. Each cell lists tomato / tomato+steak /
+salad; projected calls are per 1,000 steps at k = 1.
+
+| trigger | fire rate | precision_adj | recall_unique_adj | recall A | recall B | projected calls / 1k |
+|---|---|---|---|---|---|---|
+| tkg1 | .40/.46/.41 | .15/.13/.15 | **1.00/1.00/1.00** | 1.00/1.00/1.00 | **1.00/1.00/1.00** | 142/163/149 |
+| tkg0 | identical to tkg1 | | | | | |
+| tkg1c | .16/.18/.17 | .24/.24/.29 | .45/.59/.62 | .56/.70/.80 | .21/.25/.22 | 56/65/63 |
+| tkg1s | .85/.90/.87 | .17/.17/.18 | 1.00/1.00/1.00 | 1.00/1.00/1.00 | 1.00/1.00/1.00 | 305/323/319 |
+| refusal | .45/.48/.46 | **.30/.27/.31** | .67/.74/.71 | **1.00/1.00/1.00** | **0.00/0.00/0.00** | 160/172/168 |
+| random@tkg1 | .39/.45/.40 | .20/.18/.20 | .30/.35/.42 | .30/.32/.33 | .33/.42/.67 | 138/161/146 |
+| every_n@tkg1 | .39/.50/.39 | .18/.17/.19 | .41/.38/.39 | .41/.41/.40 | .41/.25/.35 | 139/179/142 |
+| random@tkg1c | .15/.18/.17 | .18/.15/.19 | .17/.12/.16 | .23/.14/.11 | .06/.08/.30 | 55/65/63 |
+| every_n@tkg1c | .15/.19/.17 | .17/.17/.15 | .19/.19/.12 | .22/.26/.17 | .11/.00/.00 | 54/67/64 |
+
+**Reading.**
+- **tkg1 is the only trigger with full recall on both classes at a moderate rate.** At a matched
+  rate, random and every_n get 0.30–0.42.
+- **The memoryless refusal baseline splits cleanly by class.** It catches every A bug (the game
+  visibly refuses or does nothing) and no B bug (bugs with no visible anomaly). It has the best
+  precision, but only memory finds the B class.
+- **tkg1s matches tkg1's recall but fires on ~0.87 of transitions,** so the sequence context only
+  adds cost.
+- **tkg1c trades B recall away first** (B 0.21–0.25 vs A 0.56–0.80).
+
+## 2026-10-28: Game-manual reference in the live TKG (ports Tom's reference_graph / compare_graphs)
+
+**Rules.** `configs/reference_rules.yaml` and `memory/reference.py` hold 19 rules keyed on ctx0. They
+were written only from the system prompt's GAME RULES text plus Tom's floor-movement rule;
+bug_manager.py, the taxonomy and the normal-play sets were not consulted. They cover moves, waits,
+wall bumps, pickups, putdowns (counter, cutting board, pan, rice cooker, sink), chop, wash, plate
+additions, delivery and trash. Unknown situations return None.
+
+Coverage on the 9 stored exploration-agent trajectories (`runs/trigger_eval/20261027-005617/runs`, 3,245
+transitions):
+
+| version | covered | matched (of covered) |
+|---|---|---|
+| first, literal version | 71.9% | 75.5% |
+| final | **54.9%** | **99.2%** (1,765 / 1,780) |
+
+**Rule errors, fixed from manual sentences:**
+- "Prepared ingredients are combined on a clean plate": only prepared items on a clean plate.
+- What each station is for:
+  - "vegetables, fish and steak are chopped on the cutting board"
+  - "Steak must be chopped and then cooked in the pan"
+  - "Rice is cooked in the rice cooker"
+  - "Delivered plates come back dirty and can be washed in the sink"
+- "Pans and rice cookers cook on their own while time passes": the steak may already be cooked on
+  the step it enters the pan.
+
+**Not covered.** The manual says nothing about these, so they remain unknown:
+- empty hands on an empty counter or station
+- unprepared food onto a plate
+- food onto an occupied counter
+- the oven
+
+**manual_mismatch (the game differs from the manual; kept as written; 15 transitions):**
+- Picking up the returned dirty plate reveals a second item under it on the same counter (9).
+- You pick up a different item than the one the counter shows, and the shown item stays (4).
+- Empty hands on an item on a counter does nothing (2).
+
+**Live TKG integration.**
+- Manual rules are Expectation nodes with source "reference", linked by ASSESSED_AGAINST.
+- Lookup order: observed ctx1 → observed ctx0 (each at min_support or more) → reference → unseen.
+- Transitions carry `reference_rule_id` and `reference_verdict`.
+- Summary: `reference_coverage`, `reference_match_rate`, `reference_mismatches`,
+  `manual_mismatches`.
+- The MEMORY block adds "Memory expected: … (from observed, seen n times | the game manual |
+  nothing: first time). This time: …".
+
+**Triggers tkg1r / tkg1r_strict.** Shadow mode, warm-up 0, the same 9 trajectories
+(`runs/trigger_eval/20261028-104401`); random / every_n matched to each trigger. Each cell lists
+tomato / tomato+steak / salad; calls are per 1,000 steps at k = 1.
+
+| trigger | fire rate | precision_adj | recall_unique_adj | recall A | recall B | calls / 1k |
+|---|---|---|---|---|---|---|
+| tkg1 | .40/.46/.41 | .15/.13/.15 | **1.00/1.00/1.00** | 1.00/1.00/1.00 | **1.00/1.00/1.00** | 142/163/149 |
+| tkg1r | .23/.27/.23 | .19/.17/.20 | .56/.62/.63 | .80/.83/.82 | .07/.00/.17 | 82/96/84 |
+| tkg1r_strict | .20/.24/.20 | .22/.19/.23 | .56/.62/.63 | .80/.83/.82 | .07/.00/.17 | 71/85/74 |
+| random@tkg1 | .39/.45/.40 | .20/.18/.20 | .30/.35/.42 | .30/.32/.33 | .33/.42/.67 | 138/161/146 |
+| every_n@tkg1 | .39/.50/.39 | .18/.17/.19 | .41/.38/.39 | .41/.41/.40 | .41/.25/.35 | 139/179/142 |
+| random@tkg1r | .22/.27/.23 | .20/.19/.18 | .22/.25/.24 | .23/.25/.17 | .19/.25/.43 | 79/98/83 |
+| every_n@tkg1r | .23/.25/.22 | .16/.19/.21 | .19/.19/.21 | .15/.19/.23 | .27/.17/.15 | 83/89/79 |
+| random@tkg1r_strict | .19/.23/.20 | .19/.17/.19 | .22/.21/.20 | .23/.20/.14 | .19/.25/.37 | 69/84/73 |
+| every_n@tkg1r_strict | .20/.23/.22 | .15/.19/.21 | .11/.16/.21 | .07/.16/.23 | .19/.17/.15 | 71/83/79 |
+
+Fires per 100-step window: tkg1 goes from ~30 to ~5; tkg1r from ~14 to ~4.
+
+**Reading.**
+- **The manual roughly halves tkg1's fires and LLM calls but costs about 40% of recall.** Almost
+  all of B is lost (0.00–0.17).
+- **Why B is lost.** B-class bugs (no transition anomaly) fire in situations whose visible outcome
+  is exactly what the manual predicts. Silencing manual-predicted first-time situations therefore
+  silences B.
+- **A is mostly kept** (0.80–0.83): the game refuses or misbehaves where the manual says it
+  should work.
+- **Memory + manual still beats matched random / every_n by 2.5–3x.**
+- **tkg1r_strict saves ~12% more calls at the same recall.**
+
+**Recommendation: keep tkg1 as the default** (recall first; ~0.15 calls per step, under the 0.25
+limit). tkg1r is the cheaper option if the budget binds: about 0.09 calls per step, recall 0.6.
+The reference's main live value is the expectation line in the MEMORY block and the
+`manual_mismatches` metric.
+
+## 2026-10-28: Items sharing a counter tile (the manual_mismatch cases); translator v2.2
+
+**Method.** Deterministic replay of the 9 stored exploration-agent trajectories (`runs/trigger_eval/20261027-005617/runs`):
+the button presses from steps.jsonl were replayed, and the raw `item_manager` contents of the bumped tile and
+its neighbours were dumped before and after each mismatch step. No LLM.
+
+**Findings.**
+- **(i) Yes, two items can occupy one counter tile.**
+  - Delivery (`event_manager.py:316-327`) and the trash can (`event_manager.py:341-376`) both call
+    `ActionWrapper.reset_item` (`action_wrapper.py:96-99`).
+  - That runs `MovableItem.refresh` (`items.py:126-131`, back to the start tile) and then
+    `MapManager.place_item` (`map_manager.py:143-145`), which overwrites the tile's map code.
+  - Neither checks whether another item already lies there.
+  - Putting an item down on a counter that hides an item stacks again.
+  - On the 9 trajectories: 20 stacks (9 trash, 7 delivery, 4 put-down); 6.6% of steps had a stacked tile.
+- **(ii) The game sees only the item that matches the map code** (`event_manager.py:100-110` with
+  `item_manager.py:164-168`).
+  - Picking it up resets the tile to "counter" (`action_wrapper.py:24-35`) even though another item is
+    still there.
+  - Our v2.1 translator listed every item in ITEMS, but nothing said which one the map shows.
+  - ADJACENT and the event `tile_before` / `tile_after` showed one item, picked plates-first. That was
+    sometimes the wrong one: "picked up steak" while the record said a plate was there.
+  - An item under a "counter" map code did not show in ADJACENT or the event records at all.
+- **(iii) "Empty hands on an item on a counter does nothing" (2 cases).**
+  - That item was left behind when the item on top of it was picked up. The map code says "counter",
+    so the game treats the tile as empty: nothing happens, and oracle bug 28
+    PICKUP_FROM_EMPTY_COUNTER fires.
+- **(d) No oracle ID fires because a stack forms.**
+  - 43 COUNTER_OVERWRITE and 49 COUNTER_STACK_MULTIPLE_PLATES check the map code
+    (`bug_manager.py:332-337`), so a counter hiding an item escapes them.
+  - Draft-taxonomy flags were added to rows 28, 43 and 49, with a note in
+    `configs/bug_taxonomy_notes.md`. Oracle semantics are unchanged.
+
+**Fix: translator v2.2, all arms** (`configs/frozen/baseline_v2_2.yaml`; the v2.1 freeze is kept and
+superseded). Every item on a tile is shown:
+- **ITEMS** says "also on this tile: …" or "the map shows … / an empty counter on this tile".
+- **ADJACENT and STATIONS** list all the items.
+- **Legend:** a line appears while any tile holds more than one item.
+- **Event records:** the shown item is `holding`, and the others go in an add-only `also` list.
+- **visible_state items** gain `hidden` / `stacked` flags (present only when true).
+- **The abstraction** appends `+also:<item>` to the entity string.
+
+Frozen identity:
+- A `translator_version` key was added (`2.2-all-items-per-tile`).
+- The renderer hash now also replays a stacking probe. The old probes never built a stack, so the hash
+  alone could not see the change.
+- `tests/test_stacked_items.py` reproduces the respawn stack on the tomato map.
+
+**Reruns (nothing stale):**
+- **Normal-play sets:** unchanged, byte-identical (correct play never stacks).
+- **Exploration-agent-trajectory trigger_eval:** `runs/trigger_eval/20261028-111305`. Conclusions unchanged: tkg1
+  recall 1.00 on A and B at fire rate .39/.45/.43; tkg1r .56–.63 (B .00–.17); refusal A 1.00, B 0.00;
+  tkg1c .52–.66; matched random / every_n .08–.52.
+- **Reference coverage on the new trajectories:** 54.8%, match 98.3%. All 31 mismatches are now one
+  cause: you pick up the item the map shows and the other one stays. The v2.1-era entries "a different
+  item is picked up" and "a pickup does nothing" were translator artifacts.
+
+## 2026-10-28: Final paid grids defined (no runs yet)
+
+- **`configs/grids/final_tkg.yaml`:**
+  - tkg on haiku-5.5 with the frozen defaults: tkg1, tau 0.15, min_support 3, warm-up 0, k 1, cap 6,
+    repro path on;
+  - reproduction on (50-step attempts);
+  - 3 grid tasks × seeds 0–2 × 1,000 steps;
+  - $0.40 cap per run.
+- **`configs/grids/final_react.yaml`:** react on haiku-5.5, the same tasks, seeds, steps and
+  reproduction; $1.00 cap per run.
+- **TKG freeze `configs/frozen/tkg_v1.yaml`:**
+  - the MEMORY / recorded-path text hash (rendered samples + the source of the functions that build
+    them);
+  - the reference-rules hash (line endings normalised);
+  - the exploration-agent parameters;
+  - the trigger / agent settings.
+
+  The grid driver checks every listed freeze. It refuses a TKG grid whose `tkg:` settings differ
+  from the freeze, passes them as CLI flags, and gained `--tasks` / `--seeds` filters.
+- **Dry run** (estimates from the latest pilots):
+
+  | grid | runs | est. per run | est. total | wall time | estimate source |
+  |---|---|---|---|---|---|
+  | TKG | 9 | $0.151 | $1.36 | ~1.1 h | the 1,000-step TKG salad pilot |
+  | ReAct | 9 | $0.381 | $3.43 | ~3.3 h | a 50-step salad pilot; the v2.0 grid actually averaged ~$0.49 per run, so expect ~$4.4 |
+
+  The budget left is $12.73.
+
+## 2026-11-08: Always-on hybrid defined (no runs yet)
+
+- **Naming.** The cheap agent is now called the exploration agent (no LLM), and this log uses that name throughout.
+  `--agent explorer` is an alias of `--agent cheap`; logs keep the id `cheap`.
+- **What.** The always-on hybrid keeps the TKG arm's exploration agent, prompts and memory and asks the LLM at every
+  decision. For scale, the final TKG runs used 0.15–0.27 calls per step and the final ReAct runs 0.75–0.94.
+- **Definition.** `every_n` with n = 1, `--max-consecutive-llm 0` (no cap), k 1, warm-up 0, reproduction on (50 steps).
+  The MEMORY block's first instruction sentence becomes "Routine check-in: the memory did not flag this step; it fires
+  on a fixed schedule." for the `every_n` and `random` triggers only.
+- **Freeze.** `tkg_v1` is unchanged and still matches the code. `tkg_v1_alwayson` adds a hash of the routine text.
+  Check: all 1,428 MEMORY blocks of the 9 `final_tkg` runs re-render byte-identically.
+- **Dry run:** $0.459 per run, $4.13 for 9 runs, ~6.3 h, pooled from the 9 `final_react` runs (their mean is the same
+  $0.459 per run). The budget left is $7.55.
+- **Decisions the LLM does not see.** The exploration agent still makes the run's first decision and the first decision
+  after each reproduction attempt, because no memory check has fired yet and there is no MEMORY block to show. There is
+  no new `trigger_reason` for them. The summary field `explorer_decisions_unprompted` counts them; with
+  `max_attempts: 5` that is at most 6 per run. It exists only in runs made after this change.
+- **Paper wording.** "The LLM is consulted at every decision except the first decision after each reset (at most 6 per
+  run)." Here "reset" means the run start and the end of a reproduction attempt only. After an ordinary episode reset
+  (order completed or the 200-step limit) the LLM acts first, and a decision it hands back with `Action: resume` still
+  consulted it, so neither is counted.

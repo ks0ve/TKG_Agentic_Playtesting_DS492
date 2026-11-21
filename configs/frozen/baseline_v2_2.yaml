@@ -1,0 +1,44 @@
+# Frozen baseline v2.2 configuration (2026-10-28). Supersedes baseline_v2_1.yaml (kept as the v2.1 record).
+# Same settings, prompts and Action reader as v2.1. Translator v2.2: when two items share a counter tile
+# (SAGE respawns a thrown-away or delivered item on its start tile even if another item lies there), every
+# item is shown: ITEMS says which one the map shows, ADJACENT and STATIONS list all of them, a legend line
+# appears, event records gain an add-only "also" list and visible_state items gain hidden / stacked flags.
+# See EXPERIMENT_LOG 2026-10-28 "items sharing a counter tile".
+# The grid driver refuses to run if the code's identity no longer matches (override: --allow-unfrozen).
+# Check: python -m react_baseline.frozen --check <this file>
+name: baseline_v2_2
+prompts_sha256: 4c0f26843c784fc2eb0638e4a90b94f47f92bb13cda26b5fb50df24dcf292e0b   # + Bug-report format sentence
+renderer_sha256: 85806c78aaa53cef829c9b06bc1c07cead876b30bfefc3dfb6590ebf48d00871   # v2.2: every item on a tile shown (stacking probe)
+action_reader_version: 2.1-floor-tolerant
+translator_version: 2.2-all-items-per-tile
+action_reader:
+  floor_tolerance: true      # goto on non-floor approaches without bumping; interact on floor walks
+  max_macro_len: 40
+  bfs_order: [right, down, left, up]
+agent:
+  history: 10
+  temperature: 0.7           # where supported; Claude Haiku 5.5 runs at its API default
+  intents_per_call: 1
+  actions_per_call: 1        # react-raw
+repro:
+  enabled: true
+  steps: 50
+  max_attempts: 5
+  max_fraction: 0.3
+  dedup_jaccard: 0.8
+budget:
+  max_env_steps: 1000
+  max_usd_per_paid_run: 1.00
+tasks:
+  - V2_task_01_tomato
+  - V2_task_07_tomato_steak
+  - V2_task_11_tomato_lettuce_onion
+profiles:
+  headline: haiku-5.5        # claude-haiku-5-5, thinking off, max_output_tokens 512 (384 until 2026-10-26)
+  replication: llama3.1-8b
+  ablation: react-raw on haiku-5.5, V2_task_01_tomato only
+seeds:
+  haiku-5.5: 5
+  local: 3
+ignore_bug_ids: [5]
+normal_play: configs/normal_play_bugs.yaml   # reporting only (adjusted metrics); never filters the oracle

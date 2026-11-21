@@ -26,7 +26,7 @@ bug_id,name,family,reachability,unreachable_reason,random_hits_3.7M_steps,tasks_
 25,ADD_INGREDIENT_AFTER_COOKING,plate_composition,fires_under_random_play,,52,11,26094,refusal,1.0,,A_transition_anomaly,,,proposed
 26,DELIVER_PARTIAL_SUSHI,delivery,not_reached_by_random,,0,0,,,,,PENDING_directed_check,,,proposed
 27,INVALID_DELIVERY_TARGET,delivery,unreachable_on_shipped_maps,check sits in a putdown branch that only runs when holding a plate or putting onto a plate,0,0,,,,,EXCLUDED_unreachable,,,proposed
-28,PICKUP_FROM_EMPTY_COUNTER,counter_pickup,fires_under_random_play,,82799,37,63,idle_bump,1.0,,A_transition_anomaly,trivially_frequent,,proposed
+28,PICKUP_FROM_EMPTY_COUNTER,counter_pickup,fires_under_random_play,,82799,37,63,idle_bump,1.0,,A_transition_anomaly,trivially_frequent;fires_on_hidden_item_after_respawn_stacking,,proposed
 29,COLLISION_MOVE,other,unreachable_on_shipped_maps,needs a second chef (single-agent maps),0,0,,,,,EXCLUDED_unreachable,,,proposed
 30,PLATE_INTO_OVEN_WRONG_DISH,oven,unreachable_on_shipped_maps,no oven on shipped maps,0,0,,,,,EXCLUDED_unreachable,,,proposed
 31,DELIVER_MORE_THAN_FOUR,delivery,not_reached_by_random,,0,0,,,,,PENDING_directed_check,,,proposed
@@ -41,13 +41,13 @@ bug_id,name,family,reachability,unreachable_reason,random_hits_3.7M_steps,tasks_
 40,PUTDOWN_OWN_TILE,counter_pickup,unreachable_on_shipped_maps,target tile can never be the agent's own tile,0,0,,,,,EXCLUDED_unreachable,,,proposed
 41,PICKUP_OWN_DROPPED_ITEM_IMMEDIATELY,counter_pickup,unreachable_on_shipped_maps,"last_dropped is never assigned, so the 'immediate' flag is never set",0,0,,,,,EXCLUDED_unreachable,,,proposed
 42,DIRTY_PLATE_PICKUP,dirty_plate,fires_under_random_play,,11603,37,395,silent,1.0,,B_no_transition_anomaly,,,proposed
-43,COUNTER_OVERWRITE,counter_pickup,not_reached_by_random,,0,0,,,,,PENDING_directed_check,,,proposed
+43,COUNTER_OVERWRITE,counter_pickup,not_reached_by_random,,0,0,,,,,PENDING_directed_check,misses_respawn_stacking_see_notes,,proposed
 44,CHOPPING_BURNED_MEAT,station_misuse,unreachable_on_shipped_maps,food never burns on shipped maps (pan burned_able=False; no oven),0,0,,,,,EXCLUDED_unreachable,,,proposed
 45,TRASH_BURNED_ITEM_NOT_RESET,trash,unreachable_on_shipped_maps,food never burns on shipped maps (pan burned_able=False; no oven),0,0,,,,,EXCLUDED_unreachable,,,proposed
 46,WASH_CLEAN_PLATE,station_misuse,not_reached_by_random,,0,0,,,,,PENDING_directed_check,,,proposed
 47,SINK_HOLD_AFTER_CLEAN,station_misuse,fires_under_random_play,,505,37,7878,silent,1.0,,B_no_transition_anomaly,,,proposed
 48,PLATE_WITH_BURNED_AND_COOKED_ITEMS,plate_composition,unreachable_on_shipped_maps,food never burns on shipped maps (pan burned_able=False; no oven),0,0,,,,,EXCLUDED_unreachable,,,proposed
-49,COUNTER_STACK_MULTIPLE_PLATES,counter_pickup,not_reached_by_random,,0,0,,,,,PENDING_directed_check,,,proposed
+49,COUNTER_STACK_MULTIPLE_PLATES,counter_pickup,not_reached_by_random,,0,0,,,,,PENDING_directed_check,misses_respawn_stacking_see_notes,,proposed
 50,PICKUP_WITH_FULL_HANDS,counter_pickup,unreachable_on_shipped_maps,no call site in the env,0,0,,,,,EXCLUDED_unreachable,,,proposed
 51,PUT_TOMATO_ON_DIRTY_PLATE,dirty_plate,fires_under_random_play,,2452,37,2485,refusal,1.0,,A_transition_anomaly,,,proposed
 52,PUT_LETTUCE_ON_DIRTY_PLATE,dirty_plate,fires_under_random_play,,2628,37,2526,refusal,1.0,,A_transition_anomaly,,,proposed

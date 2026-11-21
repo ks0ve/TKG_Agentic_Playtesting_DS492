@@ -1,0 +1,25 @@
+# Final paid grid, ReAct arm: react on Claude Haiku 5.5, reproduction on with 50-step attempts,
+# 3 grid tasks x seeds 0-2, 1,000 steps, $1.00 cap per run (harness v2.2).
+#   python -m react_baseline.grid configs/grids/final_react.yaml --dry-run
+#   python -m react_baseline.grid configs/grids/final_react.yaml --allow-paid      (resumable)
+name: final_react
+frozen: configs/frozen/baseline_v2_2.yaml
+out_dir: runs/grids/final_react
+tasks:
+  - V2_task_01_tomato
+  - V2_task_07_tomato_steak
+  - V2_task_11_tomato_lettuce_onion
+max_env_steps: 1000
+history: 10
+temperature: 0.7          # where the backend supports it (Haiku 5.5 runs at its API default)
+intents_per_call: 1
+max_macro_len: 40
+max_usd_per_paid_run: 1.00
+repro:
+  enabled: true
+  steps: 50
+  max_attempts: 5
+  max_fraction: 0.3
+  dedup_jaccard: 0.8
+rows:
+  - {agent: react, profile: haiku-5.5, seeds: [0, 1, 2]}

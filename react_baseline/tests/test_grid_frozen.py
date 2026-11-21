@@ -11,14 +11,14 @@ REPO = Path(__file__).resolve().parents[2]
 
 
 def test_shipped_frozen_config_matches_code():
-    assert frozen.check(REPO / "configs" / "frozen" / "baseline_v2_1.yaml") == []
-    assert frozen.FROZEN_DEFAULT.name == "baseline_v2_1.yaml"
+    assert frozen.check(REPO / "configs" / "frozen" / "baseline_v2_2.yaml") == []
+    assert frozen.FROZEN_DEFAULT.name == "baseline_v2_2.yaml"
 
 
 def test_v2_0_frozen_config_is_superseded_by_wording_only():
     """baseline_v2.yaml stays as the record of the v2.0 runs; v2.1 changed only agent-visible text."""
     bad = frozen.check(REPO / "configs" / "frozen" / "baseline_v2.yaml")
-    assert [b.split(":")[0] for b in bad] == ["prompts_sha256", "renderer_sha256"]
+    assert [b.split(":")[0] for b in bad] == ["prompts_sha256", "renderer_sha256", "translator_version"]
     v2, v21 = (frozen.load(REPO / "configs" / "frozen" / f) for f in ("baseline_v2.yaml", "baseline_v2_1.yaml"))
     for key in ("action_reader_version", "action_reader", "agent", "repro", "budget", "tasks", "seeds",
                 "ignore_bug_ids"):
@@ -29,7 +29,7 @@ def test_frozen_mismatch_detected(tmp_path):
     f = tmp_path / "frozen.yaml"
     f.write_text("prompts_sha256: deadbeef\naction_reader_version: 0.1\n", encoding="utf-8")
     bad = frozen.check(f)
-    assert len(bad) == 3 and "prompts_sha256" in bad[0] and "renderer_sha256" in bad[1]
+    assert len(bad) == 4 and "prompts_sha256" in bad[0] and "renderer_sha256" in bad[1]
 
 
 def test_renderer_hash_tracks_event_wording(monkeypatch):
@@ -88,7 +88,9 @@ def test_v2_1_grids_mirror_v2_with_new_frozen_config_and_out_dir():
     for c in prog:
         assert (c.run_dir, c.config_hash, c.argv) == (main[c.label].run_dir, main[c.label].config_hash,
                                                       main[c.label].argv)
-    assert frozen.check(REPO / grid.load_grid(REPO / "configs/grids/baseline_v2_1.yaml")["frozen"]) == []
+    # v2.1 is superseded by translator v2.2: only the renderer and the translator version differ
+    bad = frozen.check(REPO / grid.load_grid(REPO / "configs/grids/baseline_v2_1.yaml")["frozen"])
+    assert [b.split(":")[0] for b in bad] == ["renderer_sha256", "translator_version"]
 
 
 def test_only_accepts_comma_list():
@@ -161,3 +163,60 @@ def test_config_hash_changes_with_settings(mini_grid):
     h1 = grid.combos(g)[0].config_hash
     g["max_env_steps"] = 31
     assert grid.combos(g)[0].config_hash != h1
+
+
+def test_final_grids_and_tkg_freeze(monkeypatch, capsys):
+    gt = grid.load_grid(REPO / "configs/grids/final_tkg.yaml")
+    gr = grid.load_grid(REPO / "configs/grids/final_react.yaml")
+    ct, cr = grid.combos(gt), grid.combos(gr)
+    assert len(ct) == len(cr) == 9 and all(c.paid for c in ct + cr)
+    a = ct[0].argv
+    assert a[a.index("--agent") + 1] == "tkg" and a[a.index("--max-usd") + 1] == "0.40"
+    for flag, val in (("--trigger", "tkg1"), ("--tau", "0.15"), ("--min-support", "3"), ("--warmup-steps", "0"),
+                      ("--investigate-k", "1"), ("--max-consecutive-llm", "6"), ("--repro-steps", "50")):
+        assert a[a.index(flag) + 1] == val, flag
+    assert "--repro-path" in a and "--repro" in a
+    b = cr[0].argv
+    assert b[b.index("--agent") + 1] == "react" and b[b.index("--max-usd") + 1] == "1.00" and "--trigger" not in b
+    assert {c.task for c in ct} == {c.task for c in cr} and {c.seed for c in ct} == {0, 1, 2}
+    # both freezes match the code, and the TKG grid's settings match tkg_v1
+    assert grid.frozen_mismatches(gt) == [] and grid.frozen_mismatches(gr) == []
+    assert frozen.check(REPO / "configs/frozen/tkg_v1.yaml") == []
+    # a grid whose tkg settings drift from the freeze is refused
+    bad = {**gt, "tkg": {**gt["tkg"], "investigate_k": 3}}
+    assert any("investigate_k" in m for m in grid.frozen_mismatches(bad))
+    # changed MEMORY text breaks the TKG freeze
+    from react_baseline import tkg_agent
+    monkeypatch.setattr(tkg_agent, "INVESTIGATE", tkg_agent.INVESTIGATE + " Extra.")
+    assert [m.split(":")[0] for m in frozen.check(REPO / "configs/frozen/tkg_v1.yaml")] == ["memory_text_sha256"]
+
+
+def test_alwayson_grid_and_freeze(monkeypatch):
+    g = grid.load_grid(REPO / "configs/grids/final_alwayson.yaml")
+    cs = grid.combos(g)
+    assert len(cs) == 9 and all(c.paid and c.agent == "tkg" and c.profile == "haiku-5.5" for c in cs)
+    assert {c.seed for c in cs} == {0, 1, 2} and {c.run_dir.parent.name for c in cs} == {"final_alwayson"}
+    a = cs[0].argv
+    for flag, val in (("--trigger", "every_n"), ("--trigger-n", "1"), ("--max-consecutive-llm", "0"),
+                      ("--investigate-k", "1"), ("--warmup-steps", "0"), ("--repro-steps", "50"),
+                      ("--max-env-steps", "1000"), ("--max-usd", "1.00")):
+        assert a[a.index(flag) + 1] == val, flag
+    assert "--repro" in a and "--repro-path" in a
+    assert grid.frozen_mismatches(g) == [] and frozen.check(REPO / "configs/frozen/tkg_v1_alwayson.yaml") == []
+    assert any("trigger_n" in m for m in grid.frozen_mismatches({**g, "tkg": {**g["tkg"], "trigger_n": 2}}))
+    # the finished TKG grid keeps its arguments (so its config hashes and "done" status)
+    assert "--trigger-n" not in grid.combos(grid.load_grid(REPO / "configs/grids/final_tkg.yaml"))[0].argv
+    # new routine wording breaks only the always-on freeze
+    from react_baseline import tkg_agent
+    monkeypatch.setattr(tkg_agent, "ROUTINE", "Something else.")
+    assert [m.split(":")[0] for m in frozen.check(REPO / "configs/frozen/tkg_v1_alwayson.yaml")] == ["routine_text_sha256"]
+    assert frozen.check(REPO / "configs/frozen/tkg_v1.yaml") == []
+
+
+def test_grid_task_and_seed_filters(capsys):
+    assert grid.main([str(REPO / "configs/grids/final_tkg.yaml"), "--dry-run",
+                      "--tasks", "V2_task_11_tomato_lettuce_onion", "--seeds", "0"]) == 0
+    out = capsys.readouterr().out
+    assert "1 combinations, " in out and "tkg/haiku-5.5/V2_task_11_tomato_lettuce_onion/seed0" in out
+    # (how many are left "to run" depends on which runs exist locally)
+    assert "frozen check: OK" in out

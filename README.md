@@ -237,7 +237,7 @@ Parsing tolerates case, markdown, backticks, brackets and trailing text. Several
 - `valid_intents(state)` lists the four moves, `wait`, `goto` to every other reachable floor tile
   and `interact` with every non-floor tile next to a reachable floor tile (used by `random-intent`).
 
-The module holds no agent logic, so the future TKG arm's cheap policy and its LLM reuse it as-is.
+The module holds no agent logic, so the future TKG arm's exploration agent and its LLM reuse it as-is.
 Every verified demonstration task can be completed by a short hand-written intent sequence
 (`tests/test_action_reader.py::SOLUTIONS`).
 
@@ -411,7 +411,7 @@ warning and `taxonomy_warnings` records it. The CSV's classifications are not ed
 - `haiku-4.5` is `disabled: true` (10× the price); only editing `models.yaml` re-enables it.
 - **Haiku 5.5** (`claude-haiku-5-5`, $0.10 / $0.50 per MTok for prompts ≤ 100k tokens; verified
   2026-10-21): thinking disabled (it bills as output), no temperature sent (the API rejects
-  sampling parameters), `max_output_tokens: 384`, and a hard abort if a prompt is estimated above
+  sampling parameters), `max_output_tokens: 512` (384 until 2026-10-26), and a hard abort if a prompt is estimated above
   90k tokens (above 100k the whole request is billed 5×).
 - **Errors**: SDK retries are off; 429 / 5xx / connection errors are retried with backoff; any
   other API error (e.g. a 400 validation error) stops the run with a clear message; 5 consecutive
@@ -487,6 +487,63 @@ transitions and bug_reports. Summary: `{steps,llm_calls,tokens,usd}_{explore,rep
 - **Bundle** `python -m react_baseline.bundle <run_dir> ... -o out.zip`: per-run logs plus a fresh
   `pilot_check.txt`, the ledger, the spend report, git HEAD / status and the grid dry run, in one
   zip for analysis elsewhere.
+
+## TKG arm (`--agent tkg`) and the exploration agent (no LLM) (`--agent explorer`)
+
+The TKG arm keeps everything in memory (plain Python) and writes `tkg.json` into the run dir. There
+is no graph database, no new dependency, and no LLM-drafted reference graph yet.
+
+- **Abstraction** (`memory/abstraction.py`). Keys are built from structured agent-visible data
+  (`visible_state` and the event records' `held_before`, `held_after`, `tile`, `tile_before`,
+  `tile_after`), never from observation text.
+  - Entity strings: `plate:clean:[chopped tomato]`, `cutting board:holding:unchopped onion`,
+    `counter:empty`, `floor`, `hands:nothing`.
+  - `ctx0` = (intent kind, hands before, target before)
+  - `ctx1` = (previous outcome in the episode or START, ctx0)
+  - outcome = (event type, success, hands after, target after)
+  - None of these keys contain coordinates.
+- **TKG** (`memory/tkg.py`). Transition-centric:
+  - Transition -NEXT-> Transition
+  - Transition -FROM / TO-> State
+  - Transition -TARGET-> Entity
+  - Transition -ASSESSED_AGAINST-> Expectation
+  - State -HAS_ENTITY_STATE-> Entity
+
+  One transition is one executed intent. State ids are exact visible-state hashes. Expectations,
+  one per ctx1 key and one per ctx0 key, hold outcome counts. `expect()` backs off from ctx1 to
+  ctx0 below `--min-support`.
+- **Memory check** (`memory/trigger.py`). It runs before the transition is added.
+  - `tkg1`: novel (ctx0 never seen) or surprising (P(outcome) < `--tau` at `--min-support` or more).
+  - `tkg0`: ctx0 only.
+  - `random` (`--trigger-p`) and `every_n` (`--trigger-n`) for RQ2.
+- **Exploration agent (no LLM)** (`react_baseline/cheap_policy.py`). Candidates are interact on every reachable
+  non-floor tile, `wait(3)`, and goto to 3 random floor tiles. Each scores
+  1 / (1 + TKG count of its ctx0); ε = 0.2 picks a random candidate instead. `--agent explorer` runs
+  it alone (no LLM). `--agent explorer` is an alias for `--agent cheap`: same code path, and only the run-dir name
+  and `cli_args` say `explorer`, while logs and summaries keep the id `cheap` (`agent`, `actor`, `bugs_triggered_by_cheap_adj`).
+- **TKG agent** (`react_baseline/tkg_agent.py`).
+  - Defaults: `--trigger tkg1` (tau 0.15, min_support 3), `--warmup-steps 0` (memory starts empty and
+    is checked from step 1; a warm-up of N env steps is exploration-only), `--investigate-k 1`.
+  - After that, a fire hands the next decision(s) to the LLM, up to `--investigate-k` (default 1; never more than
+    `--max-consecutive-llm` (6; 0 = no cap) in a row, even when fires restart k), or
+    until it replies `Action: resume`.
+  - **Always-on hybrid** (`configs/grids/final_alwayson.yaml`, freeze `configs/frozen/tkg_v1_alwayson.yaml`): the same
+    agent with `--trigger every_n --trigger-n 1 --max-consecutive-llm 0`, so the LLM is consulted after every
+    decision. For the scheduled triggers (`every_n`, `random`) the MEMORY block opens the instruction with "Routine check-in:
+    the memory did not flag this step; it fires on a fixed schedule." instead of "This situation is new or unusual
+    for the memory."; all other wording is the same. A decision with no earlier check to act on is still the exploration
+    agent's: the run's first decision and the first one after a reproduction attempt.
+  - The LLM gets the vanilla ReAct prompt, a history in which the exploration agent's turns are marked `[auto-explorer]`, and
+    a MEMORY block built from the TKG.
+  - Reproduction uses the runner's protocol. `--repro-path` (default on) adds the recorded path of
+    the reported episode.
+  - Game manual (`configs/reference_rules.yaml`, `memory/reference.py`): rules written only from the
+    GAME RULES text predict outcomes; they are Expectation nodes (source "reference") after the
+    observed levels, give transitions `reference_rule_id` / `reference_verdict`, and back the
+    `tkg1r` / `tkg1r_strict` triggers and the MEMORY block's "Memory expected" line.
+  - New log fields: llm_calls `trigger_reason` and `resumed`; transitions `actor` and `deviation`;
+    summary `escalations`, `warmup_steps`, `tkg_nodes`, `tkg_edges`, `trigger_fire_rate`,
+    `deviation_reasons`.
 
 ## Investigation: bug IDs 5 and 20 on V2_task_01_tomato
 

@@ -28,6 +28,28 @@ profiles:
 """
 
 
+def test_grid_measurement_pools_finished_runs(tmp_path):
+    def put(name, **s):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "summary.json").write_text(json.dumps(s), encoding="utf-8")
+    row = {"model": "m", "total_env_steps": 100, "input_tokens": 1000, "output_tokens": 200,
+           "llm_latency_median_s": 2.0, "wall_time_s": 50.0}
+    put("a", **row, llm_calls=80)
+    put("b", **row, llm_calls=120)
+    put("a_stale2026", **row, llm_calls=9999)        # skipped: stale
+    put("c", **{**row, "model": "other"}, llm_calls=9999)
+    m = spend.grid_measurement(tmp_path, "m")
+    assert m["calls_per_step"] == 1.0 and m["tokens_in"] == 10.0 and m["tokens_out"] == 2.0
+    assert m["wall_per_step_s"] == 0.5 and m["source"].startswith("2 runs in ")
+    prof = SimpleNamespace(model="m", backend="anthropic", usd=lambda i, o: (i + 5 * o) / 1e6)
+    est = spend.estimate_run("tkg", prof, 1000, pilot_root=tmp_path / "none", from_grid=tmp_path)
+    assert est["source"] == m["source"] and est["usd"] == pytest.approx(1000 * 20 / 1e6)
+    # nothing measured in that folder: the usual fallback
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    assert spend.estimate_run("tkg", prof, 10, pilot_root=tmp_path / "none", from_grid=empty)["source"].startswith("conservative")
+
+
 @pytest.fixture
 def paid_env(tmp_path, monkeypatch):
     y = tmp_path / "models.yaml"
@@ -141,7 +163,7 @@ def test_cli_paid_run_end_to_end_and_blocked(paid_env, capsys):
 def test_shipped_profiles_guardrails():
     assert resolve_profile("haiku-4.5").disabled is True
     h = resolve_profile("haiku-5.5")
-    assert h.is_paid and not h.disabled and h.max_output_tokens == 384
+    assert h.is_paid and not h.disabled and h.max_output_tokens == 512
     assert h.options["max_prompt_tokens"] == 90000 and h.options["send_temperature"] is False
     assert h.options["extra_body"]["thinking"] == {"type": "disabled"}
     assert h.pricing_date == "2026-10-21" and "claude-haiku-5-5" in h.pricing_source
@@ -186,7 +208,7 @@ def test_anthropic_retries_429_5xx_and_connection_then_succeeds():
     r = m.complete("SYS", "USER")
     assert (r.input_tokens, r.output_tokens) == (100, 7) and len(calls) == 4
     assert m.consecutive_errors == 0
-    assert calls[0]["max_tokens"] == 384 and "temperature" not in calls[0].get("extra_body", {})
+    assert calls[0]["max_tokens"] == 512 and "temperature" not in calls[0].get("extra_body", {})
 
 
 def test_anthropic_never_retries_validation_errors():

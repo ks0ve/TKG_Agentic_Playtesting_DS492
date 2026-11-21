@@ -12,6 +12,7 @@ unchanged, and nothing is re-run.
   unique_bugs_excluding_normal_play   unique oracle IDs minus the normal-play set
   reports_strict_match_adj            reports whose strict evidence has an ID outside the set
   unique_bugs_reported_strict_adj     unique such IDs over all reports
+  unique_bugs_discovered_adj          unique adjusted IDs both triggered and reported (strict)
   source_bug_ids_strict_adj           per repro attempt: the source report's strict IDs minus the set
   oracle_reproduced_adj               per repro attempt: one of those fired again (None if none left)
   repro_success_rate_adj              mean oracle_reproduced_adj over attempts with a non-empty target
@@ -42,7 +43,8 @@ def adjusted_fields(summary: dict, reports: list[dict], attempts: list[dict], no
     if normal is None:
         return {"unique_bugs_excluding_normal_play": None, "normal_play_bug_ids": None,
                 "reports_strict_match_adj": None, "unique_bugs_reported_strict_adj": None,
-                "unique_bug_ids_reported_strict_adj": None, "repro_attempts_adj": None,
+                "unique_bug_ids_reported_strict_adj": None, "unique_bugs_discovered_adj": None,
+                "repro_attempts_adj": None,
                 "repro_success_rate_adj": None, "bugs_by_proposed_class_adj": None}
     normal = set(normal)
     found = set(summary.get("unique_bug_ids") or []) - normal
@@ -62,6 +64,7 @@ def adjusted_fields(summary: dict, reports: list[dict], attempts: list[dict], no
         "reports_strict_match_adj": sum(1 for s in strict_adj if s),
         "unique_bugs_reported_strict_adj": len({b for s in strict_adj for b in s}),
         "unique_bug_ids_reported_strict_adj": sorted({b for s in strict_adj for b in s}),
+        "unique_bugs_discovered_adj": len(found & {b for s in strict_adj for b in s}),
         "repro_attempts_adj": attempts_adj,
         "repro_attempts_scored_adj": len(scored),
         "repro_success_rate_adj": (sum(a["oracle_reproduced_adj"] for a in scored) / len(scored)) if scored else None,

@@ -169,6 +169,36 @@ def _device_desc(dev) -> str:
     return f"{name}: holding {describe_item(held)}{progress}"
 
 
+# Translator version (agent-visible text and structured state). 2.2: every item on a tile is shown.
+TRANSLATOR_VERSION = "2.2-all-items-per-tile"
+STACK_NOTE = "Some tiles hold more than one item; ITEMS lists every one of them."
+
+
+def _loose_items(u) -> dict[tuple[int, int], list]:
+    """Env (row, col) -> the loose items on that tile (not held, not on a plate, not in a station),
+    the one the map shows first. SAGE lets items share a counter: a delivered or thrown-away item
+    respawns on its start tile even when another item is there (ActionWrapper.reset_item), and only
+    the item matching the tile's map code is drawn and interacted with."""
+    im, agent = u.item_Manager, u.agent[0]
+    on_plate = {id(f) for plate in im.plate for f in plate.containing}
+    in_dev = {id(d.holding) for key in _DEVICE_KEYS for d in im.itemDic.get(key, [])
+              if getattr(d, "holding", None) is not None}
+    tiles: dict[tuple[int, int], list] = {}
+    for item in list(im.plate) + [f for key in _FOOD_KEYS for f in im.itemDic.get(key, [])]:
+        if (item is agent.holding or id(item) in on_plate or id(item) in in_dev
+                or getattr(item, "consumed", False) or item.x < 0):
+            continue
+        tiles.setdefault((int(item.x), int(item.y)), []).append(item)
+    for (row, col), items in tiles.items():
+        shown = _REVERSE_IDX.get(u.map[row][col])
+        items.sort(key=lambda it: it.rawName != shown)   # stable: the map's item first
+    return tiles
+
+
+def _is_shown(u, item) -> bool:
+    return _REVERSE_IDX.get(u.map[int(item.x)][int(item.y)]) == item.rawName
+
+
 def render_text(env, last_event: str | None = None) -> str:
     """Compact, LLM-readable view of the env state.
 
@@ -197,6 +227,9 @@ def render_text(env, last_event: str | None = None) -> str:
             legend.append(f"{TILE_CHARS[name]}={TILE_DESCRIPTIONS.get(name, name + ' (on a counter)')}")
     lines.append("Legend: " + ", ".join(legend))
     lines.append(STATION_NOTE)
+    loose = _loose_items(u)
+    if any(len(v) > 1 or not _is_shown(u, v[0]) for v in loose.values()):
+        lines.append(STACK_NOTE)
 
     # Who holds what, so every item is listed once with its true location.
     holder = {}
@@ -214,7 +247,9 @@ def render_text(env, last_event: str | None = None) -> str:
     lines.append("STATIONS")
     for key in _DEVICE_KEYS:
         for dev in im.itemDic.get(key, []):
-            lines.append(f"- {_fmt_pos(dev)} {_device_desc(dev)}")
+            extra = loose.get((int(dev.x), int(dev.y)), [])
+            also = f"; also on this tile: {', '.join(describe_item(i) for i in extra)}" if extra else ""
+            lines.append(f"- {_fmt_pos(dev)} {_device_desc(dev)}{also}")
 
     lines.append("ITEMS")
     item_lines = []
@@ -222,6 +257,16 @@ def render_text(env, last_event: str | None = None) -> str:
         where = holder.get(id(item), "on counter")
         if where == "held by you":  # it moves with you: no coordinate (see the YOU line)
             return f"- {desc} ({where})"
+        if where == "on counter":
+            here = loose.get((int(item.x), int(item.y)), [item])
+            others = [describe_item(i) for i in here if i is not item]
+            if not _is_shown(u, item):
+                top = here[0] if _is_shown(u, here[0]) else None
+                shows = f"the map shows {describe_item(top)} on this tile" if top else \
+                    "the map shows an empty counter on this tile"
+                where = f"on counter; {shows}"
+            elif others:
+                where = f"on counter; also on this tile: {', '.join(others)}"
         return f"- {_fmt_pos(item)} {desc} ({where})"
 
     for plate in im.plate:
@@ -267,18 +312,20 @@ def _tile_desc(u, row: int, col: int) -> str:
     for key in _DEVICE_KEYS:
         for dev in im.itemDic.get(key, []):
             if dev.x == row and dev.y == col:
-                return _device_desc(dev)
-    if name == "plate":
-        for plate in im.plate:
-            if plate.x == row and plate.y == col and plate is not u.agent[0].holding:
-                return _plate_desc(plate) + " on a counter"
-    if name in _FOOD_KEYS:  # the tile code says this food type sits loose on the counter
-        for food in im.itemDic.get(name, []):
-            if food.x == row and food.y == col and not getattr(food, "consumed", False):
-                return _food_desc(food) + " on a counter"
+                extra = _loose_items(u).get((row, col), [])
+                return _device_desc(dev) + (f"; also on this tile: {', '.join(describe_item(i) for i in extra)}"
+                                            if extra else "")
     if name == "agent":
         return "another chef"
-    return TILE_DESCRIPTIONS.get(name, name)
+    here = _loose_items(u).get((row, col), [])
+    if not here:
+        return TILE_DESCRIPTIONS.get(name, name)
+    shown = [i for i in here if _is_shown(u, i)]
+    rest = [describe_item(i) for i in here if i not in shown]
+    if not shown:   # the map shows an empty counter, but items lie on it
+        return f"counter shown empty; on this tile: {', '.join(rest)}"
+    desc = describe_item(shown[0]) + " on a counter"
+    return desc + (f"; also on this tile: {', '.join(rest)}" if rest else "")
 
 
 def _adjacent_lines(u, agent) -> list[str]:
@@ -324,27 +371,27 @@ def _tile_record(u, row: int, col: int) -> dict:
     if not (0 <= row < len(grid) and 0 <= col < len(grid[0])):
         return {"kind": "edge of the map", "holding": None}
     im, agent = u.item_Manager, u.agent[0]
+    here = _loose_items(u).get((row, col), [])
     for key in _DEVICE_KEYS:
         for dev in im.itemDic.get(key, []):
             if dev.x == row and dev.y == col:
-                return {"kind": display_name(dev.rawName), "holding": _item_record(getattr(dev, "holding", None))}
+                rec = {"kind": display_name(dev.rawName), "holding": _item_record(getattr(dev, "holding", None))}
+                if here:
+                    rec["also"] = [_item_record(i) for i in here]
+                return rec
     name = _REVERSE_IDX.get(grid[row][col], "?")
     if name == "space" or (name == "agent" and (agent.x, agent.y) == (row, col)):
         return {"kind": "floor", "holding": None}
     if name == "agent":
         return {"kind": "another chef", "holding": None}
-    held = agent.holding
-    on_plate = {id(f) for plate in im.plate for f in plate.containing}
-    for plate in im.plate:
-        if plate.x == row and plate.y == col and plate is not held and not getattr(plate, "consumed", False):
-            return {"kind": "counter", "holding": _item_record(plate)}
-    for key in _FOOD_KEYS:
-        for food in im.itemDic.get(key, []):
-            if (food.x == row and food.y == col and food is not held and id(food) not in on_plate
-                    and not getattr(food, "consumed", False)):
-                return {"kind": "counter", "holding": _item_record(food)}
-    if name in ("counter", "plate") or name in _FOOD_KEYS:
-        return {"kind": "counter", "holding": None}
+    if here or name in ("counter", "plate") or name in _FOOD_KEYS:
+        # the item the map shows is the one the game interacts with; any others are listed in "also"
+        shown = here[0] if here and _is_shown(u, here[0]) else None
+        rec = {"kind": "counter", "holding": _item_record(shown)}
+        rest = [i for i in here if i is not shown]
+        if rest:
+            rec["also"] = [_item_record(i) for i in rest]
+        return rec
     return {"kind": display_name(name), "holding": None}
 
 
@@ -430,11 +477,25 @@ def visible_state(env, info=None, event: dict | None = None) -> dict:
             return "plate"
         return "counter"
 
+    loose = _loose_items(u)
+
+    def flags(item, w):
+        """hidden: the map does not show this item; stacked: its tile holds more than one item."""
+        if w != "counter":
+            return {}
+        out = {}
+        if not _is_shown(u, item):
+            out["hidden"] = True
+        if len(loose.get((int(item.x), int(item.y)), [])) > 1:
+            out["stacked"] = True
+        return out
+
     items = []
     for plate in im.plate:
         if getattr(plate, "consumed", False) or plate.x < 0:
             continue
-        items.append({**_item_record(plate), "pos": list(_pos(plate)), "where": where(plate)})
+        w = where(plate)
+        items.append({**_item_record(plate), "pos": list(_pos(plate)), "where": w, **flags(plate, w)})
     for key in _FOOD_KEYS:
         for food in im.itemDic.get(key, []):
             if getattr(food, "consumed", False) or food.x < 0:
@@ -442,7 +503,7 @@ def visible_state(env, info=None, event: dict | None = None) -> dict:
             w = where(food)
             if w in ("plate", "station"):
                 continue  # listed with its plate / station, as in render_text
-            items.append({**_item_record(food), "pos": list(_pos(food)), "where": w})
+            items.append({**_item_record(food), "pos": list(_pos(food)), "where": w, **flags(food, w)})
 
     return {
         "episode_step": int(u.env_step),
@@ -551,6 +612,8 @@ def describe_event(info, ctx: dict | None = None) -> str:
         what = kind
         if kind == "counter":
             what = f"{item_phrase(tb_item)} on the counter" if tb_item else "empty counter"
+            if tb.get("also"):
+                what += f" (also on this tile: {', '.join(item_phrase(i) for i in tb['also'])})"
         bumped = f"bumped {what}{at}"
         changed = outcome()
         return f"nothing happened ({bumped})" if changed == "nothing changed" else f"{bumped}; {changed}"

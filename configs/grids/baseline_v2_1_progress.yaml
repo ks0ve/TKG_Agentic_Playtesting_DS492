@@ -1,3 +1,5 @@
+# SUPERSEDED (2026-10-28): frozen against v2.1, which translator v2.2 replaced; no runs were made with it.
+# The paid runs use configs/grids/final_react.yaml and final_tkg.yaml.
 # Progress subset of the baseline v2.1 grid: the same 33 combinations as the v2.0 progress grid
 # (configs/grids/baseline_v2_progress.yaml), written to runs/grids/baseline_v2_1/. Inherits every
 # setting from baseline_v2_1.yaml and only replaces the rows, so each run here has the same run dir

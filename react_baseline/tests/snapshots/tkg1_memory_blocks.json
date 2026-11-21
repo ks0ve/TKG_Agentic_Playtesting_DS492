@@ -1,0 +1,70 @@
+[
+ {
+  "source": "tkg_haiku-5.5_V2_task_01_tomato_seed0 decision 22",
+  "reason": "novel",
+  "t": {
+   "actor": "cheap",
+   "intent": "interact(0,2)",
+   "event_text": "tried to add tomato from the counter at (0,2) to the plate you are holding: nothing changed",
+   "outcome": "pickup_into_plate | False | hands:plate:clean:[] | counter:holding:unchopped tomato",
+   "ctx0": "interact | hands:plate:clean:[] | counter:holding:unchopped tomato"
+  },
+  "lookup": {
+   "level": "unseen",
+   "dist": {},
+   "support": 0
+  },
+  "expected_block": "MEMORY: The automatic explorer (not you) just did: interact(0,2) -> tried to add tomato from the counter at (0,2) to the plate you are holding: nothing changed.\nMemory expected: nothing (from nothing: first time). This time: tried to add something to the held plate: refused; then holding clean empty plate; target now: counter holding unchopped tomato.\nThis situation is new or unusual for the memory. Investigate it: try related variations (other items, stations, or item states) to probe whether the game handles them correctly. Report a bug only if behaviour looks wrong. Reply 'Action: resume' when done."
+ },
+ {
+  "source": "tkg_haiku-5.5_V2_task_01_tomato_seed0 decision 1",
+  "reason": "novel",
+  "t": {
+   "actor": "cheap",
+   "intent": "goto(2,3)",
+   "event_text": "moved",
+   "outcome": "move | - | hands:nothing | floor",
+   "ctx0": "move | hands:nothing | floor"
+  },
+  "lookup": {
+   "level": "reference",
+   "dist": {},
+   "support": null
+  },
+  "expected_block": "MEMORY: The automatic explorer (not you) just did: goto(2,3) -> moved.\nMemory expected: you walk onto the floor tile, still holding the same thing (from the game manual). This time: moved; then holding nothing; target now: floor.\nThis situation is new or unusual for the memory. Investigate it: try related variations (other items, stations, or item states) to probe whether the game handles them correctly. Report a bug only if behaviour looks wrong. Reply 'Action: resume' when done."
+ },
+ {
+  "source": "tkg_haiku-5.5_V2_task_01_tomato_seed0 decision 13",
+  "reason": "novel",
+  "t": {
+   "actor": "llm",
+   "intent": "left",
+   "event_text": "nothing happened (bumped cutting board at (0,3))",
+   "outcome": "none | - | hands:nothing | cutting board:empty",
+   "ctx0": "move | hands:nothing | cutting board:empty"
+  },
+  "lookup": {
+   "level": "unseen",
+   "dist": {},
+   "support": 0
+  },
+  "expected_block": "MEMORY: You just did: left -> nothing happened (bumped cutting board at (0,3)).\nMemory expected: nothing (from nothing: first time). This time: nothing happened; then holding nothing; target now: cutting board (empty).\nThis situation is new or unusual for the memory. Investigate it: try related variations (other items, stations, or item states) to probe whether the game handles them correctly. Report a bug only if behaviour looks wrong. Reply 'Action: resume' when done."
+ },
+ {
+  "source": "tkg_haiku-5.5_V2_task_01_tomato_seed0 decision 2",
+  "reason": "novel",
+  "t": {
+   "actor": "llm",
+   "intent": "interact(tomato)",
+   "event_text": "picked up tomato from the counter at (0,2)",
+   "outcome": "pickup | - | hands:unchopped tomato | counter:empty",
+   "ctx0": "interact | hands:nothing | counter:holding:unchopped tomato"
+  },
+  "lookup": {
+   "level": "reference",
+   "dist": {},
+   "support": null
+  },
+  "expected_block": "MEMORY: You just did: interact(tomato) -> picked up tomato from the counter at (0,2).\nMemory expected: you pick the item up; the counter is empty (from the game manual). This time: picked something up; then holding unchopped tomato; target now: counter (empty).\nThis situation is new or unusual for the memory. Investigate it: try related variations (other items, stations, or item states) to probe whether the game handles them correctly. Report a bug only if behaviour looks wrong. Reply 'Action: resume' when done."
+ }
+]

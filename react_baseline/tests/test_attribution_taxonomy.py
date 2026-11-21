@@ -47,6 +47,9 @@ def test_summary_report_counts(tmp_path):
     assert reps[1]["bug_ids_in_window"] == [20]   # lenient still credits the second report
     assert s["reports_strict_match"] == 1 and s["reports_lenient_match"] == 2
     assert s["unique_bugs_reported_strict"] == 1 and s["unique_bug_ids_reported_strict"] == [20]
+    # adjusted (tomato's normal-play set is [5]): 20 was triggered and reported -> discovered
+    assert s["unique_bugs_reported_strict_adj"] == 1 and s["unique_bugs_discovered_adj"] == 1
+    assert s["unique_bug_ids_discovered_adj"] == [20] and s["n_unique_bugs"] == len(s["unique_bug_ids"])
     for r in reps:
         assert {"window", "bug_ids_in_window", "llm_call_id", "global_step", "report"} <= set(r)
 

@@ -1,0 +1,197 @@
+{
+  "agent": "tkg",
+  "task": "V2_task_11_tomato_lettuce_onion",
+  "seed": 0,
+  "backend": "anthropic",
+  "model": "claude-haiku-5-5",
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": 0.018018018018018018,
+  "parse_errors": 2,
+  "total_env_steps": 300,
+  "episodes": 9,
+  "llm_calls": 111,
+  "input_tokens": 545614,
+  "output_tokens": 28166,
+  "total_tokens": 573780,
+  "wall_time_s": 206.38,
+  "unique_bug_ids": [
+    15,
+    16,
+    17,
+    19,
+    20,
+    28,
+    42,
+    47
+  ],
+  "n_unique_bugs": 8,
+  "first_found_step": {
+    "15": 273,
+    "16": 286,
+    "17": 262,
+    "19": 48,
+    "20": 86,
+    "28": 32,
+    "42": 265,
+    "47": 269
+  },
+  "discovery_curve": [
+    {
+      "global_step": 32,
+      "cumulative_tokens": 59835,
+      "unique_bugs": 1
+    },
+    {
+      "global_step": 48,
+      "cumulative_tokens": 95064,
+      "unique_bugs": 2
+    },
+    {
+      "global_step": 86,
+      "cumulative_tokens": 180109,
+      "unique_bugs": 3
+    },
+    {
+      "global_step": 262,
+      "cumulative_tokens": 532006,
+      "unique_bugs": 4
+    },
+    {
+      "global_step": 265,
+      "cumulative_tokens": 536297,
+      "unique_bugs": 5
+    },
+    {
+      "global_step": 269,
+      "cumulative_tokens": 548661,
+      "unique_bugs": 6
+    },
+    {
+      "global_step": 273,
+      "cumulative_tokens": 557229,
+      "unique_bugs": 7
+    },
+    {
+      "global_step": 286,
+      "cumulative_tokens": 561624,
+      "unique_bugs": 8
+    },
+    {
+      "global_step": 300,
+      "cumulative_tokens": 573780,
+      "unique_bugs": 8
+    }
+  ],
+  "deliveries_success": 0,
+  "delivery_attempts": 1,
+  "agent_bug_reports": 8,
+  "bug_reports_discarded": 0,
+  "ignore_bug_ids": [
+    5
+  ],
+  "action_space": "intent",
+  "usd_cost": 0.068644,
+  "decisions": 163,
+  "llm_calls_per_decision": 0.6809815950920245,
+  "llm_calls_per_env_step": 0.37,
+  "llm_latency_mean_s": 1.8502,
+  "llm_latency_median_s": 1.7851,
+  "intents_executed": 163,
+  "intent_failures": 0,
+  "intent_failure_rate": 0.0,
+  "intents_coerced": 0,
+  "intent_coercion_rate": 0.0,
+  "reports_strict_match": 1,
+  "reports_lenient_match": 1,
+  "unique_bugs_reported_strict": 1,
+  "unique_bug_ids_reported_strict": [
+    17
+  ],
+  "bugs_by_proposed_class": {
+    "A_transition_anomaly": 4,
+    "B_no_transition_anomaly": 4
+  },
+  "bugs_by_family": {
+    "counter_pickup": 1,
+    "delivery": 1,
+    "dirty_plate": 2,
+    "station_misuse": 3,
+    "trash": 1
+  },
+  "taxonomy_warnings": [],
+  "steps_explore": 217,
+  "llm_calls_explore": 58,
+  "tokens_explore": 254896,
+  "usd_explore": 0.030433,
+  "steps_repro": 83,
+  "llm_calls_repro": 53,
+  "tokens_repro": 318884,
+  "usd_repro": 0.038212,
+  "n_unique_bugs_explore": 8,
+  "repro_attempts": 4,
+  "repro_skipped": {
+    "max_fraction": 2
+  },
+  "repro_success_rate": null,
+  "unique_bugs_reproduced": 0,
+  "unique_bug_ids_reproduced": [],
+  "agent_claim_accuracy": null,
+  "loop_decision_fraction": 0.12269938650306748,
+  "cycle2_decision_fraction": 0.024539877300613498,
+  "unique_bugs_excluding_normal_play": 8,
+  "normal_play_bug_ids": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    7,
+    66,
+    67,
+    70,
+    71,
+    73,
+    74,
+    85,
+    86,
+    87,
+    88,
+    102,
+    103,
+    105,
+    107,
+    109,
+    133,
+    134,
+    135,
+    146,
+    147,
+    148
+  ],
+  "unique_bugs_reported_strict_adj": 1,
+  "unique_bugs_discovered_adj": 1,
+  "unique_bug_ids_discovered_adj": [
+    17
+  ],
+  "trigger_precision_adj": 0.13114754098360656,
+  "trigger_recall_unique_adj": 0.875,
+  "trigger_recall_events_adj": 0.38095238095238093,
+  "tkg_nodes": 485,
+  "tkg_edges": 1505,
+  "tkg_transitions": 163,
+  "warmup_steps": 0,
+  "trigger": "tkg1",
+  "investigate_k": 1,
+  "repro_path": true,
+  "escalations": 61,
+  "llm_decisions": 111,
+  "llm_resumes": 0,
+  "max_consecutive_llm": 6,
+  "cap_releases": 1,
+  "trigger_checks": 110,
+  "trigger_fires": 61,
+  "trigger_fire_rate": 0.5545454545454546,
+  "deviation_reasons": {
+    "novel": 61
+  }
+}

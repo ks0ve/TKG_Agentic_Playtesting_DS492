@@ -160,3 +160,32 @@ def test_agent_prompts_never_contain_oracle(tmp_path, monkeypatch):
     # the logged prompts are the same ones the model saw
     logged = [json.loads(line) for line in (tmp_path / "llm_calls.jsonl").read_text().splitlines()]
     assert [r["prompt"] for r in logged] == [u for _, u in llm.calls]
+
+
+def test_tkg_memory_block_has_no_oracle_data(tmp_path, monkeypatch):
+    """The TKG arm's MEMORY block ("The automatic explorer (not you) just did: <intent> -> <event>."
+    + the fixed investigation instruction) is built from the TKG only: no oracle data reaches it."""
+    from memory.trigger import EveryNTrigger
+    from react_baseline.tkg_agent import INVESTIGATE, NEW_SITUATION, ROUTINE, TKGAgent
+    _install_sentinels(monkeypatch)
+    routine_instruction = INVESTIGATE.replace(NEW_SITUATION, ROUTINE)    # every_n: the routine check-in wording
+    llm = MockLLM(script=["Thought: a\nAction: interact(1,0)", "Thought: b\nAction: interact(3,0)",
+                          "Thought: c\nAction: interact(2,2)", "Thought: d\nAction: resume"])
+    run(TKGAgent(llm, trigger=EveryNTrigger(2)), "V2_task_01_tomato", 0, Budgets(max_env_steps=150), tmp_path,
+        {"backend": "mock", "model": "mock"})
+    oracle = [json.loads(line) for line in (tmp_path / "steps.jsonl").read_text().splitlines()]
+    seen = {b for r in oracle for b in r["bug_ids_triggered"]}
+    assert {SENTINEL_EMPTY, SENTINEL_COUNTER} & seen     # the oracle did emit sentinels this run
+    blocks = [u[u.index("MEMORY:"):u.index(routine_instruction) + len(routine_instruction)]
+              for _, u in llm.calls if "MEMORY:" in u]
+    _assert_clean(ROUTINE)
+    assert blocks and any("The automatic explorer (not you) just did:" in b for b in blocks)
+    assert any("(from the game manual)" in b for b in blocks) and any("(from observed, seen" in b for b in blocks)
+    for b in blocks:
+        head, expected = b.split("\n")[:2]
+        assert expected.startswith("Memory expected: ")
+        _assert_clean(head)                       # no bug names, sentinels, oracle markers, or "bug"
+        _assert_clean(expected)                   # the expectation line comes from the TKG / manual only
+        assert _leaks(b) == []                    # the instruction's own wording is oracle-free too
+    for _, user in llm.calls:
+        assert _leaks(user) == []

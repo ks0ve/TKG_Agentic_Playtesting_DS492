@@ -1,0 +1,108 @@
+{
+  "agent": "react",
+  "task": "V2_task_01_tomato",
+  "seed": 0,
+  "backend": "mock",
+  "model": "mock",
+  "stop_reason": "max_env_steps",
+  "parse_error_rate": 0.0,
+  "parse_errors": 0,
+  "total_env_steps": 300,
+  "episodes": 6,
+  "llm_calls": 181,
+  "input_tokens": 323345,
+  "output_tokens": 2531,
+  "total_tokens": 325876,
+  "wall_time_s": 0.58,
+  "unique_bug_ids": [
+    19,
+    20,
+    28
+  ],
+  "n_unique_bugs": 3,
+  "first_found_step": {
+    "19": 68,
+    "20": 5,
+    "28": 40
+  },
+  "discovery_curve": [
+    {
+      "global_step": 5,
+      "cumulative_tokens": 1187,
+      "unique_bugs": 1
+    },
+    {
+      "global_step": 40,
+      "cumulative_tokens": 35386,
+      "unique_bugs": 2
+    },
+    {
+      "global_step": 68,
+      "cumulative_tokens": 66185,
+      "unique_bugs": 3
+    },
+    {
+      "global_step": 300,
+      "cumulative_tokens": 325876,
+      "unique_bugs": 3
+    }
+  ],
+  "deliveries_success": 0,
+  "delivery_attempts": 0,
+  "agent_bug_reports": 45,
+  "ignore_bug_ids": [
+    5
+  ],
+  "action_space": "intent",
+  "usd_cost": 0.0,
+  "decisions": 181,
+  "llm_calls_per_decision": 1.0,
+  "llm_calls_per_env_step": 0.6033333333333334,
+  "llm_latency_mean_s": 0.0,
+  "llm_latency_median_s": 0.0,
+  "intents_executed": 181,
+  "intent_failures": 0,
+  "intent_failure_rate": 0.0,
+  "intents_coerced": 0,
+  "intent_coercion_rate": 0.0,
+  "reports_strict_match": 22,
+  "reports_lenient_match": 26,
+  "unique_bugs_reported_strict": 2,
+  "unique_bug_ids_reported_strict": [
+    19,
+    20
+  ],
+  "bugs_by_proposed_class": {
+    "A_transition_anomaly": 3
+  },
+  "bugs_by_family": {
+    "counter_pickup": 1,
+    "station_misuse": 2
+  },
+  "taxonomy_warnings": [],
+  "steps_explore": 286,
+  "llm_calls_explore": 174,
+  "tokens_explore": 313886,
+  "usd_explore": 0.0,
+  "steps_repro": 14,
+  "llm_calls_repro": 7,
+  "tokens_repro": 11990,
+  "usd_repro": 0.0,
+  "n_unique_bugs_explore": 3,
+  "repro_attempts": 2,
+  "repro_skipped": {
+    "duplicate": 42
+  },
+  "repro_success_rate": 1.0,
+  "unique_bugs_reproduced": 1,
+  "unique_bug_ids_reproduced": [
+    20
+  ],
+  "agent_claim_accuracy": 1.0,
+  "loop_decision_fraction": 0.0,
+  "cycle2_decision_fraction": 0.5082872928176796,
+  "unique_bugs_excluding_normal_play": 3,
+  "normal_play_bug_ids": [
+    5
+  ]
+}

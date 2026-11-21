@@ -1,0 +1,37 @@
+# Final paid grid, TKG arm: tkg on Claude Haiku 5.5 with the frozen defaults (tkg1, warm-up 0, k 1, cap 6,
+# repro path on), reproduction on with 50-step attempts, 3 grid tasks x seeds 0-2, 1,000 steps, $0.40 cap per run.
+#   python -m react_baseline.grid configs/grids/final_tkg.yaml --dry-run
+#   python -m react_baseline.grid configs/grids/final_tkg.yaml --tasks V2_task_11_tomato_lettuce_onion --seeds 0 --allow-paid
+#   python -m react_baseline.grid configs/grids/final_tkg.yaml --allow-paid        (all; resumable)
+# Refuses to run unless the code matches both freezes and `tkg:` equals configs/frozen/tkg_v1.yaml settings.
+name: final_tkg
+frozen:
+  - configs/frozen/baseline_v2_2.yaml
+  - configs/frozen/tkg_v1.yaml
+out_dir: runs/grids/final_tkg
+tasks:
+  - V2_task_01_tomato
+  - V2_task_07_tomato_steak
+  - V2_task_11_tomato_lettuce_onion
+max_env_steps: 1000
+history: 10
+temperature: 0.7          # where the backend supports it (Haiku 5.5 runs at its API default)
+intents_per_call: 1
+max_macro_len: 40
+max_usd_per_paid_run: 0.40
+repro:
+  enabled: true
+  steps: 50
+  max_attempts: 5
+  max_fraction: 0.3
+  dedup_jaccard: 0.8
+tkg:
+  trigger: tkg1
+  tau: 0.15
+  min_support: 3
+  warmup_steps: 0
+  investigate_k: 1
+  max_consecutive_llm: 6
+  repro_path: true
+rows:
+  - {agent: tkg, profile: haiku-5.5, seeds: [0, 1, 2]}
