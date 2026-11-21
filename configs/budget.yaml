@@ -1,4 +1,6 @@
 # Project budget for paid LLM runs (react_baseline.spend).
 # Paid runs refuse to start once spent + open reservations + --max-usd > cap - margin.
-project_cap_usd: 20.00
+# Raised from 20.00 on 2026-11-21: about $16.22 is spent and seeds 3-4 for the three LLM grids need
+# about $6.30, so everything stays under $24 (cap minus margin).
+project_cap_usd: 25.00
 safety_margin_usd: 1.00

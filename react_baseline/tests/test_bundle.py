@@ -28,7 +28,7 @@ def test_bundle_mock_runs(tmp_path):
                 assert f"runs/{d}/{f}" in names, (d, f)
         assert {"spend_report.txt", "git.txt", "grid_dry_run.txt", "MANIFEST.txt"} <= names
         assert "frozen check" in z.read("grid_dry_run.txt").decode()
-        assert "Project cap $20.00" in z.read("spend_report.txt").decode()
+        assert "Project cap $25.00" in z.read("spend_report.txt").decode()
         assert "MISSING run dir" in z.read("MANIFEST.txt").decode()
         assert all("\\" not in n for n in names)
 

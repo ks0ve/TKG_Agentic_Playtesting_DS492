@@ -168,7 +168,7 @@ def test_shipped_profiles_guardrails():
     assert h.options["extra_body"]["thinking"] == {"type": "disabled"}
     assert h.pricing_date == "2026-10-21" and "claude-haiku-5-5" in h.pricing_source
     assert resolve_profile(backend="anthropic").name == "haiku-5.5"
-    assert spend.load_budget().limit == pytest.approx(19.0)
+    assert spend.load_budget().limit == pytest.approx(24.0)
 
 
 # ---------------------------------------------------------------- Anthropic error policy
