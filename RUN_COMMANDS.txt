@@ -20,7 +20,7 @@ MODELS   --model-profile from configs\models.yaml:
          haiku-5.5 (headline, PAID $0.10/$0.50 per MTok) | llama3.1-8b (replication, free)
          qwen2.5-7b / qwen2.5-14b / mistral-nemo-12b (free) | haiku-4.5 (DISABLED)
 PAID     needs --allow-paid and --max-usd (<= $2 unless --max-usd-override); checked against
-         configs\budget.yaml ($20 cap, $1 margin) and recorded in spend\ledger.jsonl.
+         configs\budget.yaml ($25 cap, $1 margin) and recorded in spend\ledger.jsonl.
 REPRO    --repro turns on agent-driven reproduction (<= 5 attempts, <= 30% of the steps). The
          grids use 50-step attempts (5 x 50 = 250 of 1,000); 50-step pilots use --repro-steps 15.
 

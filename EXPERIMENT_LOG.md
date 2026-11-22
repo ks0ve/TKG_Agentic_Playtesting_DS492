@@ -833,3 +833,28 @@ Frozen identity:
   run)." Here "reset" means the run start and the end of a reproduction attempt only. After an ordinary episode reset
   (order completed or the 200-step limit) the LLM acts first, and a decision it hands back with `Action: resume` still
   consulted it, so neither is counted.
+
+## 2026-11-21: Seeds 3–4 attempted and dropped (Haiku 5.5 refuses the prompt)
+
+- **Attempted.** Seeds 3–4 on the 3 grid tasks for every final arm: `final_react`, `final_tkg`, `final_alwayson` (18
+  paid runs, on the frozen code), the free arms in `final_free` (18 runs) and `trigger_eval` on seeds 0–4. The budget
+  cap went from $20 to $25 for this (`configs/budget.yaml`).
+- **What happened.** All 18 paid runs reached `max_env_steps`, but Haiku 5.5 returned no text (0 output tokens) on
+  essentially every call: 1,000 of 1,000 in each ReAct run, all but one call in each TKG and always-on run. Seeds 0–2
+  had no empty replies. Replaying the first request of ReAct tomato seed 3, which is byte-identical (system and user
+  prompt) to the first request of seed 0 that got a 170-token answer on 2026-10-28, returned `stop_reason=refusal`
+  with no output, 3 of 3 times. A trivial prompt still gets an answer. The harness logs a refusal as an empty reply;
+  it does not record `stop_reason`.
+- **Where the refusal comes from** (one call per prompt variant): it persists without the bug-hunting objective,
+  without the `Bug report` line, and with "QA tester" / "find bugs" reworded. It stops when the GAME RULES and OUTPUT
+  FORMAT sections are removed. The detailed observation with a minimal system prompt was refused after 13 output
+  tokens. So the game description, not the bug-hunting framing, triggers it, and it can also fire during the answer.
+- **Decision.** Seeds 3–4 are dropped for every arm; the results stay at seeds 0–2 (the 18 paid final runs and 27
+  free runs of 2026-10-28 / 2026-11-08, and the earlier trigger evaluations). The grids, tests and RUN_COMMANDS are
+  reverted to seeds 0–2. The 36 seed 3–4 runs and the seeds 0–4 trigger evaluation are kept locally, not in git, under
+  `runs/_excluded/seeds3-4_2026-11-21/`. The free runs and the trigger evaluation were valid but are dropped too, so
+  every arm has the same seeds.
+- **Spend.** The 18 paid runs cost $3.55 (input tokens only) and stay in the ledger. Total spent: $19.77 of the $25
+  cap ($24 usable after the $1 margin); $4.23 left. The cap stays at $25.
+- **Not done.** No prompt change, no other model, no refusal guard: any of these changes the frozen code. A guard
+  that records `stop_reason` and stops a paid run after repeated refusals belongs in a future freeze.

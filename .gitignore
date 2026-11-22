@@ -14,3 +14,5 @@ game_logs.jsonl
 /*.zip
 /pilots_*/
 /final_*/
+# runs set aside (not used in results; kept locally as evidence)
+runs/_excluded/**
